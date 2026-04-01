@@ -1,0 +1,243 @@
+Name,Online_Name,Description,Short_Code,Short_Code_2,Sap_Code,HSN_Code,Parent_Category,Category,Category_online_display,Price,Attributes,Goods_Services,Unit,is_Self_Item_Recipe,minimum_stock_level,at_par_stock_level,Rank,Packing_Charges,Allow_Decimal_Qty,Addon_Group_Name,Addon_Group_Selection,Addon_Group_Min,Addon_Group_Max,Variation_group_name,Variation,Variation_Price,Variation_Sap_Code,Variation_Packing_Charges,Variation,Variation_Price,Variation_Sap_Code,Variation_Packing_Charges,Variation,Variation_Price,Variation_Sap_Code,Variation_Packing_Charges
+"Plain Chicken Roll","Plain Chicken Roll",,1,,,,,"Franky Roll","Franky Roll",90,non-veg,,,0,,,1,0,Yes
+"Egg Chicken Roll","Egg Chicken Roll",,2,,,,,"Franky Roll","Franky Roll",99,non-veg,,,0,,,2,0,Yes
+"Double Egg Chicken Roll","Double Egg Chicken Roll",,3,,,,,"Franky Roll","Franky Roll",110,non-veg,,,0,,,3,0,Yes
+"Single Egg Double Chicken Roll","Single Egg Double Chicken Roll",,4,,,,,"Franky Roll","Franky Roll",130,non-veg,,,0,,,4,0,Yes
+"Double Egg Double Chicken Roll","Double Egg Double Chicken Roll",,5,,,,,"Franky Roll","Franky Roll",150,non-veg,,,0,,,5,0,Yes
+"Double Egg With Paneer Chicken","Double Egg With Paneer Chicken",,6,,,,,"Franky Roll","Franky Roll",140,non-veg,,,0,,,6,0,Yes
+"Egg Roll","Egg Roll",,7,,,,,"Franky Roll","Franky Roll",59,egg,,,0,,,7,0,Yes
+"Egg Paneer Roll","Egg Paneer Roll",,8,,,,,"Franky Roll","Franky Roll",90,egg,,,0,,,8,0,Yes
+"Chicken Tikka Kathi Roll","Chicken Tikka Kathi Roll",,9,,,,,"Kathi Roll","Kathi Roll",250,non-veg,,,0,,,9,0,Yes
+"Chicken Seekh Kabab Roll","Chicken Seekh Kabab Roll",,10,,,,,"Kathi Roll","Kathi Roll",180,non-veg,,,0,,,10,0,Yes
+"Mutton Seekh Kabab Roll","Mutton Seekh Kabab Roll",,11,,,,,"Kathi Roll","Kathi Roll",190,non-veg,,,0,,,11,0,Yes
+"Mutton Shaami Kabab Roll","Mutton Shaami Kabab Roll",,12,,,,,"Kabab Paratha","Kabab Paratha",150,non-veg,,,0,,,12,0,Yes
+"Veg Franky Roll","Veg Franky Roll",,13,,,,,"Franky Roll","Franky Roll",70,veg,,,0,,,13,0,Yes
+"Paneer Kathi Roll","Paneer Kathi Roll",,14,,,,,"Kathi Roll","Kathi Roll",180,veg,,,0,,,14,0,Yes
+"Double Egg Paneer Roll","Double Egg Paneer Roll",,15,,,,,"Franky Roll","Franky Roll",99,veg,,,0,,,15,0,Yes
+"Chicken Afghaani Tandoori Momos","Chicken Afghaani Tandoori Momos",,16,,,,,Momos,Momos,190,non-veg,,,0,,,16,0,Yes
+"Veg Afghani Tandoori Momos","Veg Afghani Tandoori Momos",,17,,,,,Momos,Momos,170,veg,,,0,,,17,0,Yes
+"Chilly Chicken Full Boneless","Chilly Chicken Full Boneless",,18,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,non-veg,,,0,,,18,0,Yes,,,,,Preparation,Dry,470,,0,Gravy,470,,0
+"Chilly Chicken Half Boneless","Chilly Chicken Half Boneless",,19,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,non-veg,,,0,,,19,0,Yes,,,,,Preparation,Dry,270,,0,Gravy,270,,0
+"Butter Chicken Quarter","Butter Chicken Quarter",,20,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,20,0,Yes
+"Butter Chicken Full","Butter Chicken Full",,21,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,21,0,Yes
+"Butter Chicken Half","Butter Chicken Half",,22,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,22,0,Yes
+"Chicken Lollypop Full","Chicken Lollypop Full",,23,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,non-veg,,,0,,,23,0,Yes,,,,,Preparation,Dry,470,,0,Gravy,470,,0,"Fry Pakode Only",470,,0
+"Chicken Lollypop Half","Chicken Lollypop Half",,24,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,non-veg,,,0,,,24,0,Yes,,,,,Preparation,Dry,270,,0,Gravy,270,,0,"Fry Pakode Only",270,,0
+"Tawa Chicken Full","Tawa Chicken Full",,25,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,25,0,Yes
+"Tawa Chicken Half","Tawa Chicken Half",,26,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,26,0,Yes
+"Changezi Chicken Full Boneless","Changezi Chicken Full Boneless",,27,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,27,0,Yes
+"Changezi Chicken Half Boneless","Changezi Chicken Half Boneless",,28,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,28,0,Yes
+"Egg Curry (2Eggs)","Egg Curry (2Eggs)",,29,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",160,egg,,,0,,,29,0,Yes
+"Mutton Gravy Full","Mutton Gravy Full",,30,,,,,Mutton/Biryani,Mutton/Biryani,499,non-veg,,,0,,,30,0,Yes
+"Mutton Gravy Half","Mutton Gravy Half",,31,,,,,Mutton/Biryani,Mutton/Biryani,280,non-veg,,,0,,,31,0,Yes
+"Mutton Seekh Kabab Masala","Mutton Seekh Kabab Masala",,32,,,,,Mutton/Biryani,Mutton/Biryani,380,non-veg,,,0,,,32,0,Yes
+"Mutton Galouti Kabab Roll","Mutton Galouti Kabab Roll",,33,,,,,"Kabab Paratha","Kabab Paratha",170,non-veg,,,0,,,33,0,Yes
+"Keema Kaleji Full","Keema Kaleji Full",,34,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",499,non-veg,,,0,,,34,0,Yes
+"Keema Kaleji Half","Keema Kaleji Half",,35,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",280,non-veg,,,0,,,35,0,Yes
+"Mutton Chaap 4Pc","Mutton Chaap 4Pc",,36,,,,,Mutton/Biryani,Mutton/Biryani,350,non-veg,,,0,,,36,0,Yes
+"Mutton Chaap 2Pc","Mutton Chaap 2Pc",,37,,,,,Mutton/Biryani,Mutton/Biryani,210,non-veg,,,0,,,37,0,Yes
+"Plain Soya Chaap Franky Roll","Plain Soya Chaap Franky Roll",,38,,,,,"Franky Roll","Franky Roll",80,veg,,,0,,,38,0,Yes
+"Single Egg Soya Chaap Franky Roll","Single Egg Soya Chaap Franky Roll",,39,,,,,"Franky Roll","Franky Roll",90,egg,,,0,,,39,0,Yes
+"Chicken Lababdar Quarter","Chicken Lababdar Quarter",,40,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,40,0,Yes
+"Mutton Shaami Kabab 2Pc","Mutton Shaami Kabab 2Pc",,41,,,,,"Kabab Paratha","Kabab Paratha",140,non-veg,,,0,,,41,0,Yes
+"Mutton Seekh Kabab 4Pc","Mutton Seekh Kabab 4Pc",,42,,,,,Kabab,Kabab,290,non-veg,,,0,,,42,0,Yes
+"Chicken Seekh Kabab 4Pc","Chicken Seekh Kabab 4Pc",,43,,,,,Kabab,Kabab,270,non-veg,,,0,,,43,0,Yes
+"Paneer Afghani Tandoori Momos","Paneer Afghani Tandoori Momos",,44,,,,,Momos,Momos,180,veg,,,0,,,44,0,Yes
+"Chicken Fried Rice","Chicken Fried Rice",,45,,,,,Rice/Chowmein,Rice/Chowmein,180,non-veg,,,0,,,45,0,Yes
+"Honey Chilly Potatoes","Honey Chilly Potatoes",,46,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",170,veg,,,0,,,46,0,Yes
+"Chicken Chowmein","Chicken Chowmein",,47,,,,,Rice/Chowmein,Rice/Chowmein,180,non-veg,,,0,,,47,0,Yes
+"Chicken Galouti Combo","Chicken Galouti Combo",,48,,,,,"Kabab Paratha","Kabab Paratha",170,non-veg,,,0,,,48,0,Yes
+"Egg Chowmein","Egg Chowmein",,49,,,,,Rice/Chowmein,Rice/Chowmein,160,egg,,,0,,,49,0,Yes
+"Honey Chilly Chicken Dry Boneless","Honey Chilly Chicken Dry Boneless",,50,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",270,non-veg,,,0,,,50,0,Yes
+"Egg Fried Rice","Egg Fried Rice",,51,,,,,Rice/Chowmein,Rice/Chowmein,160,egg,,,0,,,51,0,Yes
+"Crunchy Chicken","Crunchy Chicken",,52,,,,,"Fried Starter","Fried Starter",199,non-veg,,,0,,,52,0,Yes
+"Veg Chowmein","Veg Chowmein",,53,,,,,Rice/Chowmein,Rice/Chowmein,130,veg,,,0,,,53,0,Yes
+"Veg Fried Rice","Veg Fried Rice",,54,,,,,Rice/Chowmein,Rice/Chowmein,130,veg,,,0,,,54,0,Yes
+"Plain Tawa Roti","Plain Tawa Roti",,55,,,,,Roti/Naan,Roti/Naan,15,veg,,,0,,,55,0,Yes
+"Butter Tawa Roti","Butter Tawa Roti",,56,,,,,Roti/Naan,Roti/Naan,20,veg,,,0,,,56,0,Yes
+"Paneer Tikka","Paneer Tikka",,57,,,,,"Tandoor Starters","Tandoor Starters",230,veg,,,0,,,57,0,Yes
+"Paneer Fried Momos","Paneer Fried Momos",,58,,,,,Momos,Momos,0,veg,,,0,,,58,0,Yes,,,,,Preparation,"Normal Fried",160,,0,"Kurkure Fried",170,,0
+"Chilly Paneer","Chilly Paneer",,59,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,veg,,,0,,,59,0,Yes,,,,,Preparation,Dry,230,,0,Gravy,230,,0
+"Paneer Butter Masala","Paneer Butter Masala",,60,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,veg,,,0,,,60,0,Yes,,,,,Quantity,Half,190,,0,Full,299,,0
+"Veg Manchurian","Veg Manchurian",,61,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,veg,,,0,,,61,0,Yes,,,,,Preparation,Dry,199,,0,Gravy,199,,0
+"Tawa Chicken Quarter","Tawa Chicken Quarter",,62,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,62,0,Yes
+"Chicken Tandoori Full","Chicken Tandoori Full",,63,,,,,"Tandoor Starters","Tandoor Starters",499,non-veg,,,0,,,63,0,Yes
+"Chicken Tandoori Half","Chicken Tandoori Half",,64,,,,,"Tandoor Starters","Tandoor Starters",270,non-veg,,,0,,,64,0,Yes
+"Handi Chicken Quarter","Handi Chicken Quarter",,65,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,65,0,Yes
+"Handi Paneer","Handi Paneer",,66,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,veg,,,0,,,66,0,Yes,,,,,Quantity,Half,190,,0,Full,299,,0
+"Reshmi Malai Chicken Tikka Full 20pcs","Reshmi Malai Chicken Tikka Full 20Pcs",,67,,,,,"Tandoor Starters","Tandoor Starters",499,non-veg,,,0,,,67,0,Yes
+"Reshmi Malai Chicken Tikka Half 10pc","Reshmi Malai Chicken Tikka Half 10Pc",,68,,,,,"Tandoor Starters","Tandoor Starters",270,non-veg,,,0,,,68,0,Yes
+"Fish Tandoori Boneless 500Gms","Fish Tandoori Boneless 500Gms",,69,,,,,"Fish Starters","Fish Starters",580,non-veg,,,0,,,69,0,Yes
+"Fish Tandoori Boneless 250Gms","Fish Tandoori Boneless 250Gms",,70,,,,,"Fish Starters","Fish Starters",290,non-veg,,,0,,,70,0,Yes
+"Veg Chilly Garlic Fried Rice","Veg Chilly Garlic Fried Rice",,71,,,,,Rice/Chowmein,Rice/Chowmein,180,veg,,,0,,,71,0,Yes
+"Fish Fry Boneless 500Gms","Fish Fry Boneless 500Gms",,72,,,,,"Fish Starters","Fish Starters",580,non-veg,,,0,,,72,0,Yes
+"Fish Fry Boneless 250Gms","Fish Fry Boneless 250Gms",,73,,,,,"Fish Starters","Fish Starters",290,non-veg,,,0,,,73,0,Yes
+"Veg Biryani","Veg Biryani",,74,,,,,Mutton/Biryani,Mutton/Biryani,120,veg,,,0,,,74,0,Yes
+"Changezi Chicken Quarter Bonless","Changezi Chicken Quarter Boneless",,75,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,75,0,Yes
+"Mutton Biryani","Mutton Biryani",,76,,,,,Mutton/Biryani,Mutton/Biryani,140,non-veg,,,0,,,76,0,Yes
+"Chicken Biryani","Chicken Biryani",,77,,,,,Mutton/Biryani,Mutton/Biryani,140,non-veg,,,0,,,77,0,Yes
+"Rumali Roti","Rumali Roti",,78,,,,,Roti/Naan,Roti/Naan,15,veg,,,0,,,78,0,Yes
+"Tandoori Roti","Tandoori Roti",,79,,,,,Roti/Naan,Roti/Naan,15,veg,,,0,,,79,0,Yes
+"Butter Tandoori Roti","Butter Tandoori Roti",,80,,,,,Roti/Naan,Roti/Naan,20,veg,,,0,,,80,0,Yes
+"Plain Naan","Plain Naan",,81,,,,,Roti/Naan,Roti/Naan,40,veg,,,0,,,81,0,Yes
+"Butter Naan","Butter Naan",,82,,,,,Roti/Naan,Roti/Naan,50,veg,,,0,,,82,0,Yes
+"Lachha Paratha","Lachha Paratha",,83,,,,,Roti/Naan,Roti/Naan,40,veg,,,0,,,83,0,Yes
+"Kabab Platter","Kabab Platter",,84,,,,,"Kabab Paratha","Kabab Paratha",649,veg,,,0,,,84,0,Yes
+"Chicken Soup","Chicken Soup",,85,,,,,Soup,Soup,90,non-veg,,,0,,,85,0,Yes
+"Egg Soup","Egg Soup",,86,,,,,Soup,Soup,70,egg,,,0,,,86,0,Yes
+"Water Bottle","Water Bottle",,87,,,,,Beverages,Beverages,20,veg,,,0,,,87,0,Yes
+"Soft Drink Glass","Soft Drink Glass",,88,,,,,Drinks/Shakes,Drinks/Shakes,35,veg,,,0,,,88,0,Yes
+"Chicken Shawarma","Chicken Shawarma",,89,,,,,Shawarma,Shawarma,130,non-veg,,,0,,,89,0,Yes
+"Mutton Seekh Kabab 2Pc","Mutton Seekh Kabab 2Pc",,90,,,,,Kabab,Kabab,160,non-veg,,,0,,,90,0,Yes
+"Chicken Seekh Kabab 2Pc","Chicken Seekh Kabab 2Pc",,91,,,,,Kabab,Kabab,150,non-veg,,,0,,,91,0,Yes
+"Soya Chaap Kathi Roll","Soya Chaap Kathi Roll",,93,,,,,"Kathi Roll","Kathi Roll",170,veg,,,0,,,93,0,Yes
+"Soya Butter Masala Chaap Gravy","Soya Butter Masala Chaap Gravy",,94,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,veg,,,0,,,94,0,Yes
+"Chicken Tikka Full 20pc","Chicken Tikka Full 20Pc",,95,,,,,"Tandoor Starters","Tandoor Starters",499,non-veg,,,0,,,95,0,Yes
+"Chicken Tikka Half 10pc","Chicken Tikka Half 10Pc",,96,,,,,"Tandoor Starters","Tandoor Starters",270,non-veg,,,0,,,96,0,Yes
+"Extra Gravy","Extra Gravy",,97,,,,,Mutton/Biryani,Mutton/Biryani,20,non-veg,,,0,,,97,0,Yes
+"Grill Tawa Fish 500Gms","Grill Tawa Fish 500Gms",,98,,,,,"Fish Starters","Fish Starters",580,non-veg,,,0,,,98,0,Yes
+"Grill Tawa Fish 250Gms","Grill Tawa Fish 250Gms",,99,,,,,"Fish Starters","Fish Starters",290,non-veg,,,0,,,99,0,Yes
+"Chicken Chilly Garlic Fried Rice","Chicken Chilly Garlic Fried Rice",,100,,,,,Rice/Chowmein,Rice/Chowmein,199,non-veg,,,0,,,100,0,Yes
+"Chicken Tikka Masala 5 Pcs","Chicken Tikka Masala 5 Pcs",,105,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",199,non-veg,,,0,,,105,0,Yes
+"Crispy Fish Fingers 10Pc","Crispy Fish Fingers 10Pc",,106,,,,,"Fish Starters","Fish Starters",300,non-veg,,,0,,,106,0,Yes
+"Plain Rice","Plain Rice",,108,,,,,Rice/Chowmein,Rice/Chowmein,90,veg,,,0,,,107,0,Yes
+"Handi Chicken Full","Handi Chicken Full",,110,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,109,0,Yes
+"Handi Chicken Half","Handi Chicken Half",,111,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,110,0,Yes
+"Chilly Fish","Chilly Fish",,112,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,non-veg,,,0,,,111,0,Yes,,,,,Preparation,Dry,350,,0,Gravy,350,,0
+"Veg Tandoori Momos","Veg Tandoori Momos",,113,,,,,Momos,Momos,150,veg,,,0,,,112,0,Yes
+"Mutton Nihaari Full","Mutton Nihaari Full",,114,,,,,Mutton/Biryani,Mutton/Biryani,370,non-veg,,,0,,,113,0,Yes
+"Mutton Nihaari Half","Mutton Nihaari Half",,115,,,,,Mutton/Biryani,Mutton/Biryani,210,non-veg,,,0,,,114,0,Yes
+"Double Egg Roll","Double Egg Roll",,116,,,,,"Franky Roll","Franky Roll",75,egg,,,0,,,115,0,Yes
+"Tangri Kabab Half 2Pc","Tangri Kabab Half 2Pc",,117,,,,,"Tandoor Starters","Tandoor Starters",190,non-veg,,,0,,,116,0,Yes
+"Double Egg Soya Chaap Franky","Double Egg Soya Chaap Franky",,122,,,,,"Franky Roll","Franky Roll",100,egg,,,0,,,117,0,Yes
+"Tangri Kabab Full 4Pc","Tangri Kabab Full 4Pc",,123,,,,,"Tandoor Starters","Tandoor Starters",360,non-veg,,,0,,,118,0,Yes
+"Dal Tadka","Dal Tadka",,125,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",90,veg,,,0,,,119,0,Yes
+"Changezi Paneer","Changezi Paneer",,126,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,veg,,,0,,,120,0,Yes,,,,,Quantity,Half,190,,0,Full,299,,0
+"Veg Schezwan Chowmein","Veg Schezwan Chowmein",,128,,,,,Rice/Chowmein,Rice/Chowmein,180,veg,,,0,,,122,0,Yes
+"Soya Banjaara Chaap Dry","Soya Banjaara Chaap Dry",,129,,,,,"Tandoor Starters","Tandoor Starters",199,veg,,,0,,,123,0,Yes
+"Soya Malai Chaap Dry","Soya Malai Chaap Dry",,130,,,,,"Tandoor Starters","Tandoor Starters",220,veg,,,0,,,124,0,Yes
+"Soya Tawa Chaap Gravy","Soya Tawa Chaap Gravy",,131,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",210,veg,,,0,,,125,0,Yes
+"Fish Curry","Fish Curry",,132,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",399,non-veg,,,0,,,126,0,Yes
+"Butter Chicken Full Boneless","Butter Chicken Full Boneless",,133,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,127,0,Yes
+"Butter Chicken Half Boneless","Butter Chicken Half Boneless",,134,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,128,0,Yes
+"Butter Chicken Quarter Boneless","Butter Chicken Quarter Boneless",,135,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,129,0,Yes
+"Tawa Chicken Full Boneless","Tawa Chicken Full Boneless",,136,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,130,0,Yes
+"Tawa Chicken Half Boneless","Tawa Chicken Half Boneless",,137,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,131,0,Yes
+"Tawa Chicken Quarter Boneless","Tawa Chicken Quarter Boneless",,138,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,132,0,Yes
+"Chicken Tikka Biryani","Chicken Tikka Biryani",,139,,,,,Mutton/Biryani,Mutton/Biryani,140,non-veg,,,0,,,133,0,Yes
+"Egg Biryani","Egg Biryani",,140,,,,,Mutton/Biryani,Mutton/Biryani,130,non-veg,,,0,,,134,0,Yes
+"Kadhai Chicken Quarter Boneless","Kadhai Chicken Quarter Boneless",,141,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,135,0,Yes
+"Handi Chicken Full Boneless","Handi Chicken Full Boneless",,142,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,,,0,,,136,0,Yes
+"Handi Chicken Half Boneless","Handi Chicken Half Boneless",,143,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,,,0,,,137,0,Yes
+"Handi Chicken Quarter Boneless","Handi Chicken Quarter Boneless",,144,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,,,0,,,138,0,Yes
+"Chicken Steam Momos","Chicken Steam Momos",,145,,,,,Momos,Momos,140,non-veg,,,0,,,139,0,Yes
+"Chicken Tandoori Momos","Chicken Tandoori Momos",,146,,,,,Momos,Momos,180,non-veg,,,0,,,140,0,Yes
+"Veg Steam Momos","Veg Steam Momos",,147,,,,,Momos,Momos,110,veg,,,0,,,141,0,Yes
+"Paneer Steam Momos","Paneer Steam Momos",,149,,,,,Momos,Momos,130,veg,,,0,,,142,0,Yes
+"Paneer Tandoori Momos","Paneer Tandoori Momos",,150,,,,,Momos,Momos,170,veg,,,0,,,143,0,Yes
+"Chicken Schezwan Chowmein","Chicken Schezwan Chowmein",,161,,,,,Rice/Chowmein,Rice/Chowmein,199,non-veg,,,0,,,144,0,Yes
+"Veg Schezwan Fried Rice","Veg Schezwan Fried Rice",,162,,,,,Rice/Chowmein,Rice/Chowmein,180,veg,,,0,,,145,0,Yes
+"Chicken Schezwan Fried Rice","Chicken Schezwan Fried Rice",,163,,,,,Rice/Chowmein,Rice/Chowmein,199,non-veg,,,0,,,146,0,Yes
+"Dal Makhni","Dal Makhni",,165,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",170,veg,,,0,,,147,0,Yes
+"Veg Chilly Garlic Chowmein","Veg Chilly Garlic Chowmein",,170,,,,,Rice/Chowmein,Rice/Chowmein,180,veg,,,0,,,148,0,Yes
+"Chicken Chilly Garlic Chowmein","Chicken Chilly Garlic Chowmein",,171,,,,,Rice/Chowmein,Rice/Chowmein,199,non-veg,,,0,,,149,0,Yes
+"Jeera Rice","Jeera Rice",,172,,,,,Rice/Chowmein,Rice/Chowmein,99,veg,,,0,,,150,0,Yes
+"Mutton Galouti Kabab 2pcs & Paratha","Mutton Galouti Kabab 2Pcs & Paratha",,175,,,,,"Kabab Paratha","Kabab Paratha",170,non-veg,,,0,,,151,0,Yes
+"Veg Galouti Kabab 2pcs & 1 Paratha","Veg Galouti Kabab 2Pcs & 1 Paratha",,176,,,,,"Kabab Paratha","Kabab Paratha",150,veg,,,0,,,152,0,Yes
+"Lucknowi Mughlai Paratha","Lucknowi Mughlai Paratha",,177,,,,,"Kabab Paratha","Kabab Paratha",30,veg,,,0,,,153,0,Yes
+"Tangri Masala Full 4pc","Tangri Masala Full 4Pc",,178,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",480,non-veg,,,0,,,154,0,Yes
+"Tangri Masala Half 2pc","Tangri Masala Half 2Pc",,179,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",260,non-veg,,,0,,,155,0,Yes
+"Mutton Galouti Roll","Mutton Galouti Roll",,180,,,,,"Kabab Paratha","Kabab Paratha",170,non-veg,,,0,,,156,0,Yes
+"Veg Galouti Roll","Veg Galouti Roll",,181,,,,,"Kabab Paratha","Kabab Paratha",150,veg,,,0,,,157,0,Yes
+"Chicken Tangri Fry 2Pcs","Chicken Tangri Fry 2Pcs",,182,,,,,"Fried Starter","Fried Starter",190,non-veg,,,0,,,158,0,Yes
+"Chicken Tangri Fry 4Pcs","Chicken Tangri Fry 4Pcs",,183,,,,,"Fried Starter","Fried Starter",360,non-veg,,,0,,,159,0,Yes
+"Chicken Garlic Tikka 10Pcs","Chicken Garlic Tikka 10Pcs",,197,,,,,"Tandoor Starters","Tandoor Starters",270,non-veg,,,0,,,160,0,Yes
+"Chicken Garlic Tikka Full 20Pcs","Chicken Garlic Tikka Full 20Pcs",,198,,,,,"Tandoor Starters","Tandoor Starters",499,non-veg,,,0,,,161,0,Yes
+"Veg Fried Momos","Veg Fried Momos",,206,,,,,Momos,Momos,0,veg,,,0,,,162,0,Yes,,,,,Preparation,"Normal Fried",140,,0,"Kurkure Fried",150,,0
+"Chicken Fried Momos","Chicken Fried Momos",,207,,,,,Momos,Momos,0,non-veg,,,0,,,163,0,Yes,,,,,Preparation,"Normal Fried",170,,0,"Kurkure Fried",180,,0
+"Pan Fried Momos Veg","Pan Fried Momos Veg",,208,,,,,Rice/Chowmein,Rice/Chowmein,150,veg,,,0,,,164,0,Yes
+"Pan Fried Momos Chicken","Pan Fried Momos Chicken",,209,,,,,Rice/Chowmein,Rice/Chowmein,180,non-veg,,,0,,,165,0,Yes
+"Veg Soup","Veg Soup",,212,,,,,Soup,Soup,60,veg,,,0,,,166,0,Yes
+"Veg Manchow Soup","Veg Manchow Soup",,213,,,,,Soup,Soup,90,veg,,,0,,,167,0,Yes
+"Chicken Manchow Soup","Chicken Manchow Soup",,214,,,,,Soup,Soup,120,non-veg,,,0,,,168,0,Yes
+"Fish Orley Fried 10Pcs","Fish Orley Fried 10Pcs",,217,,,,,"Fish Starters","Fish Starters",300,non-veg,,,0,,,171,0,Yes
+"Chicken Seekh Kabab Masala","Chicken Seekh Kabab Masala",,218,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",370,non-veg,,,0,,,172,0,Yes
+"Paneer Fried Rice","Paneer Fried Rice",,219,,,,,Rice/Chowmein,Rice/Chowmein,180,veg,,,0,,,173,0,Yes
+"Paneer Chowmein","Paneer Chowmein",,220,,,,,Rice/Chowmein,Rice/Chowmein,180,veg,,,0,,,174,0,Yes
+"Fresh Lime Soda","Fresh Lime Soda",,221,,,,,Drinks/Shakes,Drinks/Shakes,60,veg,,,0,,,175,0,Yes
+"Nimbu Shikanji","Nimbu Shikanji",,222,,,,,Drinks/Shakes,Drinks/Shakes,70,veg,,,0,,,176,0,Yes
+"Virgin Mojito","Virgin Mojito",,223,,,,,Drinks/Shakes,Drinks/Shakes,100,veg,,,0,,,177,0,Yes
+"Mint Lemonade","Mint Lemonade",,224,,,,,Drinks/Shakes,Drinks/Shakes,90,veg,,,0,,,178,0,Yes
+"Classic Lemonade","Classic Lemonade",,225,,,,,Drinks/Shakes,Drinks/Shakes,90,veg,,,0,,,179,0,Yes
+"Strawberry Lemonade","Strawberry Lemonade",,226,,,,,Drinks/Shakes,Drinks/Shakes,90,veg,,,0,,,180,0,Yes
+"Peach Lemonade","Peach Lemonade",,227,,,,,Drinks/Shakes,Drinks/Shakes,90,veg,,,0,,,181,0,Yes
+"Blue Lagoon","Blue Lagoon",,228,,,,,Drinks/Shakes,Drinks/Shakes,100,veg,,,0,,,182,0,Yes
+"Vanilla Shake","Vanilla Shake",,229,,,,,Drinks/Shakes,Drinks/Shakes,110,veg,,,0,,,183,0,Yes
+"Mango Shake","Mango Shake",,230,,,,,Drinks/Shakes,Drinks/Shakes,110,veg,,,0,,,184,0,Yes
+"Butter Scotch Shake","Butter Scotch Shake",,231,,,,,Drinks/Shakes,Drinks/Shakes,110,veg,,,0,,,185,0,Yes
+"Strawberry Shake","Strawberry Shake",,232,,,,,Drinks/Shakes,Drinks/Shakes,110,veg,,,0,,,186,0,Yes
+"Pineapple Shake","Pineapple Shake",,233,,,,,Drinks/Shakes,Drinks/Shakes,110,veg,,,0,,,187,0,Yes
+"Chocolate Oreo Shake","Chocolate Oreo Shake",,234,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,188,0,Yes
+"Easy Chocolate Oreo Shake","Easy Chocolate Oreo Shake",,235,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,189,0,Yes
+"Kitkat Shake","Kitkat Shake",,236,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,190,0,Yes
+"Brownie Chocolate Shake","Brownie Chocolate Shake",,237,,,,,Drinks/Shakes,Drinks/Shakes,140,veg,,,0,,,191,0,Yes
+"Dbl Chocolate Brownie Shake","Dbl Chocolate Brownie Shake",,238,,,,,Drinks/Shakes,Drinks/Shakes,145,veg,,,0,,,192,0,Yes
+"Choco Chip Shake","Choco Chip Shake",,239,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,193,0,Yes
+"Choco Peanutbutter Shake","Choco Peanutbutter Shake",,240,,,,,Drinks/Shakes,Drinks/Shakes,140,veg,,,0,,,194,0,Yes
+"Caramel Chocolate Shake","Caramel Chocolate Shake",,241,,,,,Drinks/Shakes,Drinks/Shakes,145,veg,,,0,,,195,0,Yes
+"Caramel Oreo Shake","Caramel Oreo Shake",,242,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,196,0,Yes
+"Tuty Fruity Shake","Tuty Fruity Shake",,243,,,,,Drinks/Shakes,Drinks/Shakes,120,veg,,,0,,,197,0,Yes
+"Strawberry Oreo Shake","Strawberry Oreo Shake",,244,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,198,0,Yes
+"Blueberry Shake","Blueberry Shake",,245,,,,,Drinks/Shakes,Drinks/Shakes,120,veg,,,0,,,199,0,Yes
+"Black Current Shake","Black Current Shake",,246,,,,,Drinks/Shakes,Drinks/Shakes,120,veg,,,0,,,200,0,Yes
+"Classic Cold Coffee","Classic Cold Coffee",,247,,,,,Drinks/Shakes,Drinks/Shakes,100,veg,,,0,,,201,0,Yes
+"Oreo Cold Coffee","Oreo Cold Coffee",,248,,,,,Drinks/Shakes,Drinks/Shakes,120,veg,,,0,,,202,0,Yes
+"Caramel Cold Coffee","Caramel Cold Coffee",,249,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,203,0,Yes
+"Vanilla Cold Coffee","Vanilla Cold Coffee",,250,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,204,0,Yes
+"Hazelnut Cold Coffee","Hazelnut Cold Coffee",,251,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,205,0,Yes
+"Spiced Mocha","Spiced Mocha",,252,,,,,Drinks/Shakes,Drinks/Shakes,130,veg,,,0,,,206,0,Yes
+"Chocolate Brownie Desert","Chocolate Brownie Desert",,253,,,,,Drinks/Shakes,Drinks/Shakes,60,veg,,,0,,,207,0,Yes
+"Vanilla Ice-Cream Scoop","Vanilla Ice-Cream Scoop",,254,,,,,Drinks/Shakes,Drinks/Shakes,40,veg,,,0,,,208,0,Yes
+"Lemon Ice Tea","Lemon Ice Tea",,255,,,,,Drinks/Shakes,Drinks/Shakes,60,veg,,,0,,,209,0,Yes
+"Mutton Galouti Combo","Mutton Galouti Combo",,256,,,,,"Kabab Paratha","Kabab Paratha",170,non-veg,,,0,,,210,0,Yes
+"Veg Galouti Combo","Veg Galouti Combo",,257,,,,,"Kabab Paratha","Kabab Paratha",150,veg,,,0,,,211,0,Yes
+"Mutton Galouti Kabab 2pc","Mutton Galouti Kabab 2Pc",,258,,,,,"Kabab Paratha","Kabab Paratha",150,non-veg,,,0,,,212,0,Yes
+"Veg Galouti Kabab 2pc","Veg Galouti Kabab 2Pc",,259,,,,,"Kabab Paratha","Kabab Paratha",130,veg,,,0,,,213,0,Yes
+"Espresso Coffee","Espresso Coffee",,261,,,,,Drinks/Shakes,Drinks/Shakes,45,veg,,,0,,,214,0,Yes
+"Macchiato Coffee","Macchiato Coffee",,262,,,,,Drinks/Shakes,Drinks/Shakes,55,veg,,,0,,,215,0,Yes
+"Tapri Coffee","Tapri Coffee",,263,,,,,Drinks/Shakes,Drinks/Shakes,55,veg,,,0,,,216,0,Yes
+"Americano Coffee","Americano Coffee",,264,,,,,Drinks/Shakes,Drinks/Shakes,65,veg,,,0,,,217,0,Yes
+"Cappuccino Coffee","Cappuccino Coffee",,265,,,,,Drinks/Shakes,Drinks/Shakes,90,veg,,,0,,,218,0,Yes
+"Cafe Latte","Cafe Latte",,266,,,,,Drinks/Shakes,Drinks/Shakes,90,veg,,,0,,,219,0,Yes
+"Hot Chocolate","Hot Chocolate",,267,,,,,Drinks/Shakes,Drinks/Shakes,95,veg,,,0,,,220,0,Yes
+"Cafe Mocha","Cafe Mocha",,268,,,,,Drinks/Shakes,Drinks/Shakes,125,veg,,,0,,,221,0,Yes
+"Elaichi Chai","Elaichi Chai",,269,,,,,Drinks/Shakes,Drinks/Shakes,35,veg,,,0,,,222,0,Yes
+"Add On Extra","Add On Extra",,270,,,,,Drinks/Shakes,Drinks/Shakes,25,veg,,,0,,,223,0,Yes
+"Orange Lemonade","Orange Lemonade",,271,,,,,Drinks/Shakes,Drinks/Shakes,100,veg,,,0,,,224,0,Yes
+"Watermellon Lemonade","Watermellon Lemonade",,272,,,,,Drinks/Shakes,Drinks/Shakes,100,veg,,,0,,,225,0,Yes
+"Chach (butter Milk)","Chach ( butter milk)",,273,,,,,Drinks/Shakes,Drinks/Shakes,40,veg,,,0,,,226,0,Yes
+Lassi,Lassi,,274,,,,,Drinks/Shakes,Drinks/Shakes,60,veg,,,0,,,227,0,Yes
+"Gulab Jamun 1 Pc","Gulab Jamun 1 Pc",,275,,,,,Drinks/Shakes,Drinks/Shakes,25,veg,,,0,,,228,0,Yes
+"Gulab Jamun With Ice Cream","Gulab Jamun With Ice Cream",,276,,,,,Drinks/Shakes,Drinks/Shakes,50,veg,,,0,,,229,0,Yes
+"Cheese & Corn Momos","Cheese & Corn Momos",,281,,,,,Momos,Momos,0,veg,,,0,,,230,0,Yes,,,,,Preparation,Steamed,130,,0,"Kurkure Fried",180,,0
+"Pan Fried Cheese & Corn Momos","Pan Fried Cheese & Corn Momos",,282,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",170,veg,,,0,,,231,0,Yes
+"Schezwan Chilly Chicken","Schezwan Chilly Chicken",,283,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",270,non-veg,,,0,,,232,0,Yes
+"Schezwan Chilly Paneer","Schezwan Chilly Paneer",,284,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,veg,,,0,,,233,0,Yes
+"Delhi Style Butter Chicken","Delhi Style Butter Chicken",,285,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",450,non-veg,,,0,,,234,0,Yes
+"Soya Malai Chaap Rumalii Roll","Soya Malai Chaap Rumalii Roll",,286,,,,,"Kathi Roll","Kathi Roll",170,veg,,,0,,,235,0,Yes
+"Box Packing","Box Packing",,287,,,,,Mutton/Biryani,Mutton/Biryani,10,non-veg,,,0,,,236,0,Yes
+"Murg Shaahi Chicken Tikka 10pc","murg shaahi chicken tikka 10pc",,166,,,,,"Tandoor Starters","Tandoor Starters",370,non-veg,services,,0,,,1,0,Yes
+"Murg Shaahi Malai Tikka 10pcs","murg shaahi malai tikka 10pcs",,167,,,,,"Tandoor Starters","Tandoor Starters",370,non-veg,services,,0,,,1,0,Yes
+"Changezi Chicken Qtr","changezi chicken qtr",,168,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",230,non-veg,services,,0,,,1,0,Yes
+"Changezi Chicken Half","changezi chicken half",,169,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",420,non-veg,services,,0,,,1,0,Yes
+"Changezi Chicken Full","changezi chicken full",,184,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",699,non-veg,services,,0,,,1,0,Yes
+"Khameeri Naan","khameeri naan",,210,,,,,Roti/Naan,Roti/Naan,60,veg,services,,0,,,1,0,Yes
+"Chicken Fingers 8 Pcs","chicken fingers 8 pcs",,205,,,,,"Fried Starter","Fried Starter",299,non-veg,services,,0,,,1,0,Yes
+"Paneer Shawarma","paneer shawarma",,204,,,,,Shawarma,Shawarma,130,veg,services,,0,,,1,0,Yes
+"Chilly Chicken Shawarma","chilly chicken shawarma",,203,,,,,Shawarma,Shawarma,160,non-veg,services,,0,,,1,0,Yes
+"Mutton Burger","mutton burger",,199,,,,,"Kabab Paratha","Kabab Paratha",110,non-veg,services,,0,,,1,0,Yes
+"Veg Burger","veg burger",,201,,,,,"Kabab Paratha","Kabab Paratha",70,veg,services,,0,,,1,0,Yes
+"Crunchy Chicken Burger","crunchy chicken burger",,200,,,,,"Tandoor Starters","Tandoor Starters",120,non-veg,services,,0,,,1,0,Yes
+"Chicken Tikka Chilly Chicken","chicken tikka chilly chicken",,202,,,,,"Chicken & Fish & Veg Gravy","Chicken & Fish & Veg Gravy",0,non-veg,services,,0,,,1,0,Yes,,,,,Preparation,Dry,299,,0,Gravy,299,,0
+"Chicken Shawarma Burger","chicken shawarma burger",,118,,,,,Shawarma,Shawarma,130,non-veg,services,,0,,,1,0,Yes
+"Paneer Shawarma Burger","paneer shawarma burger",,119,,,,,Shawarma,Shawarma,130,veg,services,,0,,,1,0,Yes

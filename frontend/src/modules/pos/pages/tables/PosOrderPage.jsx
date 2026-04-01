@@ -27,9 +27,89 @@ export default function PosOrderPage() {
     orders, isCustomerSectionOpen, toggleCustomerSection, user
   } = usePos();
   
-  const [selectedCategory, setSelectedCategory] = useState(POS_CATEGORIES[0].id);
+  const [categories, setCategories] = useState(POS_CATEGORIES);
+  const [menuItems, setMenuItems] = useState(POS_MENU_ITEMS);
+  const [selectedCategory, setSelectedCategory] = useState('fav');
   const [searchQuery, setSearchQuery] = useState('');
   const [shortCode, setShortCode] = useState('');
+
+  // Fetch and parse CSV data
+  useEffect(() => {
+    const fetchCSV = async () => {
+      try {
+        const response = await fetch('/data/mama franky menu.csv');
+        const text = await response.text();
+        const lines = text.split('\n');
+        
+        if (lines.length < 2) return;
+
+        const parseRow = (row) => {
+          const result = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < row.length; i++) {
+            const char = row[i];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim());
+          return result;
+        };
+
+        const csvItems = [];
+        const csvCategories = new Set();
+        
+        // Skip header row
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseRow(line);
+          if (row.length < 11) continue;
+
+          const name = row[0].replace(/^"|"$/g, '');
+          const category = row[8].replace(/^"|"$/g, '') || 'General';
+          const price = parseFloat(row[10]) || 0;
+          const code = row[3].replace(/^"|"$/g, '') || '';
+
+          csvCategories.add(category);
+          csvItems.push({
+            id: `csv-${i}`,
+            catId: category,
+            name: name,
+            price: price,
+            code: code,
+            shortcut: code,
+            image: ''
+          });
+        }
+
+        const newCategories = Array.from(csvCategories).map((cat, index) => ({
+          id: cat,
+          name: cat,
+          icon: 'Utensils',
+          color: index % 2 === 0 ? '#5D4037' : '#00BCD4'
+        }));
+
+        // Add Favorites at top
+        newCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
+        
+        setCategories(newCategories);
+        setMenuItems(csvItems);
+        setSelectedCategory(newCategories[0].id);
+      } catch (error) {
+        console.error("Error fetching CSV:", error);
+      }
+    };
+
+    fetchCSV();
+  }, []);
   
   // Initialize cart from existing order if any
   const [cart, setCart] = useState(() => orders[tableId]?.items || []);
@@ -100,7 +180,7 @@ export default function PosOrderPage() {
   }, [tableId]);
 
   const filteredItems = useMemo(() => {
-    return POS_MENU_ITEMS.filter(item => {
+    return menuItems.filter(item => {
       const query = searchQuery.toLowerCase();
       const codeQuery = shortCode.toLowerCase();
       
@@ -108,8 +188,8 @@ export default function PosOrderPage() {
                            item.code.toLowerCase().includes(query);
       
       const matchesShortCode = shortCode === '' || 
-                              item.code.toLowerCase().startsWith(codeQuery) ||
-                              item.shortcut.toLowerCase().startsWith(codeQuery);
+                              item.code.toLowerCase() === codeQuery ||
+                              item.shortcut.toLowerCase() === codeQuery;
       
       // If searching, show all matches globally
       const matchesCategory = (shortCode !== '' || searchQuery !== '') 
@@ -118,7 +198,7 @@ export default function PosOrderPage() {
 
       return matchesCategory && matchesSearch && matchesShortCode;
     });
-  }, [selectedCategory, searchQuery, shortCode]);
+  }, [selectedCategory, searchQuery, shortCode, menuItems]);
 
   const addToCart = (item) => {
     playClickSound();
@@ -198,7 +278,7 @@ export default function PosOrderPage() {
   const handleShortCodeSubmit = (e) => {
     if (e.key === 'Enter') {
       const code = shortCode.toUpperCase();
-      const item = POS_MENU_ITEMS.find(i => 
+      const item = menuItems.find(i => 
         i.code.toUpperCase() === code || i.shortcut.toUpperCase() === code
       );
       
@@ -283,7 +363,7 @@ export default function PosOrderPage() {
           </button>
           
           <div className="flex-1 overflow-y-auto">
-            {POS_CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => {
@@ -339,9 +419,12 @@ export default function PosOrderPage() {
                 >
                   <div 
                     className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
-                    style={{ backgroundColor: POS_CATEGORIES.find(c => c.id === item.catId)?.color || '#4CAF50' }}
+                    style={{ backgroundColor: categories.find(c => c.id === item.catId)?.color || '#4CAF50' }}
                   />
-                  <span className="text-xs font-bold text-gray-700 ml-2">{item.name}</span>
+                  <div className="flex flex-col ml-2 overflow-hidden">
+                    <span className="text-[11px] font-bold text-gray-700 leading-tight truncate">{item.name}</span>
+                    <span className="text-[10px] font-black text-orange-600 mt-1">₹{item.price}</span>
+                  </div>
                 </button>
               ))}
             </div>

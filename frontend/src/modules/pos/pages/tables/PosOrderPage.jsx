@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Search, Plus, Minus, Trash2, Receipt, ArrowLeft, 
   ChevronDown, User, Users, Edit3, Bell, 
@@ -23,6 +23,7 @@ import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
 export default function PosOrderPage() {
   const { tableId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { 
     placeKOT, saveOrder, settleOrder, holdOrder, clearTable,
     orders, isCustomerSectionOpen, toggleCustomerSection, user
@@ -128,7 +129,10 @@ export default function PosOrderPage() {
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [splitPayments, setSplitPayments] = useState([]);
-  const [selectedWaiter, setSelectedWaiter] = useState(MOCK_WAITERS[1]); // Default to Peter
+  const [selectedWaiter, setSelectedWaiter] = useState(() => {
+    if (location.state?.waiter) return location.state.waiter;
+    return MOCK_WAITERS[1]; // Default to Peter
+  });
   const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
 
   // Billing summary states
@@ -869,7 +873,6 @@ export default function PosOrderPage() {
               <ActionButton onClick={() => handleSave(true)} label="Save & Print" color="bg-[#E1261C]" />
               <ActionButton onClick={() => { playClickSound(); alert('Digital Bill Sent!'); handleSave(false); }} label="Save & eBill" color="bg-[#E1261C]" />
               <ActionButton onClick={() => handleKOT(false)} label="KOT" color="bg-white" textColor="text-gray-800" />
-              <ActionButton onClick={() => handleKOT(true)} label="KOT & Print" color="bg-[#546E7A]" />
               <ActionButton onClick={handleHold} label="Hold" color="bg-white" textColor="text-gray-800" />
               <ActionButton 
                 onClick={handleClearTable} 

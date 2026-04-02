@@ -163,6 +163,16 @@ export function PosProvider({ children }) {
     });
   };
 
+  const setTableWaiter = (tableId, staff) => {
+    setOrders(prev => ({
+      ...prev,
+      [tableId]: {
+        ...(prev[tableId] || { kots: [], status: 'blank', sessionStartTime: new Date().toISOString() }),
+        waiter: staff
+      }
+    }));
+  };
+
   // ---- Car Service helpers ----
   const addCarOrder = (carNumber, initialCart = [], total = 0, staff = null) => {
     const key = carNumber.trim().toUpperCase();
@@ -208,7 +218,7 @@ export function PosProvider({ children }) {
     <PosContext.Provider value={{ 
       isSidebarOpen, orders, toggleSidebar, closeSidebar, 
       isCustomerSectionOpen, toggleCustomerSection,
-      placeKOT, saveOrder, holdOrder, settleOrder, clearTable,
+      placeKOT, saveOrder, holdOrder, settleOrder, clearTable, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       sections, setSections, tables, setTables,
       user, setUser

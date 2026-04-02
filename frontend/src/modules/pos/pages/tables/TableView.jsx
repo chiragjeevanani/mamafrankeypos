@@ -1,27 +1,61 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon } from 'lucide-react';
+import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PosTopNavbar from '../../components/PosTopNavbar';
 import { TABLE_STATUS_COLORS } from '../../data/tablesMockData';
 import { usePos } from '../../context/PosContext';
 import { Trash2 } from 'lucide-react';
 import { printKOTReceipt } from '../../utils/printKOT';
+import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
+import { playClickSound } from '../../utils/sounds';
 
 export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, clearTable, carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-    sections, tables
+    sections, tables, setTableWaiter
   } = usePos();
 
   // --- Car Service state ---
   const [carSearch, setCarSearch] = useState('');
   const [showAddCar, setShowAddCar] = useState(false);
   const [newCarNumber, setNewCarNumber] = useState('');
+  
+  // --- Waiter Selection state ---
+  const [showWaiterModal, setShowWaiterModal] = useState(false);
+  const [selectedTableForWaiter, setSelectedTableForWaiter] = useState(null);
 
   const handleTableClick = (table) => {
-    navigate(`/pos/order/${table.id}`);
+    // Check if waiter is already assigned
+    const existingOrder = (table.type === 'CAR' || table.sectionId === 'car-service') 
+      ? carOrders[table.id] 
+      : orders[table.id];
+
+    if (existingOrder?.waiter) {
+      navigate(`/pos/order/${table.id}`, { state: { waiter: existingOrder.waiter } });
+      return;
+    }
+
+    setSelectedTableForWaiter(table);
+    setShowWaiterModal(true);
+  };
+
+  const handleWaiterSelect = (waiter) => {
+    playClickSound();
+    setShowWaiterModal(false);
+    
+    // Set waiter in context immediately
+    if (selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service') {
+       // if it doesn't has an order yet, start one with the waiter
+       if (!carOrders[selectedTableForWaiter.id]) {
+          addCarOrder(selectedTableForWaiter.id, [], 0, waiter);
+       }
+    } else {
+       setTableWaiter(selectedTableForWaiter.id, waiter);
+    }
+
+    navigate(`/pos/order/${selectedTableForWaiter.id}`, { state: { waiter } });
   };
 
   const handlePrintKOT = (e, order, tableName) => {
@@ -112,7 +146,7 @@ export default function TableView() {
               {section.label}
             </h2>
             
-            <div className="grid grid-cols-6 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 2xl:grid-cols-16 gap-1 md:gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2 md:gap-3">
               {tables.filter(t => t.sectionId === section.id).map((table) => {
                 const order = orders[table.id];
                 const statusConfig = TABLE_STATUS_COLORS[order?.status || table.status] || TABLE_STATUS_COLORS.blank;
@@ -126,50 +160,64 @@ export default function TableView() {
                 return (
                   <motion.div
                     key={table.id}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => handleTableClick(table)}
-                    className={`aspect-square rounded flex flex-col items-center justify-center relative transition-all duration-200 border shadow-none cursor-pointer overflow-hidden`}
+                    className={`aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden`}
                     style={{
                       borderStyle: statusConfig.borderStyle,
                       borderColor: statusConfig.borderColor,
-                      borderWidth: '1px',
+                      borderWidth: '1.5px',
                       backgroundColor: statusConfig.color
                     }}
                   >
                     {isRunningKOT ? (
                       <>
-                        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20 z-20">
-                          <Clock size={8} className="text-white" />
-                          <span className="text-[8px] font-black text-white whitespace-nowrap uppercase tracking-tighter">
-                            {getElapsedTime(order.sessionStartTime)}
-                          </span>
+                        {/* Time Badge */}
+                        <div className="w-full flex justify-center">
+                          <div className="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
+                            <Clock size={8} className={statusConfig.textColor === '#ffffff' ? 'text-white' : 'text-gray-600'} />
+                            <span className="text-[8px] font-black whitespace-nowrap uppercase tracking-tighter" style={{ color: statusConfig.textColor }}>
+                              {getElapsedTime(order.sessionStartTime)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex flex-col items-center mt-6">
-                          <span className="font-black text-[12px] tracking-tight" style={{ color: statusConfig.textColor }}>
+
+                        {/* Center Info */}
+                        <div className="flex-1 flex flex-col items-center justify-center -mt-1">
+                          <span className="font-black text-[13px] tracking-tight leading-none" style={{ color: statusConfig.textColor }}>
                             {table.name}
                           </span>
-                          <span className="font-black text-[11px] mt-0.5 tracking-tight" style={{ color: statusConfig.textColor }}>
-                             ₹ {tableTotal.toFixed(0)}
-                          </span>
+                          {order.waiter && (
+                            <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
+                              {order.waiter.name}
+                            </span>
+                          )}
+                          <div className="mt-1.5 px-2 py-0.5 bg-black/5 rounded-md">
+                            <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                               ₹ {tableTotal.toFixed(0)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-2 opacity-90 relative z-10">
+
+                        {/* Bottom Actions */}
+                        <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
                            <button 
                              onClick={(e) => handlePrintKOT(e, order, table.name)}
-                             className="p-1 bg-white border border-gray-300 rounded-md shadow-sm text-[#E1261C] hover:brightness-95 active:scale-95 transition-all outline-none"
+                             className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90"
                            >
                               <Printer size={12} strokeWidth={2.5} />
                            </button>
                            <button 
                              onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${table.id}`); }}
-                             className="p-1 bg-white border border-gray-300 rounded-md shadow-sm text-gray-500 hover:brightness-95 active:scale-95 transition-all outline-none"
+                             className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
                            >
                                <Eye size={12} strokeWidth={2.5} />
                            </button>
                            {order.status === 'paid' && (
                              <button 
                                onClick={(e) => handleClearTable(e, table.id)}
-                               className="p-1 bg-[#BE123C] border border-rose-900/10 rounded-md shadow-sm text-white hover:brightness-110 active:scale-95 transition-all outline-none"
+                               className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
                                title="Clear Table"
                              >
                                 <Trash2 size={12} strokeWidth={2.5} />
@@ -178,17 +226,12 @@ export default function TableView() {
                         </div>
                       </>
                     ) : (
-                      <>
-                        <span className="font-black text-[10px] tracking-tighter" style={{ color: statusConfig.textColor }}>
+                      <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
+                        <span className="font-black text-[12px] tracking-tight" style={{ color: statusConfig.textColor }}>
                           {table.name}
                         </span>
-                        {table.status !== 'blank' && (
-                          <div 
-                            className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: statusConfig.dot }}
-                          />
-                        )}
-                      </>
+                        <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
+                      </div>
                     )}
                   </motion.div>
                 );
@@ -235,7 +278,7 @@ export default function TableView() {
           </div>
 
           {/* Car cards grid */}
-          <div className="grid grid-cols-6 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 2xl:grid-cols-16 gap-1 md:gap-1.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2 md:gap-3">
 
             {/* ── Admin-configured car tables ── */}
             {tables.filter(t => t.sectionId === 'car-service').map((car) => {
@@ -247,63 +290,72 @@ export default function TableView() {
               return (
                 <motion.div
                   key={car.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => handleTableClick({ id: car.id, name: car.name })}
-                  className="aspect-square rounded flex flex-col items-center justify-center relative transition-all duration-200 border shadow-none cursor-pointer overflow-hidden"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleTableClick({ id: car.id, name: car.name, sectionId: 'car-service' })}
+                  className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                   style={{
                     borderStyle: statusConfig.borderStyle,
                     borderColor: statusConfig.borderColor,
-                    borderWidth: '1px',
+                    borderWidth: '1.5px',
                     backgroundColor: statusConfig.color
                   }}
                 >
                   {isActive ? (
                     <>
-                      <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-1.5 py-0.5 rounded-full flex items-center gap-1 border border-white/20 z-20">
-                        <Clock size={7} className="text-white" />
-                        <span className="text-[7px] font-black text-white whitespace-nowrap uppercase tracking-tighter">
-                          {getElapsedTime(order.sessionStartTime)}
-                        </span>
+                      <div className="w-full flex justify-center">
+                        <div className="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
+                          <Clock size={8} className={statusConfig.textColor === '#ffffff' ? 'text-white' : 'text-gray-600'} />
+                          <span className="text-[8px] font-black whitespace-nowrap uppercase tracking-tighter" style={{ color: statusConfig.textColor }}>
+                            {getElapsedTime(order.sessionStartTime)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex flex-col items-center mt-5 px-1 w-full">
+
+                      <div className="flex-1 flex flex-col items-center justify-center -mt-1 w-full px-1">
                         <span
-                          className="font-black text-[10px] tracking-widest text-center leading-tight w-full px-1"
+                          className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
                           style={{ color: statusConfig.textColor }}
-                          title={car.name}
                         >
                           🚗 {car.name.replace(/\s/g, '').slice(-4)}
                         </span>
-                        <span className="font-black text-[10px] mt-0.5" style={{ color: statusConfig.textColor }}>
-                          ₹{carTotal.toFixed(0)}
-                        </span>
+                        {order.waiter && (
+                          <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
+                            {order.waiter.name}
+                          </span>
+                        )}
+                        <div className="mt-1.5 px-2 py-0.5 bg-black/5 rounded-md">
+                          <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                            ₹{carTotal.toFixed(0)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 mt-1.5 relative z-10">
+
+                      <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
                         <button
                           onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${car.id}`); }}
-                          className="p-1 bg-white border border-gray-300 rounded-md shadow-sm text-gray-500 hover:brightness-95 active:scale-95 transition-all outline-none"
+                          className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
                         >
-                          <Eye size={11} strokeWidth={2.5} />
+                          <Eye size={12} strokeWidth={2.5} />
                         </button>
                         {order.status === 'paid' && (
                           <button
                             onClick={(e) => { e.stopPropagation(); if (window.confirm(`Clear car ${car.name}?`)) clearCarOrder(car.id); }}
-                            className="p-1 bg-[#BE123C] border border-rose-900/10 rounded-md shadow-sm text-white hover:brightness-110 active:scale-95 transition-all outline-none"
+                            className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
                             title="Clear Car Order"
                           >
-                            <Trash2 size={11} strokeWidth={2.5} />
+                            <Trash2 size={12} strokeWidth={2.5} />
                           </button>
                         )}
                       </div>
                     </>
                   ) : (
-                    <span
-                      className="font-black text-[10px] tracking-widest text-center leading-tight px-1 w-full"
-                      style={{ color: statusConfig.textColor }}
-                      title={car.name}
-                    >
-                      🚗 {car.name.replace(/\s/g, '').slice(-4)}
-                    </span>
+                    <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
+                      <span className="font-black text-[11px] tracking-widest text-center leading-tight w-full px-1" style={{ color: statusConfig.textColor }}>
+                        🚗 {car.name.replace(/\s/g, '').slice(-4)}
+                      </span>
+                      <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
+                    </div>
                   )}
                 </motion.div>
               );
@@ -326,40 +378,48 @@ export default function TableView() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.7 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="aspect-square rounded flex flex-col items-center justify-center relative transition-all duration-200 border cursor-pointer overflow-hidden"
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                       style={{
                         borderStyle: statusConfig.borderStyle,
                         borderColor: statusConfig.borderColor,
-                        borderWidth: '1px',
+                        borderWidth: '1.5px',
                         backgroundColor: statusConfig.color
                       }}
                     >
                       {/* Elapsed time badge */}
-                      <div className="absolute top-1 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-1.5 py-0.5 rounded-full flex items-center gap-1 border border-white/20 z-20">
-                        <Clock size={7} className="text-white" />
-                        <span className="text-[7px] font-black text-white whitespace-nowrap uppercase tracking-tighter">
-                          {getElapsedTime(car.sessionStartTime)}
-                        </span>
+                      <div className="w-full flex justify-center">
+                        <div className="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
+                          <Clock size={8} className={statusConfig.textColor === '#ffffff' ? 'text-white' : 'text-gray-600'} />
+                          <span className="text-[8px] font-black whitespace-nowrap uppercase tracking-tighter" style={{ color: statusConfig.textColor }}>
+                            {getElapsedTime(car.sessionStartTime)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Car number + total */}
-                      <div className="flex flex-col items-center mt-5 px-1 w-full">
+                      <div className="flex-1 flex flex-col items-center justify-center -mt-1 w-full px-1">
                         <span
-                          className="font-black text-[10px] tracking-widest text-center leading-tight w-full px-1"
+                          className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
                           style={{ color: statusConfig.textColor }}
-                          title={car.carNumber}
                         >
                           🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
                         </span>
-                        <span className="font-black text-[10px] mt-0.5" style={{ color: statusConfig.textColor }}>
-                          ₹{carTotal.toFixed(0)}
-                        </span>
+                        {car.waiter && (
+                          <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
+                            {car.waiter.name}
+                          </span>
+                        )}
+                        <div className="mt-1.5 px-2 py-0.5 bg-black/5 rounded-md">
+                          <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                            ₹{carTotal.toFixed(0)}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex items-center gap-1 mt-1.5 relative z-10">
+                      <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
                         {/* Cycle status */}
                         <button
                           onClick={(e) => {
@@ -367,7 +427,7 @@ export default function TableView() {
                             const cycle = { 'running-kot': 'running', running: 'printed', printed: 'paid' };
                             updateCarOrderStatus(car.carNumber, cycle[car.status] || car.status);
                           }}
-                          className="p-1 bg-white border border-gray-300 rounded-md shadow-sm text-gray-600 hover:brightness-95 active:scale-95 transition-all outline-none text-[7px] font-black uppercase leading-none"
+                          className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:bg-white transition-all active:scale-90"
                           title="Advance Status"
                         >
                           <ArrowRightLeft size={10} strokeWidth={2.5} />
@@ -379,7 +439,7 @@ export default function TableView() {
                               e.stopPropagation();
                               if (window.confirm(`Clear car ${car.carNumber}?`)) clearCarOrder(car.carNumber);
                             }}
-                            className="p-1 bg-[#BE123C] border border-rose-900/10 rounded-md shadow-sm text-white hover:brightness-110 active:scale-95 transition-all outline-none"
+                            className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
                             title="Clear Car Order"
                           >
                             <Trash2 size={10} strokeWidth={2.5} />
@@ -474,6 +534,55 @@ export default function TableView() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Waiter Selection Modal */}
+      <AnimatePresence>
+        {showWaiterModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-gray-800 uppercase flex items-center gap-2">
+                  <Users size={18} className="text-[#E1261C]" />
+                  Select Waiter / Staff
+                </h3>
+                <button onClick={() => setShowWaiterModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                  <X size={18} className="text-gray-400" />
+                </button>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto">
+                {MOCK_WAITERS.map((waiter) => (
+                  <button 
+                    key={waiter.id}
+                    onClick={() => handleWaiterSelect(waiter)}
+                    className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-100 hover:border-[#E1261C] hover:bg-red-50 transition-all group"
+                  >
+                    <div className="w-12 h-12 rounded-full mb-2 flex items-center justify-center bg-gray-100 text-gray-400 group-hover:bg-[#E1261C] group-hover:text-white transition-all">
+                      <User size={24} />
+                    </div>
+                    <span className="text-[13px] font-bold text-gray-700 group-hover:text-gray-900">
+                      {waiter.name}
+                    </span>
+                    <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter mt-0.5">{waiter.role}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="p-3 bg-gray-50 border-t flex justify-end">
+                  <button 
+                    onClick={() => setShowWaiterModal(false)}
+                    className="px-4 py-2 text-xs font-bold text-gray-500 uppercase hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

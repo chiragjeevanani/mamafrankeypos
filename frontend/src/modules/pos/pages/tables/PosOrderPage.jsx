@@ -14,6 +14,7 @@ import PosTopNavbar from '../../components/PosTopNavbar';
 import { usePos } from '../../context/PosContext';
 import { printKOTReceipt } from '../../utils/printKOT';
 import { printBillReceipt } from '../../utils/printBill';
+import { downloadBillAndKOT } from '../../utils/printCombined';
 import { playClickSound } from '../../utils/sounds';
 
 
@@ -347,6 +348,20 @@ export default function PosOrderPage() {
       clearTable(tableId);
       navigate('/pos/tables');
     }
+  };
+  
+  const handleDownloadBillAndKOT = () => {
+    playClickSound();
+    const orderData = orders[tableId];
+    if (!orderData && cart.length === 0) {
+      alert("No active order data to download!");
+      return;
+    }
+    downloadBillAndKOT(
+      { ...orderData, cart }, 
+      { name: tableInfo.name }, 
+      { total, subTotal, tax, discount, orderType, billerName: user?.name }
+    );
   };
 
   return (
@@ -862,6 +877,13 @@ export default function PosOrderPage() {
                 color={orders[tableId]?.status === 'paid' ? "bg-emerald-600" : "bg-gray-100"} 
                 textColor={orders[tableId]?.status === 'paid' ? "text-white" : "text-gray-400"} 
               />
+              {(orderType === 'pickup' || orderType === 'takeaway') && (
+                <ActionButton 
+                  onClick={handleDownloadBillAndKOT} 
+                  label="Download Bill + KOT" 
+                  color="bg-[#00BCD4]" 
+                />
+              )}
             </div>
           </div>
         </div>

@@ -1,15 +1,252 @@
-
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Settings, Shield, Printer, Bell, 
   CreditCard, Globe, Zap, Database,
   Lock, Key, Sliders, ChevronRight,
   CheckCircle2, AlertCircle, Save, Plus, Trash2,
-  Table, Edit, Layout
+  Table, Edit, Layout, ShieldAlert, X, Loader2, CheckCircle, BarChart3, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePos } from '../../pos/context/PosContext';
+
+
+// ─────────────────────────────────────────────────
+// Clear Reports Data — 4-step confirmation modal
+// ─────────────────────────────────────────────────
+function WipeDataModal({ onClose }) {
+  // step: 'confirm' | 'verify' | 'loading' | 'success'
+  const [step, setStep] = useState('confirm');
+  const [inputVal, setInputVal] = useState('');
+
+  const handleContinue = () => setStep('verify');
+
+  const handleConfirmDelete = () => {
+    if (inputVal !== 'CLEAR') return;
+    setStep('loading');
+    setTimeout(() => setStep('success'), 2200);
+  };
+
+  const handleClose = () => {
+    setStep('confirm');
+    setInputVal('');
+    onClose();
+  };
+
+  return createPortal(
+    <AnimatePresence>
+      <motion.div
+        key="wipe-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+        onClick={(e) => { if (e.target === e.currentTarget && step !== 'loading') handleClose(); }}
+      >
+        <motion.div
+          key={step}
+          initial={{ scale: 0.92, opacity: 0, y: 16 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.92, opacity: 0, y: 16 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        >
+
+          {/* ── Step 1: Confirm ── */}
+          {step === 'confirm' && (
+            <>
+              <div className="bg-rose-50 px-6 py-5 border-b border-rose-100 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                    <ShieldAlert size={20} className="text-rose-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-rose-800 uppercase tracking-tight">Purge Reports History?</h2>
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5">This will only remove historical sales and ledger logs.</p>
+                  </div>
+                </div>
+                <button onClick={handleClose} className="p-1 hover:bg-rose-100 rounded-lg transition-colors mt-0.5">
+                  <X size={16} className="text-rose-400" />
+                </button>
+              </div>
+              <div className="px-6 py-5">
+                <p className="text-sm text-stone-600 font-medium leading-relaxed">
+                  This will <span className="font-black text-rose-600">permanently remove all report history</span> including daily sales metrics and staff attendance records. <span className="font-bold text-slate-900 border-b-2 border-emerald-400 pb-0.5">Your menus, tables, and settings will remain safe.</span>
+                </p>
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-2">
+                  <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-[11px] font-semibold text-amber-700">Recommended: Export your monthly data as CSV before purging.</p>
+                </div>
+              </div>
+              <div className="px-6 pb-5 flex gap-2">
+                <button onClick={handleClose} className="flex-1 py-1.5 border border-stone-200 rounded-lg text-[10px] font-black text-stone-500 hover:bg-stone-50 transition-colors uppercase tracking-wider">
+                  Cancel
+                </button>
+                <button onClick={handleContinue} className="flex-1 py-1.5 bg-rose-600 text-white rounded-lg text-[10px] font-black hover:bg-rose-700 transition-all uppercase tracking-wider shadow-md shadow-rose-200 active:scale-[0.98]">
+                  Continue →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── Step 2: Verify ── */}
+          {step === 'verify' && (
+            <>
+              <div className="bg-rose-50 px-6 py-5 border-b border-rose-100 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                    <Trash2 size={20} className="text-rose-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-rose-800 uppercase tracking-tight">Final Verification</h2>
+                    <p className="text-[11px] text-rose-500 font-semibold mt-0.5">Type the confirmation phrase below.</p>
+                  </div>
+                </div>
+                <button onClick={handleClose} className="p-1 hover:bg-rose-100 rounded-lg transition-colors mt-0.5">
+                  <X size={16} className="text-rose-400" />
+                </button>
+              </div>
+              <div className="px-6 py-5">
+                <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-2">
+                  Type <span className="font-black text-rose-600 tracking-widest">CLEAR</span> to confirm
+                </p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  placeholder="CLEAR"
+                  className={`w-full border-2 rounded-xl px-4 py-3 text-sm font-black tracking-widest uppercase outline-none transition-all ${
+                    inputVal === 'CLEAR'
+                      ? 'border-rose-500 bg-rose-50 text-rose-700 focus:ring-2 focus:ring-rose-300'
+                      : 'border-stone-200 bg-stone-50 text-stone-700 focus:ring-2 focus:ring-stone-200'
+                  }`}
+                />
+                {inputVal.length > 0 && inputVal !== 'CLEAR' && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1.5">⚠ Must match exactly: CLEAR</p>
+                )}
+              </div>
+              <div className="px-6 pb-5 flex gap-2">
+                <button onClick={() => { setStep('confirm'); setInputVal(''); }} className="flex-1 py-1.5 border border-stone-200 rounded-lg text-[10px] font-black text-stone-500 hover:bg-stone-50 transition-colors uppercase tracking-wider">
+                  ← Back
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={inputVal !== 'CLEAR'}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                    inputVal === 'CLEAR'
+                      ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-200 active:scale-[0.98] cursor-pointer'
+                      : 'bg-stone-100 text-stone-300 cursor-not-allowed'
+                  }`}
+                >
+                  Clear Reports
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── Step 3: Loading ── */}
+          {step === 'loading' && (
+            <div className="flex flex-col items-center justify-center py-12 px-6">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="mb-5"
+              >
+                <Loader2 size={40} className="text-rose-500" />
+              </motion.div>
+              <h3 className="text-sm font-black text-stone-800 uppercase tracking-tight mb-1">Cleaning Data…</h3>
+              <p className="text-[11px] text-stone-400 font-semibold">Please wait, do not close this window.</p>
+              <div className="mt-5 w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                <motion.div
+                  initial={{ width: '0%' }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 2.0, ease: 'easeInOut' }}
+                  className="h-full bg-rose-500 rounded-full"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 4: Success ── */}
+          {step === 'success' && (
+            <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4"
+              >
+                <CheckCircle size={32} className="text-emerald-600" />
+              </motion.div>
+              <motion.h3
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="text-sm font-black text-stone-800 uppercase tracking-tight mb-1"
+              >
+                Reports Purged Successfully
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.25 }}
+                className="text-[11px] text-stone-400 font-semibold mb-6"
+              >
+                Historical sales and attendance logs have been cleared.
+              </motion.p>
+              <button onClick={handleClose} className="px-6 py-1.5 bg-stone-900 text-white rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-stone-700 transition-all shadow-md active:scale-[0.98]">
+                Close
+              </button>
+            </div>
+          )}
+
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>,
+    document.body
+  );
+}
+
+// ─────────────────────────────────────────────────
+// Danger Zone section card
+// ─────────────────────────────────────────────────
+function DangerZone() {
+  const [showModal, setShowModal] = useState(false);
+
+  return (
+    <>
+      <div className="border border-rose-200 rounded-sm bg-rose-50/40 overflow-hidden">
+        {/* Header strip */}
+        <div className="px-5 py-3 border-b border-rose-100 flex items-center gap-2 bg-rose-50">
+          <ShieldAlert size={14} className="text-rose-600" />
+          <h3 className="text-[11px] font-black text-rose-700 uppercase tracking-widest">⚠️ Danger Zone</h3>
+        </div>
+
+        {/* Content row */}
+        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-black text-stone-800 uppercase tracking-tight">Clear Reports History</p>
+            <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest leading-relaxed">
+              Permanently removes historical sales metrics and attendance logs.
+              <span className="text-emerald-600 font-black"> All menu and table configurations are preserved.</span>
+            </p>
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 active:scale-[0.97] transition-all shadow-lg shadow-rose-200 border border-rose-700"
+          >
+            <Trash2 size={13} strokeWidth={2.5} />
+            Purge Reports
+          </button>
+        </div>
+      </div>
+
+      {showModal && <WipeDataModal onClose={() => setShowModal(false)} />}
+    </>
+  );
+}
 
 export default function SystemSettings() {
   const { section = 'general' } = useParams();
@@ -65,6 +302,7 @@ export default function SystemSettings() {
     { id: 'printers',      label: 'Printers & KOT',      icon: Printer    },
     { id: 'security',      label: 'Staff Permissions',   icon: Shield     },
     { id: 'notifications', label: 'Alert Protocols',     icon: Bell       },
+    { id: 'reports',       label: 'Reports & Reset',      icon: BarChart3  },
   ];
 
   const handleCommit = () => {
@@ -526,7 +764,57 @@ export default function SystemSettings() {
                     </motion.div>
                   )}
 
-                  {(section !== 'general' && section !== 'security' && section !== 'billing' && section !== 'tables') && (
+                  {section === 'reports' && (
+                    <motion.div
+                      key="reports"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-8"
+                    >
+                      {/* Section Header */}
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
+                          <BarChart3 size={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black uppercase tracking-tight">📊 Reports & System Reset</h3>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                            Extract business intelligence and manage data integrity
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Reports Group */}
+                      <div className="space-y-4">
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-slate-900 pl-3">Standard Exports</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
+                             <div className="flex items-center gap-3">
+                                <Database size={16} className="text-slate-400" />
+                                <span className="text-[10px] font-black uppercase tracking-tight">Daily Sales Matrix</span>
+                             </div>
+                             <button className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase">Export CSV</button>
+                          </div>
+                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
+                             <div className="flex items-center gap-3">
+                                <Users size={16} className="text-slate-400" />
+                                <span className="text-[10px] font-black uppercase tracking-tight">Staff Attendance Logs</span>
+                             </div>
+                             <button className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase">Export CSV</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Danger Zone Integration */}
+                      <div className="pt-8 border-t border-slate-100">
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-rose-600 mb-4">Critical Protocols</h4>
+                        <DangerZone />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {(section !== 'general' && section !== 'security' && section !== 'billing' && section !== 'tables' && section !== 'reports') && (
                      <motion.div 
                         key="others"
                         initial={{ opacity: 0 }}

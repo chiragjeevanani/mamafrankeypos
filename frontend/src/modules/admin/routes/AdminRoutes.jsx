@@ -20,6 +20,7 @@ import Categories from '../pages/menu/Categories';
 import MenuItems from '../pages/menu/MenuItems';
 import Modifiers from '../pages/menu/Modifiers';
 import ComboMeals from '../pages/menu/ComboMeals';
+import DishReplacementManagement from '../pages/menu/DishReplacementManagement';
 
 import StockManagement from '../pages/inventory/StockManagement';
 import Vendors from '../pages/inventory/Vendors';
@@ -55,6 +56,7 @@ export default function AdminRoutes() {
         <Route path="menu/items" element={<MenuItems />} />
         <Route path="menu/modifiers" element={<Modifiers />} />
         <Route path="menu/combos" element={<ComboMeals />} />
+        <Route path="menu/substitutions" element={<DishReplacementManagement />} />
         
         {/* Inventory Management */}
         <Route path="inventory" element={<InventoryManagement />} />

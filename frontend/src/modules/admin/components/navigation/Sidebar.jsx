@@ -34,6 +34,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             { label: 'Items', path: '/admin/menu/items' },
             { label: 'Modifiers', path: '/admin/menu/modifiers' },
             { label: 'Combo Meals', path: '/admin/menu/combos' },
+            { label: 'Dish Replacements', path: '/admin/menu/substitutions' },
           ]
         },
       ]

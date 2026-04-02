@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { usePos } from '../context/PosContext';
 import { playClickSound } from '../utils/sounds';
+import logo from '../../../assets/time-to-eat.jpeg';
 
 export default function PosTopNavbar() {
   const navigate = useNavigate();
@@ -33,9 +34,11 @@ export default function PosTopNavbar() {
         >
           <Menu size={20} className="text-slate-300" />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-[#5D4037] rounded flex items-center justify-center text-white font-black text-sm">R</div>
-          <span className="text-white font-bold text-sm uppercase tracking-tight">Time to eat</span>
+        <div className="flex items-center gap-3">
+          <div className="h-7 flex items-center justify-center overflow-hidden">
+            <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
+          </div>
+          <span className="text-white font-bold text-xs uppercase tracking-tight border-l border-white/10 pl-3">Time to eat</span>
         </div>
         <button onClick={() => { playClickSound(); navigate('/pos/tables'); }} className="bg-[#5D4037] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#4E342E] transition-colors shadow-md shadow-stone-900/30 uppercase tracking-tight ml-1">
           + New Order

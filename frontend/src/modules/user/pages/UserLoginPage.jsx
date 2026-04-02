@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
+import logo from '../../../assets/time-to-eat.jpeg';
 
 export default function UserLoginPage() {
   const [email, setEmail] = useState('');
@@ -27,9 +28,9 @@ export default function UserLoginPage() {
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-16 h-16 bg-brand-500 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl shadow-brand-500/20"
+            className="h-20 mx-auto mb-6 flex items-center justify-center overflow-hidden"
           >
-            <Lock size={32} strokeWidth={2.5} className="text-charcoal-900" />
+            <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
           </motion.div>
           <h1 className="text-3xl font-display font-bold tracking-tight">Welcome Back</h1>
           <p className="text-charcoal-500 text-sm mt-2">Sign in to continue your feast</p>

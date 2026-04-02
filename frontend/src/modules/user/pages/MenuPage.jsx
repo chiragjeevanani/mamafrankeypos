@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { MENU_ITEMS, CATEGORIES, RESTAURANT_INFO } from '../data/mockData';
 import { CartDrawer } from '../components/CartDrawer';
 import { BottomNav } from '../components/BottomNav';
+import logo from '../../../assets/time-to-eat.jpeg';
 
 export default function MenuPage() {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -46,9 +47,12 @@ export default function MenuPage() {
                 <MapPin size={10} className="text-brand-500" />
                 <span className="text-[9px] font-black uppercase tracking-widest">{RESTAURANT_INFO.table} · Main Hall</span>
               </div>
-              <h1 className="text-2xl font-display font-bold tracking-tight text-charcoal-900 dark:text-white leading-tight transition-colors duration-300">
-                Time to eat <span className="text-brand-500">Kitchen</span>
-              </h1>
+              <div className="flex items-center gap-2.5">
+                <img src={logo} alt="Logo" className="h-9 w-auto object-contain" />
+                <h1 className="text-xl font-display font-bold tracking-tight text-charcoal-900 dark:text-white leading-tight border-l border-charcoal-900/10 dark:border-white/10 pl-3">
+                  Time to eat <span className="text-brand-500">Kitchen</span>
+                </h1>
+              </div>
             </div>
             
             <div className="flex items-center gap-3">

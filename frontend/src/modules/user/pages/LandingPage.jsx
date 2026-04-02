@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, Table2, ChefHat, Leaf } from 'lucide-react';
+import logo from '../../../assets/time-to-eat.jpeg';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -33,11 +34,12 @@ export default function LandingPage() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-3 mb-12"
+            className="flex items-center gap-4 mb-12"
           >
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center">
-              <span className="text-2xl">🌾</span>
+            <div className="h-10 flex items-center justify-center overflow-hidden">
+              <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
             </div>
+            <div className="h-8 w-px bg-charcoal-900/10 dark:bg-white/10" />
             <span className="text-xl font-display font-bold tracking-tight">Time to eat Kitchen</span>
           </motion.div>
 

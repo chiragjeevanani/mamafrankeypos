@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../../pos/utils/sounds';
+import logo from '../../../../assets/time-to-eat.jpeg';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate();
@@ -120,18 +121,22 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   return (
     <aside className={`fixed left-0 top-0 h-full bg-[#2C2C2C] border-r border-white/8 z-50 transition-all duration-300 shadow-xl hidden lg:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Brand Header */}
-      <div className="h-14 flex items-center justify-between px-4 border-b border-white/8 shrink-0 bg-[#222222]">
+      <div className="h-14 flex items-center justify-between px-4 border-b border-white/8 shrink-0 bg-[#2C2C2C]">
         {!isCollapsed ? (
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-[#5D4037] rounded flex items-center justify-center text-white font-black text-sm shadow-lg shadow-stone-900/30">R</div>
-            <div className="flex flex-col">
-              <span className="font-black text-[13px] tracking-tight uppercase text-white">Time to eat System</span>
-              <span className="text-[9px] font-black text-[#FFC107] uppercase tracking-widest mt-0.5">Administrator</span>
+          <div className="flex items-center gap-3">
+            <div className="h-7 flex items-center justify-center overflow-hidden">
+              <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
+            </div>
+            <div className="flex flex-col border-l border-white/10 pl-3">
+              <span className="font-black text-[11px] tracking-tight uppercase text-white leading-tight">Time to eat System</span>
+              <span className="text-[8px] font-black text-[#FFC107] uppercase tracking-widest mt-0.5 opacity-80">Administrator</span>
             </div>
           </div>
         ) : (
           <div className="w-full flex justify-center">
-            <div className="w-8 h-8 bg-[#5D4037] rounded flex items-center justify-center text-white font-black text-sm shadow-md shadow-red-900/40">R</div>
+            <div className="h-7 flex items-center justify-center overflow-hidden">
+              <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
+            </div>
           </div>
         )}
       </div>

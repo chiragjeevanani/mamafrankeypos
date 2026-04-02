@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Phone, ArrowRight, CheckCircle2 } from 'lucide-react';
+import logo from '../../../assets/time-to-eat.jpeg';
 
 export default function UserSignupPage() {
   const [formData, setFormData] = useState({
@@ -34,8 +35,8 @@ export default function UserSignupPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="w-24 h-24 bg-brand-500 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-brand-500/30">
-            <CheckCircle2 size={48} className="text-charcoal-900" strokeWidth={2.5} />
+          <div className="h-32 flex items-center justify-center mx-auto mb-8 overflow-hidden">
+            <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
           </div>
           <h2 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white mb-2">Welcome to the Family!</h2>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-charcoal-500 italic">Prepping your table in 2 seconds...</p>
@@ -48,6 +49,13 @@ export default function UserSignupPage() {
     <div className="min-h-screen bg-cream-50 dark:bg-charcoal-900 text-charcoal-900 dark:text-white flex flex-col p-6 selection:bg-brand-500 selection:text-charcoal-900">
       <div className="max-w-md w-full mx-auto flex-1 flex flex-col justify-center py-12">
         <header className="text-center mb-12">
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="h-20 mx-auto mb-6 flex items-center justify-center overflow-hidden"
+          >
+            <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
+          </motion.div>
           <h1 className="text-3xl font-display font-bold tracking-tight">Create Account</h1>
           <p className="text-charcoal-500 text-sm mt-2">Join us for a premium dining experience</p>
         </header>

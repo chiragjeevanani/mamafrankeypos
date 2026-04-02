@@ -8,7 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { MENU_ITEMS, CATEGORIES, RESTAURANT_INFO } from '../data/mockData';
 import { CartDrawer } from '../components/CartDrawer';
 import { BottomNav } from '../components/BottomNav';
-import logo from '../../../assets/time-to-eat.jpeg';
+import logo from '../../../assets/time-to-eat.png';
 
 export default function MenuPage() {
   const [activeCategory, setActiveCategory] = useState('all');

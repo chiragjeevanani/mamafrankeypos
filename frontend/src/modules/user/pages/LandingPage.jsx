@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, Table2, ChefHat, Leaf } from 'lucide-react';
-import logo from '../../../assets/time-to-eat.jpeg';
+import logo from '../../../assets/time-to-eat.png';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ export default function LandingPage() {
              opacity: [0.3, 0.4, 0.3],
            }}
            transition={{ duration: 10, repeat: Infinity }}
-           className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-brand-500 rounded-full blur-[120px]"
+           className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary-red rounded-full blur-[120px]"
         />
         <motion.div
            animate={{
@@ -24,7 +24,7 @@ export default function LandingPage() {
              opacity: [0.2, 0.3, 0.2],
            }}
            transition={{ duration: 8, repeat: Infinity, delay: 1 }}
-           className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-orange-400 rounded-full blur-[100px]"
+           className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary-yellow rounded-full blur-[100px]"
         />
       </div>
 
@@ -69,13 +69,13 @@ export default function LandingPage() {
           {/* Interactive Actions Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl mx-auto">
             <motion.button
-              whileHover={{ scale: 1.02, backgroundColor: '#ffffff', color: '#121212' }}
+              whileHover={{ scale: 1.02, backgroundColor: '#FFFFFF', color: '#1A1A1A' }}
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/menu')}
-              className="relative p-6 px-8 rounded-[2rem] bg-brand-500 text-charcoal-900 flex flex-col justify-center items-center h-56 transition-all duration-300 group shadow-orange hover:shadow-premium-hover"
+              className="relative p-6 px-8 rounded-[2rem] bg-primary-red text-white flex flex-col justify-center items-center h-56 transition-all duration-300 group shadow-lg hover:shadow-premium-hover"
             >
               <div className="absolute top-6 left-8">
-                <ArrowRight size={32} strokeWidth={2} className="group-hover:translate-x-2 transition-transform duration-300" />
+                <ArrowRight size={32} strokeWidth={2} className="group-hover:translate-x-2 transition-transform duration-300 text-white group-hover:text-primary-red" />
               </div>
               <div className="flex flex-col items-center text-center w-full">
                 <h3 className="text-3xl font-bold mb-1 uppercase tracking-wider">Dine In</h3>

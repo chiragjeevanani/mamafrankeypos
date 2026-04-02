@@ -53,7 +53,7 @@ export default function KdsDashboard() {
                 onClick={() => setActiveStation(station.id)}
                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                   activeStation === station.id 
-                  ? (isDarkMode ? 'bg-[#5D4037] text-white shadow-md' : 'bg-[#5D4037] text-white shadow-md') 
+                  ? (isDarkMode ? 'bg-[#E1261C] text-white shadow-md' : 'bg-[#E1261C] text-white shadow-md') 
                   : (isDarkMode ? 'text-stone-400 hover:text-stone-200' : 'text-stone-500 hover:text-stone-700')
                 }`}
               >
@@ -91,8 +91,8 @@ export default function KdsDashboard() {
       <main className="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar">
         {filteredOrders.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
-            <ChefHat size={64} strokeWidth={1} className="mb-4 text-[#5D4037]" />
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-[#5D4037]">Kitchen Clear</h2>
+            <ChefHat size={64} strokeWidth={1} className="mb-4 text-[#E1261C]" />
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-[#E1261C]">Kitchen Clear</h2>
             <p className="text-xs font-bold mt-2">All orders have been fulfilled.</p>
           </div>
         ) : (
@@ -146,7 +146,7 @@ export default function KdsDashboard() {
                   <div className="text-right">
                     <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-[0.3em] mb-0.5 block">Detail View</span>
                     <h2 className={`text-xl font-black tracking-tighter uppercase transition-colors ${
-                      isDarkMode ? 'text-white' : 'text-[#5D4037]'
+                      isDarkMode ? 'text-white' : 'text-[#E1261C]'
                     }`}>Order #{selectedOrder.orderNum}</h2>
                   </div>
                 </div>
@@ -176,7 +176,7 @@ export default function KdsDashboard() {
                   }`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black border ${
-                        isDarkMode ? 'bg-stone-900 text-[#D4AF37] border-white/6' : 'bg-white text-[#5D4037] border-stone-200 shadow-sm'
+                        isDarkMode ? 'bg-stone-900 text-[#D4AF37] border-white/6' : 'bg-white text-[#E1261C] border-stone-200 shadow-sm'
                       }`}>
                         {item.quantity}
                       </div>
@@ -193,7 +193,7 @@ export default function KdsDashboard() {
                       </div>
                     </div>
                     <button className={`p-2 rounded-lg transition-all border shrink-0 ${
-                      isDarkMode ? 'bg-stone-900 text-stone-500 hover:text-[#D4AF37] border-white/6' : 'bg-white text-stone-400 hover:text-[#5D4037] border-stone-200'
+                      isDarkMode ? 'bg-stone-900 text-stone-500 hover:text-[#D4AF37] border-white/6' : 'bg-white text-stone-400 hover:text-[#E1261C] border-stone-200'
                     }`}>
                       <RefreshCw size={14} />
                     </button>
@@ -207,7 +207,7 @@ export default function KdsDashboard() {
               }`}>
                 <button 
                   onClick={() => handleComplete(selectedOrder.id)}
-                  className="w-full bg-[#5D4037] text-white py-4 rounded-xl font-black text-base uppercase tracking-widest shadow-xl shadow-[#5D4037]/25 hover:bg-[#4E342E] transition-all active:scale-[0.98]"
+                  className="w-full bg-[#E1261C] text-white py-4 rounded-xl font-black text-base uppercase tracking-widest shadow-xl shadow-[#E1261C]/25 hover:bg-[#4E342E] transition-all active:scale-[0.98]"
                 >
                   ✓ Mark as Complete
                 </button>

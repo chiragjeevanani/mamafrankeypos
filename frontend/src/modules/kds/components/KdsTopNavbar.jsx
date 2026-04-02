@@ -37,11 +37,11 @@ export default function KdsTopNavbar() {
     }`}>
       {/* Left: Brand */}
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-[#5D4037] rounded-xl flex items-center justify-center text-[#D4AF37] shadow-md shadow-[#5D4037]/20">
+        <div className="w-9 h-9 bg-[#E1261C] rounded-xl flex items-center justify-center text-[#D4AF37] shadow-md shadow-[#E1261C]/20">
           <ChefHat size={18} />
         </div>
         <div className="hidden sm:flex flex-col">
-          <span className={`font-black text-sm uppercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-[#5D4037]'}`}>Kitchen Display</span>
+          <span className={`font-black text-sm uppercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-[#E1261C]'}`}>Kitchen Display</span>
           <span className={`text-[9px] font-bold uppercase tracking-widest leading-none ${isDarkMode ? 'text-stone-400' : 'text-stone-400'}`}>NODE_KDS_01</span>
         </div>
       </div>
@@ -58,8 +58,8 @@ export default function KdsTopNavbar() {
               to={item.path}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${
                 isActive 
-                  ? 'bg-[#5D4037] text-white shadow-md' 
-                  : (isDarkMode ? 'text-stone-300 hover:text-white hover:bg-white/8' : 'text-stone-500 hover:text-[#5D4037] hover:bg-white')
+                  ? 'bg-[#E1261C] text-white shadow-md' 
+                  : (isDarkMode ? 'text-stone-300 hover:text-white hover:bg-white/8' : 'text-stone-500 hover:text-[#E1261C] hover:bg-white')
               }`}
             >
               <item.icon size={15} />

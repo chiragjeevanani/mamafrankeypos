@@ -19,7 +19,7 @@ export default function AdminLayout() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative no-scrollbar">
           <Suspense fallback={
             <div className="h-full w-full flex items-center justify-center">
-              <div className="w-8 h-8 border-[3px] border-[#5D4037] border-t-transparent rounded-full animate-spin shadow-sm" />
+              <div className="w-8 h-8 border-[3px] border-[#E1261C] border-t-transparent rounded-full animate-spin shadow-sm" />
             </div>
           }>
             <Outlet />

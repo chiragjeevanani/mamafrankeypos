@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Github, Chrome } from 'lucide-react';
-import logo from '../../../assets/time-to-eat.jpeg';
+import logo from '../../../assets/time-to-eat.png';
 
 export default function UserLoginPage() {
   const [email, setEmail] = useState('');

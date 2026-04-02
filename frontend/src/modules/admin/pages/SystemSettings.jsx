@@ -354,7 +354,7 @@ export default function SystemSettings() {
                           )}
                           <button
                             onClick={saveCounters}
-                            className="flex items-center gap-2 h-9 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10 active:scale-95 transition-all hover:bg-[#5D4037]"
+                            className="flex items-center gap-2 h-9 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10 active:scale-95 transition-all hover:bg-[#E1261C]"
                           >
                             <Save size={13} />
                             Save Changes

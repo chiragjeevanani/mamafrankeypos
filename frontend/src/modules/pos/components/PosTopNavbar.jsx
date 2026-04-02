@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { usePos } from '../context/PosContext';
 import { playClickSound } from '../utils/sounds';
-import logo from '../../../assets/time-to-eat.jpeg';
+import logo from '../../../assets/time-to-eat.png';
 
 export default function PosTopNavbar() {
   const navigate = useNavigate();
@@ -40,12 +40,12 @@ export default function PosTopNavbar() {
           </div>
           <span className="text-white font-bold text-xs uppercase tracking-tight border-l border-white/10 pl-3">Time to eat</span>
         </div>
-        <button onClick={() => { playClickSound(); navigate('/pos/tables'); }} className="bg-[#5D4037] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#4E342E] transition-colors shadow-md shadow-stone-900/30 uppercase tracking-tight ml-1">
+        <button onClick={() => { playClickSound(); navigate('/pos/tables'); }} className="bg-[#E1261C] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#4E342E] transition-colors shadow-md shadow-stone-900/30 uppercase tracking-tight ml-1">
           + New Order
         </button>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
-          <input type="text" placeholder="Bill No" className="pl-9 pr-3 py-2 bg-white/6 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#5D4037]/60 w-28 transition-all" />
+          <input type="text" placeholder="Bill No" className="pl-9 pr-3 py-2 bg-white/6 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#E1261C]/60 w-28 transition-all" />
         </div>
       </div>
 
@@ -60,7 +60,7 @@ export default function PosTopNavbar() {
 
         <div onClick={() => handleAction('Notifications')} className="relative p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group">
           <Bell size={19} className="text-slate-300 group-hover:text-white transition-colors" />
-          <span className="absolute top-1.5 right-1.5 bg-[#5D4037] text-white text-[9px] font-bold px-1 rounded-full min-w-[14px] text-center border border-[#1C1E22]">22</span>
+          <span className="absolute top-1.5 right-1.5 bg-[#E1261C] text-white text-[9px] font-bold px-1 rounded-full min-w-[14px] text-center border border-[#1C1E22]">22</span>
         </div>
         
         <div onClick={() => { playClickSound(); toggleCustomerSection(); }} className="p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group">
@@ -71,7 +71,7 @@ export default function PosTopNavbar() {
         <ToolbarIcon onClick={() => { playClickSound(); navigate('/pos/login'); }} icon={<Power size={18} />} />
 
         <div className="hidden xl:flex items-center gap-3 bg-white/5 px-3 py-2 rounded-lg border border-white/8 ml-1">
-          <div className="w-7 h-7 rounded-full bg-[#5D4037]/30 flex items-center justify-center text-[#5D4037]"><Phone size={14} /></div>
+          <div className="w-7 h-7 rounded-full bg-[#E1261C]/30 flex items-center justify-center text-[#E1261C]"><Phone size={14} /></div>
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-400 font-bold uppercase leading-none">Call For Support</span>
             <span className="text-sm font-black text-white">07969 223344</span>

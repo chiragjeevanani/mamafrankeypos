@@ -79,7 +79,7 @@ export default function StaffManagement() {
        <div className="flex items-center justify-between">
         <div>
            <div className="flex items-center gap-2.5 mb-1">
-             <Users size={18} className="text-[#5D4037]" />
+             <Users size={18} className="text-[#E1261C]" />
              <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">Staff Management</h1>
            </div>
            <p className="text-xs text-stone-400 font-semibold">Manage your kitchen team, floor staff, and management access</p>
@@ -91,7 +91,7 @@ export default function StaffManagement() {
             >Roles Setup</button>
             <button 
               onClick={() => { playClickSound(); handleOpenModal(); }}
-              className="h-10 px-4 bg-[#5D4037] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-[0.98] transition-all"
+              className="h-10 px-4 bg-[#E1261C] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-[0.98] transition-all"
             >
                <UserPlus size={14} />
                Add Member
@@ -132,16 +132,16 @@ export default function StaffManagement() {
       {/* Staff Directory */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
          {staff.map(member => (
-            <div key={member.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm hover:border-[#5D4037]/30 transition-all group relative">
+            <div key={member.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm hover:border-[#E1261C]/30 transition-all group relative">
                <div className="flex items-start justify-between mb-5">
                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center text-[#5D4037] font-black group-hover:bg-[#5D4037] group-hover:text-white transition-all shadow-inner border border-stone-200 group-hover:border-transparent">
+                       <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center text-[#E1261C] font-black group-hover:bg-[#E1261C] group-hover:text-white transition-all shadow-inner border border-stone-200 group-hover:border-transparent">
                           {getInitials(member.name)}
                        </div>
                        <div>
                           <h4 className="text-sm font-black text-stone-800 uppercase tracking-tight leading-none mb-1.5">{member.name}</h4>
                           <div className="flex items-center gap-2">
-                             <span className="text-[10px] font-bold text-[#5D4037] uppercase tracking-wider bg-stone-50 border border-stone-100 px-2 py-0.5 rounded-lg">{member.role}</span>
+                             <span className="text-[10px] font-bold text-[#E1261C] uppercase tracking-wider bg-stone-50 border border-stone-100 px-2 py-0.5 rounded-lg">{member.role}</span>
                              <div className={`w-1.5 h-1.5 rounded-full ${member.status === 'On Duty' ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'}`} />
                           </div>
                        </div>
@@ -199,7 +199,7 @@ export default function StaffManagement() {
             >
                 <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#2C2C2C]">
                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-[#5D4037] text-white rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-[#E1261C] text-white rounded-lg flex items-center justify-center">
                          <Users size={16} />
                       </div>
                       <div>
@@ -219,7 +219,7 @@ export default function StaffManagement() {
                         <input 
                            type="text" 
                            required
-                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#5D4037]/20 focus:border-[#5D4037] transition-all"
+                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.name}
                            onChange={(e) => setFormData({...formData, name: e.target.value})}
                            placeholder="Enter full name..."
@@ -229,7 +229,7 @@ export default function StaffManagement() {
                      <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Role</label>
                         <select 
-                           className="w-full bg-stone-50 border border-stone-200 px-3 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#5D4037]/20 focus:border-[#5D4037] transition-all"
+                           className="w-full bg-stone-50 border border-stone-200 px-3 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.role}
                            onChange={(e) => setFormData({...formData, role: e.target.value})}
                         >
@@ -244,7 +244,7 @@ export default function StaffManagement() {
                      <div className="space-y-1.5">
                         <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Duty Status</label>
                         <select 
-                           className="w-full bg-stone-50 border border-stone-200 px-3 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#5D4037]/20 focus:border-[#5D4037] transition-all"
+                           className="w-full bg-stone-50 border border-stone-200 px-3 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.status}
                            onChange={(e) => setFormData({...formData, status: e.target.value})}
                         >
@@ -258,7 +258,7 @@ export default function StaffManagement() {
                         <input 
                            type="email" 
                            required
-                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#5D4037]/20 focus:border-[#5D4037] transition-all"
+                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.email}
                            onChange={(e) => setFormData({...formData, email: e.target.value})}
                            placeholder="staff@restaurant.com"
@@ -270,7 +270,7 @@ export default function StaffManagement() {
                         <input 
                            type="text" 
                            required
-                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#5D4037]/20 focus:border-[#5D4037] transition-all"
+                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.phone}
                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
                            placeholder="98765 00000"
@@ -287,7 +287,7 @@ export default function StaffManagement() {
                       <button 
                          type="submit"
                          onClick={playClickSound}
-                         className="flex-1 py-3 bg-[#5D4037] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:bg-[#4E342E]"
+                         className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:bg-[#4E342E]"
                       >
                          <Save size={14} />
                          {editingMember ? 'Update Staff Member' : 'Onboard Member'}

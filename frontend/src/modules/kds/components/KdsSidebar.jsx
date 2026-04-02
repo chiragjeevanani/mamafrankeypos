@@ -38,12 +38,12 @@ export default function KdsSidebar({ isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate();
 
   return (
-    <aside className={`fixed left-0 top-0 h-full bg-[#5D4037] text-stone-300 z-50 transition-all duration-300 shadow-2xl flex flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`fixed left-0 top-0 h-full bg-[#E1261C] text-stone-300 z-50 transition-all duration-300 shadow-2xl flex flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 shrink-0 bg-[#4E342E]">
         {!isCollapsed ? (
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#D4AF37] rounded-lg flex items-center justify-center text-[#5D4037] shadow-lg shadow-[#D4AF37]/20">
+            <div className="w-8 h-8 bg-[#D4AF37] rounded-lg flex items-center justify-center text-[#E1261C] shadow-lg shadow-[#D4AF37]/20">
               <ChefHat size={18} />
             </div>
             <div className="flex flex-col">
@@ -53,7 +53,7 @@ export default function KdsSidebar({ isCollapsed, setIsCollapsed }) {
           </div>
         ) : (
           <div className="w-full flex justify-center">
-            <div className="w-8 h-8 bg-[#D4AF37] rounded-lg flex items-center justify-center text-[#5D4037]">
+            <div className="w-8 h-8 bg-[#D4AF37] rounded-lg flex items-center justify-center text-[#E1261C]">
               <ChefHat size={18} />
             </div>
           </div>

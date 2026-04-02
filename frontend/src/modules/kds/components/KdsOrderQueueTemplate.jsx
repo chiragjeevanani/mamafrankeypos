@@ -37,7 +37,7 @@ export default function KdsOrderQueueTemplate({
       }`}>
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
-            <h1 className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-[#5D4037]'}`}>
+            <h1 className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-[#E1261C]'}`}>
               {title}
             </h1>
             <div className="flex items-center gap-2">
@@ -63,7 +63,7 @@ export default function KdsOrderQueueTemplate({
             />
           </div>
           <button className={`p-2.5 rounded-xl border transition-all ${
-            isDarkMode ? 'bg-white/5 text-stone-400 border-white/5 hover:bg-[#D4AF37]/10 hover:text-[#D4AF37]' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:text-[#5D4037]'
+            isDarkMode ? 'bg-white/5 text-stone-400 border-white/5 hover:bg-[#D4AF37]/10 hover:text-[#D4AF37]' : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:text-[#E1261C]'
           }`}>
             <RefreshCw size={18} />
           </button>
@@ -76,8 +76,8 @@ export default function KdsOrderQueueTemplate({
       }`}>
         {filteredOrders.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
-            <ChefHat size={80} strokeWidth={1} className="mb-6 text-[#5D4037]" />
-            <h2 className="text-4xl font-black uppercase tracking-tighter text-[#5D4037]">{emptyMessage}</h2>
+            <ChefHat size={80} strokeWidth={1} className="mb-6 text-[#E1261C]" />
+            <h2 className="text-4xl font-black uppercase tracking-tighter text-[#E1261C]">{emptyMessage}</h2>
             <p className="text-sm font-bold mt-2 uppercase tracking-widest text-stone-500">Everything is up to date.</p>
           </div>
         ) : (
@@ -119,7 +119,7 @@ export default function KdsOrderQueueTemplate({
                 isDarkMode ? 'border-white/5' : 'border-stone-100'
               }`}>
                 <div className="flex items-center justify-between mb-8">
-                   <h2 className={`text-3xl font-black tracking-tighter uppercase ${isDarkMode ? 'text-white' : 'text-[#5D4037]'}`}>Order #{selectedOrder.orderNum}</h2>
+                   <h2 className={`text-3xl font-black tracking-tighter uppercase ${isDarkMode ? 'text-white' : 'text-[#E1261C]'}`}>Order #{selectedOrder.orderNum}</h2>
                    <button onClick={() => setSelectedOrder(null)} className={`p-2.5 rounded-lg border transition-all ${
                      isDarkMode ? 'bg-white/5 border-white/5 text-stone-400 hover:bg-white/10' : 'bg-stone-50 border-stone-100'
                    }`}>
@@ -149,7 +149,7 @@ export default function KdsOrderQueueTemplate({
                   }`}>
                     <div className="flex items-center gap-4">
                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black border ${
-                         isDarkMode ? 'bg-stone-900 border-white/5 text-[#D4AF37]' : 'bg-white border-stone-100 text-[#5D4037] shadow-sm'
+                         isDarkMode ? 'bg-stone-900 border-white/5 text-[#D4AF37]' : 'bg-white border-stone-100 text-[#E1261C] shadow-sm'
                        }`}>
                          {item.quantity}
                        </div>
@@ -168,7 +168,7 @@ export default function KdsOrderQueueTemplate({
                 isDarkMode ? 'bg-black/20 border-white/5' : 'bg-stone-50/80 border-stone-100'
               }`}>
                 {selectedOrder.status === 'new' && (
-                  <button className="w-full bg-[#5D4037] text-white py-6 rounded-2xl font-black text-lg uppercase tracking-widest hover:bg-[#4E342E] transition-all shadow-xl shadow-[#5D4037]/20 active:scale-[0.98]">
+                  <button className="w-full bg-[#E1261C] text-white py-6 rounded-2xl font-black text-lg uppercase tracking-widest hover:bg-[#4E342E] transition-all shadow-xl shadow-[#E1261C]/20 active:scale-[0.98]">
                     Start Preparing
                   </button>
                 )}

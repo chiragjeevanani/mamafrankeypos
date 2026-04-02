@@ -60,9 +60,9 @@ export default function OrderDashboard() {
             </div>
 
             <div className="flex items-center gap-1">
-               <StatusFilter count={readyCount} label="Foodready" color="text-red-600" />
-               <StatusFilter count={dispatchCount} label="Dispatch" color="text-red-600" />
-               <StatusFilter count={deliverCount} label="Deliver" color="text-red-600" />
+               <StatusFilter count={readyCount} label="Foodready" color="text-primary-red" />
+               <StatusFilter count={dispatchCount} label="Dispatch" color="text-primary-red" />
+               <StatusFilter count={deliverCount} label="Deliver" color="text-primary-red" />
             </div>
 
             <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -104,7 +104,7 @@ export default function OrderDashboard() {
                  className="px-3 py-2 bg-white border border-gray-200 rounded text-xs outline-none focus:ring-1 focus:ring-red-200 w-32 font-bold"
                />
             </div>
-            <button className="bg-[#C62828] text-white px-4 py-2 rounded text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-md shadow-red-900/10">
+            <button className="bg-primary-yellow text-neutral-black px-4 py-2 rounded text-xs font-black uppercase tracking-widest hover:bg-yellow-soft active:scale-95 transition-all shadow-md shadow-primary-yellow/10">
                MFR
             </button>
          </div>
@@ -113,7 +113,7 @@ export default function OrderDashboard() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar pt-12">
          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black text-red-500 uppercase tracking-[0.1em]">Total Orders | {orders.length}</span>
+            <span className="text-[11px] font-black text-primary-red uppercase tracking-[0.1em]">Total Orders | {orders.length}</span>
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-12">
@@ -131,11 +131,11 @@ function TabButton({ active, label, icon, onClick }) {
   return (
     <button 
       onClick={() => { playClickSound(); onClick(); }}
-      className={`px-8 py-5 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative ${active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+      className={`px-8 py-5 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] transition-all relative ${active ? 'text-neutral-black' : 'text-gray-400 hover:text-gray-600'}`}
     >
-      <span className={active ? 'text-gray-800' : 'text-gray-300'}>{icon}</span>
+      <span className={active ? 'text-neutral-black' : 'text-gray-300'}>{icon}</span>
       {label}
-      {active && <motion.div layoutId="headerTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />}
+      {active && <motion.div layoutId="headerTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-red" />}
     </button>
   );
 }
@@ -156,11 +156,11 @@ function CategoryButton({ active, icon, label, onClick }) {
       onClick={() => { playClickSound(); onClick(); }}
       className={`flex flex-col items-center justify-center px-6 py-1 h-14 min-w-[80px] transition-all relative whitespace-nowrap group ${active ? 'bg-white' : 'hover:bg-white/40'}`}
     >
-       <div className={`mb-1 transition-transform group-hover:scale-110 ${active ? 'text-gray-800' : 'text-gray-400'}`}>
+       <div className={`mb-1 transition-transform group-hover:scale-110 ${active ? 'text-neutral-black' : 'text-gray-400'}`}>
           {icon}
        </div>
-       <span className={`text-[9px] font-black uppercase tracking-tight ${active ? 'text-gray-900' : 'text-gray-400'}`}>{label}</span>
-       {active && <motion.div layoutId="catTab" className="absolute bottom-0 left-3 right-3 h-0.5 bg-red-600 rounded-t-full" />}
+       <span className={`text-[9px] font-black uppercase tracking-tight ${active ? 'text-neutral-black' : 'text-gray-400'}`}>{label}</span>
+       {active && <motion.div layoutId="catTab" className="absolute bottom-0 left-3 right-3 h-0.5 bg-primary-red rounded-t-full" />}
     </button>
   );
 }
@@ -249,12 +249,12 @@ function OrderCard({ order }) {
        <div className="p-4 border-t border-gray-50 flex items-center justify-between gap-3 bg-gray-50/20 rounded-b-lg">
           <div className="flex-1"></div>
           <div className="flex items-center gap-2">
-             <button className="p-2.5 bg-white border border-gray-100 rounded-lg text-gray-400 hover:text-gray-900 hover:border-gray-200 transition-all shadow-sm">
+             <button className="p-2.5 bg-white border border-gray-100 rounded-lg text-gray-400 hover:text-neutral-black hover:border-gray-200 transition-all shadow-sm">
                 <Info size={16} />
              </button>
              <button 
                onClick={() => { playClickSound(); }}
-               className={`px-8 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-[0.1em] text-white shadow-xl transition-all active:scale-95 ${status === 'preparing' || status === 'new' ? 'bg-[#F4511E] shadow-orange-200 hover:brightness-110' : 'bg-gray-800 shadow-gray-200 hover:bg-black'}`}
+               className={`px-8 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-[0.1em] shadow-xl transition-all active:scale-95 ${status === 'preparing' || status === 'new' ? 'bg-primary-yellow text-neutral-black hover:bg-yellow-soft' : 'bg-neutral-black text-white hover:bg-charcoal-800'}`}
              >
                 {status === 'preparing' || status === 'new' ? 'Food Is Ready' : 'Settle & Save'}
              </button>

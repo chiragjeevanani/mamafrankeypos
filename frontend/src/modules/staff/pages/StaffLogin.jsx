@@ -38,9 +38,9 @@ export default function StaffLogin() {
           <motion.div 
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 bg-charcoal-900 dark:bg-brand-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl"
+            className="w-20 h-20 bg-primary-red rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl"
           >
-            <ShieldCheck size={40} className="text-brand-500 dark:text-charcoal-900" />
+            <ShieldCheck size={40} className="text-white" />
           </motion.div>
           <h1 className="text-3xl font-display font-bold text-charcoal-900 dark:text-white tracking-tight">Staff Portal</h1>
           <p className="text-charcoal-500 font-medium text-sm mt-2 font-display">Operations Management System v4.0</p>
@@ -61,7 +61,7 @@ export default function StaffLogin() {
                   value={staffId}
                   onChange={(e) => setStaffId(e.target.value)}
                   placeholder="Enter ID (e.g. S102)"
-                  className="w-full bg-white dark:bg-charcoal-800 border border-charcoal-900/10 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-4 focus:ring-brand-500/10 transition-all font-medium text-charcoal-900 dark:text-white"
+                  className="w-full bg-white dark:bg-charcoal-800 border border-charcoal-900/10 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-4 focus:ring-primary-red/10 transition-all font-medium text-charcoal-900 dark:text-white"
                   required
                 />
               </div>
@@ -77,7 +77,7 @@ export default function StaffLogin() {
                   onChange={(e) => setPin(e.target.value)}
                   placeholder="••••"
                   maxLength={4}
-                  className="w-full bg-white dark:bg-charcoal-800 border border-charcoal-900/10 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-4 focus:ring-brand-500/10 transition-all font-bold tracking-widest text-charcoal-900 dark:text-white"
+                  className="w-full bg-white dark:bg-charcoal-800 border border-charcoal-900/10 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-4 focus:ring-primary-red/10 transition-all font-bold tracking-widest text-charcoal-900 dark:text-white"
                   required
                 />
               </div>
@@ -99,10 +99,10 @@ export default function StaffLogin() {
             <motion.button
               whileTap={{ scale: 0.98 }}
               disabled={isLoading}
-              className="w-full bg-charcoal-900 dark:bg-brand-500 text-white dark:text-charcoal-900 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl shadow-brand-500/10 hover:bg-charcoal-800 transition-all disabled:opacity-50"
+              className="w-full bg-primary-yellow hover:bg-yellow-soft text-neutral-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-2xl shadow-primary-yellow/10 transition-all disabled:opacity-50"
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white dark:border-charcoal-900/30 dark:border-t-charcoal-900 rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-neutral-black/30 border-t-neutral-black rounded-full animate-spin" />
               ) : (
                 <>Authorize Access <ArrowRight size={18} /></>
               )}
@@ -111,10 +111,10 @@ export default function StaffLogin() {
 
           <div className="mt-8 pt-8 border-t border-charcoal-900/5 dark:border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles size={14} className="text-brand-500" />
+              <Sparkles size={14} className="text-primary-red" />
               <span className="text-[9px] font-black text-charcoal-400 uppercase tracking-tighter italic">Terminal ID: KMS-992</span>
             </div>
-            <button className="text-[9px] font-black text-brand-500 uppercase tracking-widest hover:underline italic">Forgot Access?</button>
+            <button className="text-[9px] font-black text-primary-red uppercase tracking-widest hover:underline italic">Forgot Access?</button>
           </div>
         </motion.div>
 

@@ -269,7 +269,7 @@ function DangerZone() {
 }
 
 const quickStats = [
-  { label: 'Tables Occupied', value: '8 / 14', icon: Table, color: 'text-[#5D4037]' },
+  { label: 'Tables Occupied', value: '8 / 14', icon: Table, color: 'text-[#E1261C]' },
   { label: 'Kitchen Queue', value: '12 Items', icon: ChefHat, color: 'text-orange-600' },
   { label: 'Pending Bills', value: '3 Tables', icon: CreditCard, color: 'text-blue-600' },
   { label: 'Floor Staff', value: '6 On Duty', icon: Users, color: 'text-emerald-600' },
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2.5 mb-1">
-            <Utensils size={18} className="text-[#5D4037]" />
+            <Utensils size={18} className="text-[#E1261C]" />
             <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">Today's Operations</h1>
           </div>
           <p className="text-xs text-stone-400 font-semibold">
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
           <button className="px-3 py-2 bg-white border border-stone-200 rounded-lg text-[11px] font-bold text-stone-500 uppercase tracking-wider hover:bg-stone-50 transition-all shadow-sm">
             Export Report
           </button>
-          <button className="px-3 py-2 bg-[#5D4037] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider shadow-md shadow-stone-900/15 hover:bg-[#4E342E] transition-all active:scale-[0.98]">
+          <button className="px-3 py-2 bg-[#E1261C] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider shadow-md shadow-stone-900/15 hover:bg-[#4E342E] transition-all active:scale-[0.98]">
             Configure
           </button>
         </div>
@@ -372,8 +372,8 @@ export default function AdminDashboard() {
                 <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="lineGlow" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#5D4037" stopOpacity="0.15" />
-                      <stop offset="100%" stopColor="#5D4037" stopOpacity="0" />
+                      <stop offset="0%" stopColor="#E1261C" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="#E1261C" stopOpacity="0" />
                     </linearGradient>
                   </defs>
                   <motion.path
@@ -396,7 +396,7 @@ export default function AdminDashboard() {
                       const y = 98 - (item.revenue / maxRevenue) * 90;
                       return `L ${x} ${y}`;
                     }).join(' ')}`}
-                    fill="none" stroke="#5D4037" strokeWidth="2.5"
+                    fill="none" stroke="#E1261C" strokeWidth="2.5"
                     strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
                   />
                 </svg>
@@ -412,8 +412,8 @@ export default function AdminDashboard() {
                         className="absolute inset-x-0 bottom-10 transition-all duration-300 opacity-0 group-hover:opacity-100 flex flex-col items-center pointer-events-none"
                         style={{ top: `${yPos}%` }}
                       >
-                        <div className="w-3 h-3 bg-white border-[2.5px] border-[#5D4037] rounded-full shadow-md -mt-1.5 z-20" />
-                        <div className="w-px h-full bg-gradient-to-b from-[#5D4037]/20 to-transparent" />
+                        <div className="w-3 h-3 bg-white border-[2.5px] border-[#E1261C] rounded-full shadow-md -mt-1.5 z-20" />
+                        <div className="w-px h-full bg-gradient-to-b from-[#E1261C]/20 to-transparent" />
                       </div>
                       <div 
                         className="absolute opacity-0 group-hover:opacity-100 transition-all duration-200 z-30 pointer-events-none"
@@ -451,7 +451,7 @@ export default function AdminDashboard() {
               { num: 8817, table: 'T-09', method: 'Cash', amount: 2100, time: '25m ago', status: 'paid' },
             ].map((order, i) => (
               <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-stone-50/60 hover:bg-stone-100 border border-transparent hover:border-stone-200 cursor-pointer transition-all group">
-                <div className="w-8 h-8 rounded-lg bg-[#5D4037]/10 text-[#5D4037] flex items-center justify-center group-hover:bg-[#5D4037] group-hover:text-white transition-all shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[#E1261C]/10 text-[#E1261C] flex items-center justify-center group-hover:bg-[#E1261C] group-hover:text-white transition-all shrink-0">
                   <ShoppingBag size={13} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -463,7 +463,7 @@ export default function AdminDashboard() {
             ))}
           </div>
           <div className="p-3 border-t border-stone-100">
-            <button className="w-full py-2 bg-stone-50 text-stone-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#5D4037] hover:text-white transition-all border border-stone-200 hover:border-transparent">
+            <button className="w-full py-2 bg-stone-50 text-stone-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#E1261C] hover:text-white transition-all border border-stone-200 hover:border-transparent">
               Open Order History
             </button>
           </div>

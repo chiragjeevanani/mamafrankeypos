@@ -60,7 +60,7 @@ export default function StaffDashboard() {
             <motion.div 
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/staff/active-orders')}
-              className="p-5 rounded-[2rem] bg-orange-500 text-white shadow-xl shadow-orange-500/10 flex flex-col gap-4"
+              className="p-5 rounded-[2rem] bg-orange-500 text-white shadow-xl shadow-brand-500/10 flex flex-col gap-4"
             >
               <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                 <Zap size={20} className="text-white" />

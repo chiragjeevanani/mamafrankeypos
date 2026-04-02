@@ -55,13 +55,13 @@ export default function TableView() {
             <RefreshCw size={18} className="text-gray-500" />
           </button>
           <div className="h-4 w-px bg-gray-200 mx-1" />
-          <button className="bg-[#5D4037] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
+          <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
             Delivery
           </button>
-          <button className="bg-[#5D4037] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
+          <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
             Pick Up
           </button>
-          <button className="bg-[#5D4037] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors flex items-center gap-1 uppercase shadow-sm active:scale-95">
+          <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors flex items-center gap-1 uppercase shadow-sm active:scale-95">
             <Plus size={14} /> Add Table
           </button>
         </div>
@@ -69,12 +69,12 @@ export default function TableView() {
 
       {/* Filter / Legend Bar */}
       <div className="bg-white px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-4">
-        <button className="bg-stone-50 text-[#5D4037] border border-stone-100 px-2.5 py-1.2 rounded-md text-[10px] font-black hover:bg-stone-100 transition-colors flex items-center gap-1.5 uppercase tracking-wider shadow-sm">
+        <button className="bg-stone-50 text-[#E1261C] border border-stone-100 px-2.5 py-1.2 rounded-md text-[10px] font-black hover:bg-stone-100 transition-colors flex items-center gap-1.5 uppercase tracking-wider shadow-sm">
           <Plus size={12} strokeWidth={3} /> Contactless
         </button>
 
         <button className="border border-gray-200 text-gray-500 px-2.5 py-1.2 rounded-md text-[10px] font-bold hover:bg-gray-50 transition-colors flex items-center gap-1.5 uppercase tracking-wider">
-          <Info size={12} className="text-[#5D4037]" /> 
+          <Info size={12} className="text-[#E1261C]" /> 
           Reconnect Bridge
         </button>
 
@@ -108,7 +108,7 @@ export default function TableView() {
       <div className="flex-1 overflow-y-auto p-2 md:p-3 flex flex-col gap-4 bg-white">
         {sections.filter(s => s.id !== 'car-service').map((section) => (
           <div key={section.id} className="space-y-1.5">
-            <h2 className="text-[#5D4037] font-black text-[9px] uppercase tracking-[0.2em] px-1 opacity-70">
+            <h2 className="text-[#E1261C] font-black text-[9px] uppercase tracking-[0.2em] px-1 opacity-70">
               {section.label}
             </h2>
             
@@ -156,7 +156,7 @@ export default function TableView() {
                         <div className="flex items-center gap-1.5 mt-2 opacity-90 relative z-10">
                            <button 
                              onClick={(e) => handlePrintKOT(e, order, table.name)}
-                             className="p-1 bg-white border border-gray-300 rounded-md shadow-sm text-[#5D4037] hover:brightness-95 active:scale-95 transition-all outline-none"
+                             className="p-1 bg-white border border-gray-300 rounded-md shadow-sm text-[#E1261C] hover:brightness-95 active:scale-95 transition-all outline-none"
                            >
                               <Printer size={12} strokeWidth={2.5} />
                            </button>
@@ -202,8 +202,8 @@ export default function TableView() {
           {/* Section header */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#5D4037] opacity-70">🚗 Car Service</span>
-              <span className="bg-[#5D4037]/10 text-[#5D4037] text-[8px] font-black px-1.5 py-0.5 rounded-full">
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#E1261C] opacity-70">🚗 Car Service</span>
+              <span className="bg-[#E1261C]/10 text-[#E1261C] text-[8px] font-black px-1.5 py-0.5 rounded-full">
                 {Object.keys(carOrders).length} active
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function TableView() {
                   placeholder="Search car no."
                   value={carSearch}
                   onChange={(e) => setCarSearch(e.target.value)}
-                  className="pl-6 pr-2 py-1 text-[10px] border border-gray-200 rounded-md outline-none focus:ring-1 focus:ring-[#5D4037]/30 bg-gray-50 w-36"
+                  className="pl-6 pr-2 py-1 text-[10px] border border-gray-200 rounded-md outline-none focus:ring-1 focus:ring-[#E1261C]/30 bg-gray-50 w-36"
                 />
                 {carSearch && (
                   <button onClick={() => setCarSearch('')} className="absolute right-1.5">
@@ -227,7 +227,7 @@ export default function TableView() {
               {/* Add Car button */}
               <button
                 onClick={() => setShowAddCar(true)}
-                className="bg-[#5D4037] text-white px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 hover:bg-[#4E342E] transition-colors shadow-sm active:scale-95"
+                className="bg-[#E1261C] text-white px-2 py-1 rounded-md text-[10px] font-bold flex items-center gap-1 hover:bg-[#4E342E] transition-colors shadow-sm active:scale-95"
               >
                 <Plus size={11} strokeWidth={3} /> Add Car
               </button>
@@ -422,7 +422,7 @@ export default function TableView() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-[#5D4037] rounded-xl flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[#E1261C] rounded-xl flex items-center justify-center">
                     <Car size={16} className="text-white" />
                   </div>
                   <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight">New Car Order</h3>
@@ -445,7 +445,7 @@ export default function TableView() {
                     setShowAddCar(false);
                   }
                 }}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-[#5D4037]/30 bg-gray-50 tracking-widest uppercase mb-4"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E1261C]/30 bg-gray-50 tracking-widest uppercase mb-4"
                 autoFocus
               />
 
@@ -463,7 +463,7 @@ export default function TableView() {
                     setNewCarNumber('');
                     setShowAddCar(false);
                   }}
-                  className="flex-1 py-2.5 bg-[#5D4037] text-white rounded-xl text-[11px] font-black hover:bg-[#4E342E] transition-colors uppercase tracking-wider shadow-sm active:scale-95"
+                  className="flex-1 py-2.5 bg-[#E1261C] text-white rounded-xl text-[11px] font-black hover:bg-[#4E342E] transition-colors uppercase tracking-wider shadow-sm active:scale-95"
                 >
                   🚗 Create
                 </button>

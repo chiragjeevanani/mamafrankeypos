@@ -40,7 +40,7 @@ export default function KdsLoginPage() {
     >
       {/* Background Decorative Elements */}
       <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#5D4037]/20 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#E1261C]/20 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#D4AF37]/5 blur-[120px] rounded-full" />
       </div>
 
@@ -53,7 +53,7 @@ export default function KdsLoginPage() {
           className="hidden lg:flex flex-col gap-10"
         >
           <div>
-            <div className="w-16 h-16 bg-[#5D4037] rounded-2xl flex items-center justify-center mb-8 shadow-2xl shadow-[#5D4037]/20">
+            <div className="w-16 h-16 bg-[#E1261C] rounded-2xl flex items-center justify-center mb-8 shadow-2xl shadow-[#E1261C]/20">
               <ChefHat size={32} className="text-[#D4AF37]" strokeWidth={2.5} />
             </div>
             <h1 className="text-6xl font-display font-black tracking-tighter uppercase leading-none mb-4">
@@ -105,7 +105,7 @@ export default function KdsLoginPage() {
           <div className="bg-[#2a2c2e] p-8 lg:p-10 rounded-[3rem] border border-white/5 shadow-2xl relative">
             {/* Mobile-only header */}
             <div className="lg:hidden text-center mb-6">
-              <div className="w-10 h-10 bg-[#5D4037] rounded-xl mx-auto mb-3 flex items-center justify-center">
+              <div className="w-10 h-10 bg-[#E1261C] rounded-xl mx-auto mb-3 flex items-center justify-center">
                 <ChefHat size={20} className="text-[#D4AF37]" />
               </div>
               <h2 className="text-2xl font-display font-black tracking-tight uppercase">KDS Login</h2>
@@ -122,7 +122,7 @@ export default function KdsLoginPage() {
                       onClick={() => setStationId(s.id)}
                       className={`p-4 rounded-xl flex items-center justify-between border transition-all duration-300 ${
                         stationId === s.id 
-                        ? 'bg-[#5D4037] border-[#D4AF37]/50 text-white shadow-lg shadow-[#5D4037]/20' 
+                        ? 'bg-[#E1261C] border-[#D4AF37]/50 text-white shadow-lg shadow-[#E1261C]/20' 
                         : 'bg-black/40 border-white/5 text-stone-400 hover:border-white/20'
                       }`}
                     >
@@ -152,12 +152,12 @@ export default function KdsLoginPage() {
               <button 
                 type="submit"
                 disabled={isLoading || !stationId || pin.length < 4}
-                className="w-full bg-[#D4AF37] text-[#5D4037] py-6 rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-[#D4AF37]/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-20 disabled:grayscale transition-all duration-500 overflow-hidden relative group"
+                className="w-full bg-[#D4AF37] text-[#E1261C] py-6 rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-[#D4AF37]/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-20 disabled:grayscale transition-all duration-500 overflow-hidden relative group"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                 <span className="relative z-10 flex items-center gap-2">
                   {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-[#5D4037]/30 border-t-[#5D4037] rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-[#E1261C]/30 border-t-[#E1261C] rounded-full animate-spin" />
                   ) : (
                     <>Authorize Terminal <ArrowRight size={16} /></>
                   )}

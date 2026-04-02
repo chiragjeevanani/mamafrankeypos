@@ -27,7 +27,7 @@ export default function TableList() {
             <h1 className="text-xl font-black uppercase tracking-tight text-slate-900">Table Management Registry</h1>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configure Table Settings & Capacity Information</p>
           </div>
-          <button className="h-10 px-6 bg-[#5D4037] text-white rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center gap-2 outline-none">
+          <button className="h-10 px-6 bg-[#E1261C] text-white rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center gap-2 outline-none">
             <Plus size={14} />
             Add New Table
           </button>
@@ -57,7 +57,7 @@ export default function TableList() {
             <motion.div 
               key={table.id}
               whileHover={{ y: -4 }}
-              className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:border-blue-300 hover:shadow-xl hover:shadow-[#5D4037]/20 transition-all group"
+              className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:border-blue-300 hover:shadow-xl hover:shadow-[#E1261C]/20 transition-all group"
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-4">
@@ -82,7 +82,7 @@ export default function TableList() {
                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
                      table.status === 'available' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                      table.status === 'occupied' ? 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse' :
-                     'bg-blue-50 text-[#5D4037] border-blue-100'
+                     'bg-blue-50 text-[#E1261C] border-blue-100'
                    }`}>
                      {table.status}
                    </span>
@@ -111,7 +111,7 @@ export default function TableList() {
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                <button className="flex items-center justify-center gap-2 py-2.5 bg-[#5D4037] text-white rounded text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md">
+                <button className="flex items-center justify-center gap-2 py-2.5 bg-[#E1261C] text-white rounded text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md">
                   <Edit2 size={12} />
                   Edit Table
                 </button>

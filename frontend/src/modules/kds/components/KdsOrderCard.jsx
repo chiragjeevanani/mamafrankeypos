@@ -10,7 +10,7 @@ export function KdsOrderCard({ order, onClick }) {
   const getStatusInfo = (status) => {
     switch (status) {
       case 'new': return { color: 'bg-blue-600', text: 'New', border: 'border-blue-600/30' };
-      case 'preparing': return { color: 'bg-[#5D4037]', text: 'Preparing', border: 'border-[#5D4037]/30' };
+      case 'preparing': return { color: 'bg-[#E1261C]', text: 'Preparing', border: 'border-[#E1261C]/30' };
       case 'delayed': return { color: 'bg-red-700', text: 'Delayed', border: 'border-red-700/40' };
       case 'ready': return { color: 'bg-emerald-700', text: 'Ready', border: 'border-emerald-700/30' };
       default: return { color: 'bg-stone-600', text: status, border: 'border-stone-600/20' };
@@ -56,7 +56,7 @@ export function KdsOrderCard({ order, onClick }) {
         {order.items.map((item) => (
           <div key={item.id} className="flex items-start gap-3">
             <div className={`flex items-center justify-center w-8 h-8 rounded-lg font-black text-xs border transition-colors shrink-0 ${
-              isDarkMode ? 'bg-[#2e3032] text-[#D4AF37] border-white/8' : 'bg-stone-100 text-[#5D4037] border-stone-200'
+              isDarkMode ? 'bg-[#2e3032] text-[#D4AF37] border-white/8' : 'bg-stone-100 text-[#E1261C] border-stone-200'
             }`}>
               {item.quantity}x
             </div>

@@ -28,13 +28,13 @@ export default function Reservations() {
           <div className="flex bg-slate-50 p-1 border border-slate-100 rounded">
             <button 
               onClick={() => setActiveView('upcoming')}
-              className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded transition-all ${activeView === 'upcoming' ? 'bg-[#5D4037] text-white shadow-md' : 'text-slate-400 hover:text-slate-900'}`}
+              className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded transition-all ${activeView === 'upcoming' ? 'bg-[#E1261C] text-white shadow-md' : 'text-slate-400 hover:text-slate-900'}`}
             >
               List View
             </button>
             <button 
               onClick={() => setActiveView('calendar')}
-              className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded transition-all ${activeView === 'calendar' ? 'bg-[#5D4037] text-white shadow-md' : 'text-slate-400 hover:text-slate-900'}`}
+              className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded transition-all ${activeView === 'calendar' ? 'bg-[#E1261C] text-white shadow-md' : 'text-slate-400 hover:text-slate-900'}`}
             >
               Calendar View
             </button>
@@ -50,7 +50,7 @@ export default function Reservations() {
               className="w-full bg-slate-50 border border-slate-100 rounded py-2.5 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white transition-all underline decoration-transparent"
             />
           </div>
-          <button className="h-10 px-6 bg-[#5D4037] text-white rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2 outline-none">
+          <button className="h-10 px-6 bg-[#E1261C] text-white rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2 outline-none">
             <Plus size={14} />
             Register Booking
           </button>
@@ -75,7 +75,7 @@ export default function Reservations() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#5D4037] group-hover:text-white transition-all">
+                        <div className="w-10 h-10 rounded bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#E1261C] group-hover:text-white transition-all">
                           <User size={18} />
                         </div>
                         <div>
@@ -109,12 +109,12 @@ export default function Reservations() {
                           <div className="flex items-center justify-end gap-1.5 text-slate-400">
                              <span className="text-[8px] font-black uppercase tracking-widest leading-none">Assigned</span>
                           </div>
-                          <span className="text-[11px] font-black text-[#5D4037] leading-none">{res.table}</span>
+                          <span className="text-[11px] font-black text-[#E1261C] leading-none">{res.table}</span>
                        </div>
                     </div>
 
                     <div className="mt-4 flex items-center gap-2 pt-4 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                       <button className="flex-1 py-1.5 bg-[#5D4037] text-white rounded text-[8px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                       <button className="flex-1 py-1.5 bg-[#E1261C] text-white rounded text-[8px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
                           <CheckCircle2 size={10} />
                           Check-In
                        </button>

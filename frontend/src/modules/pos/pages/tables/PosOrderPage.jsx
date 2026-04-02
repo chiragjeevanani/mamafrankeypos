@@ -94,7 +94,7 @@ export default function PosOrderPage() {
           id: cat,
           name: cat,
           icon: 'Utensils',
-          color: index % 2 === 0 ? '#5D4037' : '#00BCD4'
+          color: index % 2 === 0 ? '#E1261C' : '#00BCD4'
         }));
 
         // Add Favorites at top
@@ -357,7 +357,7 @@ export default function PosOrderPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* 1. Categories Sidebar (Left - 12%) */}
         <div className="w-[12%] bg-[#6D6D6D] flex flex-col shrink-0">
-          <button className="bg-[#5D4037] text-white p-3 flex items-center justify-between font-bold text-xs uppercase tracking-wider">
+          <button className="bg-[#E1261C] text-white p-3 flex items-center justify-between font-bold text-xs uppercase tracking-wider">
             <span>{POS_CATEGORIES.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
             <ChevronDown size={14} />
           </button>
@@ -372,7 +372,7 @@ export default function PosOrderPage() {
                 }}
                 className={`w-full p-4 text-left font-bold text-[11px] uppercase tracking-wider border-b border-white/10 transition-all ${
                   selectedCategory === cat.id 
-                    ? 'bg-white text-gray-800 border-r-4 border-r-[#5D4037]' 
+                    ? 'bg-white text-gray-800 border-r-4 border-r-[#E1261C]' 
                     : 'text-white hover:bg-white/5'
                 }`}
               >
@@ -437,19 +437,19 @@ export default function PosOrderPage() {
           <div className="flex h-12 shrink-0">
             <button 
               onClick={() => setOrderType('dine-in')}
-              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'dine-in' ? 'bg-[#5D4037] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'dine-in' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
             >
               Dine In
             </button>
             <button 
               onClick={() => setOrderType('delivery')}
-              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'delivery' ? 'bg-[#5D4037] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'delivery' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
             >
               Delivery
             </button>
             <button 
               onClick={() => setOrderType('pickup')}
-              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'pickup' ? 'bg-[#5D4037] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'pickup' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
             >
               Pick Up
             </button>
@@ -460,28 +460,28 @@ export default function PosOrderPage() {
             <div onClick={playClickSound} className="flex-1 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors">
               <div className="flex flex-col items-center">
                 <Soup size={18} className="text-gray-400" />
-                <span className="text-[10px] font-bold text-[#5D4037] uppercase tracking-tighter">{tableInfo.name}</span>
+                <span className="text-[10px] font-bold text-[#E1261C] uppercase tracking-tighter">{tableInfo.name}</span>
               </div>
             </div>
             <div onClick={() => { playClickSound(); toggleCustomerSection(); }} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-              <User size={20} className={`${isCustomerSectionOpen ? 'text-[#5D4037]' : 'text-gray-400'} group-hover:text-[#5D4037] transition-colors`} />
+              <User size={20} className={`${isCustomerSectionOpen ? 'text-[#E1261C]' : 'text-gray-400'} group-hover:text-[#E1261C] transition-colors`} />
             </div>
             <div onClick={() => { playClickSound(); setIsWaiterModalOpen(true); }} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
-              <Users size={20} className={`${selectedWaiter ? 'text-[#5D4037]' : 'text-gray-400'} group-hover:text-[#5D4037] transition-colors`} />
+              <Users size={20} className={`${selectedWaiter ? 'text-[#E1261C]' : 'text-gray-400'} group-hover:text-[#E1261C] transition-colors`} />
               {selectedWaiter && (
-                 <span className="absolute bottom-0.5 text-[8px] font-black text-[#5D4037] uppercase">
+                 <span className="absolute bottom-0.5 text-[8px] font-black text-[#E1261C] uppercase">
                     {selectedWaiter.name.split(' ')[0]}
                  </span>
               )}
             </div>
             <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-              <Edit3 size={20} className="text-gray-400 group-hover:text-[#5D4037] transition-colors" />
+              <Edit3 size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
             </div>
             <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-              <Bell size={20} className="text-gray-400 group-hover:text-[#5D4037] transition-colors" />
+              <Bell size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
             </div>
             <div className="flex-1 flex items-center justify-center"></div>
-            <div className="w-[20%] bg-[#FFC107] flex items-center justify-center font-bold text-sm shadow-inner">{tableInfo.section}</div>
+            <div className="w-[20%] bg-[#FFD600] flex items-center justify-center font-bold text-sm shadow-inner">{tableInfo.section}</div>
           </div>
 
           {/* Customer Details Section (Animated) */}
@@ -501,7 +501,7 @@ export default function PosOrderPage() {
                         type="text" 
                         value={customer.mobile}
                         onChange={(e) => { playClickSound(); setCustomer({...customer, mobile: e.target.value}); }}
-                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#5D4037] outline-none w-1/3" 
+                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none w-1/3" 
                         placeholder="..."
                       />
                    </div>
@@ -514,14 +514,14 @@ export default function PosOrderPage() {
                            type="text" 
                            value={customer.name}
                            onChange={(e) => { playClickSound(); setCustomer({...customer, name: e.target.value}); }}
-                           className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#5D4037] outline-none" 
+                           className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
                          />
                          <div className="flex items-center gap-1.5 opacity-60">
-                            <FileText size={16} className="text-gray-400 hover:text-[#5D4037] cursor-pointer" onClick={playClickSound} />
-                            <Save size={16} className="text-gray-400 hover:text-[#5D4037] cursor-pointer" onClick={playClickSound} />
-                            <ClipboardList size={16} className="text-gray-400 hover:text-[#5D4037] cursor-pointer" onClick={playClickSound} />
+                            <FileText size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
+                            <Save size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
+                            <ClipboardList size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
                             <Wallet size={16} className="bg-cyan-500 text-white rounded p-0.5" onClick={playClickSound} />
-                            <Trash2 size={16} className="text-gray-300 hover:text-[#5D4037] cursor-pointer" onClick={playClickSound} />
+                            <Trash2 size={16} className="text-gray-300 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
                          </div>
                       </div>
                    </div>
@@ -534,7 +534,7 @@ export default function PosOrderPage() {
                           type="text" 
                           value={customer.address}
                           onChange={(e) => { playClickSound(); setCustomer({...customer, address: e.target.value}); }}
-                          className="w-full p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#5D4037] outline-none" 
+                          className="w-full p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
                         />
                         {customer.address && <X size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 cursor-pointer" onClick={() => { playClickSound(); setCustomer({...customer, address: ''}); }} />}
                       </div>
@@ -547,7 +547,7 @@ export default function PosOrderPage() {
                         type="text" 
                         value={customer.locality}
                         onChange={(e) => { playClickSound(); setCustomer({...customer, locality: e.target.value}); }}
-                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#5D4037] outline-none" 
+                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
                       />
                    </div>
 
@@ -558,7 +558,7 @@ export default function PosOrderPage() {
                         type="text" 
                         value={customer.extra}
                         onChange={(e) => { playClickSound(); setCustomer({...customer, extra: e.target.value}); }}
-                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#5D4037] outline-none" 
+                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
                       />
                    </div>
                 </div>
@@ -651,7 +651,7 @@ export default function PosOrderPage() {
                         <span className="text-gray-400">Discount</span>
                         <button 
                           onClick={() => { playClickSound(); setIsDiscountModalOpen(true); }} 
-                          className="text-[#00BCD4] underline underline-offset-2 hover:text-[#5D4037] text-[10px]"
+                          className="text-[#00BCD4] underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
                         >
                           More
                         </button>
@@ -707,7 +707,7 @@ export default function PosOrderPage() {
                          <span className="text-gray-400">Tax</span>
                           <button 
                             onClick={() => { playClickSound(); setIsTaxModalOpen(true); }} 
-                            className="text-[#00BCD4] underline underline-offset-2 hover:text-[#5D4037] text-[10px]"
+                            className="text-[#00BCD4] underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
                           >
                             More
                           </button>
@@ -767,13 +767,13 @@ export default function PosOrderPage() {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => { playClickSound(); setIsBogoActive(!isBogoActive); }}
-                  className={`${isBogoActive ? 'bg-[#4E342E]' : 'bg-[#5D4037]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
+                  className={`${isBogoActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
                 >
                   Bogo Offer
                 </button>
                 <button 
                   onClick={() => { playClickSound(); setIsSplitModalOpen(true); }}
-                  className={`${isSplitActive ? 'bg-[#4E342E]' : 'bg-[#5D4037]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
+                  className={`${isSplitActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
                 >
                   Split
                 </button>
@@ -787,8 +787,8 @@ export default function PosOrderPage() {
                    <span className="text-white font-bold text-[10px] uppercase tracking-tighter">Sales Return</span>
                 </label>
                 
-                <div className="ml-auto bg-[#FFC107] text-[#424242] px-3 py-1 flex items-center gap-2 rounded-sm shadow-inner">
-                   <div className="bg-[#5D4037] text-white p-0.5 rounded-full"><Receipt size={10} strokeWidth={3} /></div>
+                <div className="ml-auto bg-[#FFD600] text-[#424242] px-3 py-1 flex items-center gap-2 rounded-sm shadow-inner">
+                   <div className="bg-[#E1261C] text-white p-0.5 rounded-full"><Receipt size={10} strokeWidth={3} /></div>
                    <span className="text-[10px] font-bold uppercase">Total</span>
                    <span className="text-base font-black italic tracking-tighter">₹{total.toFixed(0)}</span>
                 </div>
@@ -832,7 +832,7 @@ export default function PosOrderPage() {
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                    <input 
                      type="checkbox" 
-                     className="w-4 h-4 rounded-sm accent-[#5D4037] border-2" 
+                     className="w-4 h-4 rounded-sm accent-[#E1261C] border-2" 
                      checked={isLoyalty}
                      onChange={(e) => { playClickSound(); setIsLoyalty(e.target.checked); }}
                    />
@@ -850,9 +850,9 @@ export default function PosOrderPage() {
 
             {/* Always Visible Action Buttons (Row 4) */}
             <div className="grid grid-cols-6 gap-1 p-2 border-t border-white/5">
-              <ActionButton onClick={() => handleSave(false)} label="Save" color="bg-[#5D4037]" />
-              <ActionButton onClick={() => handleSave(true)} label="Save & Print" color="bg-[#5D4037]" />
-              <ActionButton onClick={() => { playClickSound(); alert('Digital Bill Sent!'); handleSave(false); }} label="Save & eBill" color="bg-[#5D4037]" />
+              <ActionButton onClick={() => handleSave(false)} label="Save" color="bg-[#E1261C]" />
+              <ActionButton onClick={() => handleSave(true)} label="Save & Print" color="bg-[#E1261C]" />
+              <ActionButton onClick={() => { playClickSound(); alert('Digital Bill Sent!'); handleSave(false); }} label="Save & eBill" color="bg-[#E1261C]" />
               <ActionButton onClick={() => handleKOT(false)} label="KOT" color="bg-white" textColor="text-gray-800" />
               <ActionButton onClick={() => handleKOT(true)} label="KOT & Print" color="bg-[#546E7A]" />
               <ActionButton onClick={handleHold} label="Hold" color="bg-white" textColor="text-gray-800" />
@@ -906,7 +906,7 @@ export default function PosOrderPage() {
                     <span className={`text-[13px] font-bold ${selectedWaiter?.id === waiter.id ? 'text-gray-900' : 'text-gray-500'}`}>
                       {waiter.name}
                     </span>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedWaiter?.id === waiter.id ? 'border-[#5D4037] bg-[#5D4037]' : 'border-gray-300 bg-white group-hover:border-gray-400'}`}>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedWaiter?.id === waiter.id ? 'border-[#E1261C] bg-[#E1261C]' : 'border-gray-300 bg-white group-hover:border-gray-400'}`}>
                       {selectedWaiter?.id === waiter.id && (
                         <Check size={12} strokeWidth={4} className="text-white" />
                       )}
@@ -925,7 +925,7 @@ export default function PosOrderPage() {
                 </button>
                 <button 
                   onClick={() => { playClickSound(); setIsWaiterModalOpen(false); }}
-                  className="px-8 py-2 text-sm font-bold bg-[#5D4037] text-white rounded hover:bg-red-700 transition-colors shadow-md shadow-stone-900/20"
+                  className="px-8 py-2 text-sm font-bold bg-[#E1261C] text-white rounded hover:bg-red-700 transition-colors shadow-md shadow-stone-900/20"
                 >
                   Done
                 </button>
@@ -1061,7 +1061,7 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty }) {
         {!isPlaced && (
           <button 
             onClick={onRemove}
-            className="w-5 h-5 rounded-full bg-[#5D4037] text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+            className="w-5 h-5 rounded-full bg-[#E1261C] text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
           >
             <Plus size={12} className="rotate-45" strokeWidth={4} />
           </button>
@@ -1187,7 +1187,7 @@ function AppliedDiscountModal({ onClose, onSave, currentVal, currentType, curren
 
         <div className="p-3 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-2">
            <button onClick={onClose} className="px-6 py-2 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded">Cancel</button>
-           <button onClick={() => onSave(val, type, reason)} className="px-10 py-2 text-xs font-bold text-white bg-[#5D4037] rounded shadow-md">Save</button>
+           <button onClick={() => onSave(val, type, reason)} className="px-10 py-2 text-xs font-bold text-white bg-[#E1261C] rounded shadow-md">Save</button>
         </div>
       </motion.div>
     </div>
@@ -1254,7 +1254,7 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
                 <select 
                   value={selectedMethod}
                   onChange={(e) => setSelectedMethod(e.target.value)}
-                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#5D4037] transition-all"
+                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E1261C] transition-all"
                 >
                    {methods.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -1263,7 +1263,7 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
                   placeholder="Amount"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
-                  className="w-32 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#5D4037] transition-all text-right"
+                  className="w-32 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E1261C] transition-all text-right"
                 />
                 <button 
                   onClick={addPayment}
@@ -1350,7 +1350,7 @@ function OtherPaymentModal({ onClose, onSave, currentDetails }) {
               <select 
                 value={details.type}
                 onChange={(e) => setDetails({ ...details, type: e.target.value })}
-                className="w-full bg-white border border-gray-200 rounded p-2.5 text-xs font-black text-gray-700 outline-none focus:ring-1 focus:ring-[#5D4037]"
+                className="w-full bg-white border border-gray-200 rounded p-2.5 text-xs font-black text-gray-700 outline-none focus:ring-1 focus:ring-[#E1261C]"
               >
                   <option value="UPI">UPI</option>
                   <option value="Paytm">Paytm</option>
@@ -1366,7 +1366,7 @@ function OtherPaymentModal({ onClose, onSave, currentDetails }) {
                 placeholder="Details (Optional)"
                 value={details.note}
                 onChange={(e) => setDetails({ ...details, note: e.target.value })}
-                className="w-full bg-white border border-gray-200 rounded p-3 text-xs font-bold text-gray-600 outline-none focus:ring-1 focus:ring-[#5D4037] resize-none"
+                className="w-full bg-white border border-gray-200 rounded p-3 text-xs font-bold text-gray-600 outline-none focus:ring-1 focus:ring-[#E1261C] resize-none"
               />
            </div>
         </div>

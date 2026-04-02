@@ -30,7 +30,7 @@ export default function TopBar() {
              className={`p-2 transition-colors relative rounded ${showNotifications ? 'text-white bg-white/12' : 'text-white/70 hover:text-white hover:bg-white/8'}`}
            >
               <Bell size={18} />
-              <div className="absolute top-2 right-2 w-2 h-2 bg-[#FFC107] rounded-full border border-[#2C2C2C]" />
+              <div className="absolute top-2 right-2 w-2 h-2 bg-[#FFD600] rounded-full border border-[#2C2C2C]" />
            </button>
            
            <AnimatePresence>
@@ -60,10 +60,10 @@ export default function TopBar() {
         <div className="flex items-center gap-3">
            <div className="text-right hidden sm:block">
               <p className="text-[11px] font-black uppercase tracking-tight leading-none text-white">Chiraag J.</p>
-              <p className="text-[9px] text-[#FFC107] font-bold uppercase tracking-widest mt-1">Super Admin</p>
+              <p className="text-[9px] text-[#FFD600] font-bold uppercase tracking-widest mt-1">Super Admin</p>
            </div>
            <div 
-             className="w-8 h-8 rounded bg-[#5D4037]/40 border border-[#5D4037]/60 flex items-center justify-center text-white/80 shadow-inner cursor-pointer hover:bg-[#5D4037]/60 transition-all"
+             className="w-8 h-8 rounded bg-[#E1261C]/40 border border-[#E1261C]/60 flex items-center justify-center text-white/80 shadow-inner cursor-pointer hover:bg-[#E1261C]/60 transition-all"
              onClick={playClickSound}
            >
               <UserCircle size={20} />

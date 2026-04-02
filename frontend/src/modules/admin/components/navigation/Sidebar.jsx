@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../../pos/utils/sounds';
-import logo from '../../../../assets/time-to-eat.jpeg';
+import logo from '../../../../assets/time-to-eat.png';
 
 export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate();
@@ -119,9 +119,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
   };
 
   return (
-    <aside className={`fixed left-0 top-0 h-full bg-[#2C2C2C] border-r border-white/8 z-50 transition-all duration-300 shadow-xl hidden lg:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`fixed left-0 top-0 h-full bg-[#1A1A1A] border-r border-white/8 z-50 transition-all duration-300 shadow-xl hidden lg:flex flex-col ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Brand Header */}
-      <div className="h-14 flex items-center justify-between px-4 border-b border-white/8 shrink-0 bg-[#2C2C2C]">
+      <div className="h-14 flex items-center justify-between px-4 border-b border-white/8 shrink-0 bg-[#1A1A1A]">
         {!isCollapsed ? (
           <div className="flex items-center gap-3">
             <div className="h-7 flex items-center justify-center overflow-hidden">
@@ -129,7 +129,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             </div>
             <div className="flex flex-col border-l border-white/10 pl-3">
               <span className="font-black text-[11px] tracking-tight uppercase text-white leading-tight">Time to eat System</span>
-              <span className="text-[8px] font-black text-[#FFC107] uppercase tracking-widest mt-0.5 opacity-80">Administrator</span>
+              <span className="text-[8px] font-black text-[#FFD600] uppercase tracking-widest mt-0.5 opacity-80">Administrator</span>
             </div>
           </div>
         ) : (
@@ -166,7 +166,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded transition-all relative group h-12 ${
                       isActive 
-                      ? 'bg-[#5D4037] text-white shadow-lg shadow-stone-900/30' 
+                      ? 'bg-[#E1261C] text-white shadow-lg shadow-stone-900/30' 
                       : 'text-white/80 hover:bg-white/8 hover:text-white'
                     }`}
                   >
@@ -186,7 +186,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                       </>
                     )}
                     {isActive && isCollapsed && (
-                      <div className="absolute left-0 w-1 h-7 bg-[#FFC107] rounded-r-full" />
+                      <div className="absolute left-0 w-1 h-7 bg-[#FFD600] rounded-r-full" />
                     )}
                   </button>
 
@@ -206,11 +206,11 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
                               onClick={() => { playClickSound(); navigate(subItem.path); }}
                               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all group ${
                                 isSubActive 
-                                ? 'text-white bg-[#5D4037]/30 border-l-2 border-[#FFC107]' 
+                                ? 'text-white bg-[#E1261C]/30 border-l-2 border-[#FFD600]' 
                                 : 'text-white/60 hover:text-white hover:bg-white/6'
                               }`}
                             >
-                              <div className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-[#FFC107]' : 'bg-white/25 group-hover:bg-white/50'}`} />
+                              <div className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-[#FFD600]' : 'bg-white/25 group-hover:bg-white/50'}`} />
                               <span className={`text-[10px] font-bold uppercase tracking-widest leading-none ${isSubActive ? 'text-white' : 'text-white/65 group-hover:text-white'}`}>
                                 {subItem.label}
                               </span>
@@ -235,7 +235,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             localStorage.removeItem('admin_access');
             navigate('/admin/login');
           }}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded text-white/55 hover:text-white hover:bg-[#5D4037] transition-all ${isCollapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded text-white/55 hover:text-white hover:bg-[#E1261C] transition-all ${isCollapsed ? 'justify-center' : ''}`}
         >
           <LogOut size={16} />
           {!isCollapsed && <span className="font-black text-[10px] uppercase tracking-widest">Sign Out</span>}
@@ -245,7 +245,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       {/* Toggle Button */}
       <button 
         onClick={() => { playClickSound(); setIsCollapsed(!isCollapsed); }}
-        className="absolute -right-3 top-20 w-6 h-6 bg-[#5D4037] text-white rounded-full flex items-center justify-center shadow-lg border-2 border-[#2C2C2C] z-50 hover:scale-110 active:scale-95 transition-all"
+        className="absolute -right-3 top-20 w-6 h-6 bg-[#E1261C] text-white rounded-full flex items-center justify-center shadow-lg border-2 border-[#1A1A1A] z-50 hover:scale-110 active:scale-95 transition-all"
       >
         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>

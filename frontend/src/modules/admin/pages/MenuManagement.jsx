@@ -119,7 +119,7 @@ export default function MenuManagement() {
       <div className="flex items-center justify-between">
         <div>
            <div className="flex items-center gap-2.5 mb-1">
-             <Utensils size={18} className="text-[#5D4037]" />
+             <Utensils size={18} className="text-[#E1261C]" />
              <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">Menu Management</h1>
            </div>
            <p className="text-xs text-stone-400 font-semibold">Configure your restaurant menu, categories, and pricing</p>
@@ -127,13 +127,13 @@ export default function MenuManagement() {
         <div className="flex bg-white p-1 border border-stone-200 rounded-lg shadow-sm">
            <button 
              onClick={() => { playClickSound(); setActiveTab('items'); }}
-             className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === 'items' ? 'bg-[#5D4037] text-white shadow-md shadow-stone-100' : 'text-stone-400 hover:text-stone-700'}`}
+             className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === 'items' ? 'bg-[#E1261C] text-white shadow-md shadow-stone-100' : 'text-stone-400 hover:text-stone-700'}`}
            >
               Menu Items
            </button>
            <button 
              onClick={() => { playClickSound(); setActiveTab('categories'); }}
-             className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === 'categories' ? 'bg-[#5D4037] text-white shadow-md shadow-stone-100' : 'text-stone-400 hover:text-stone-700'}`}
+             className={`px-4 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === 'categories' ? 'bg-[#E1261C] text-white shadow-md shadow-stone-100' : 'text-stone-400 hover:text-stone-700'}`}
            >
               Categories
            </button>
@@ -148,7 +148,7 @@ export default function MenuManagement() {
                <input 
                  type="text" 
                  placeholder="Search by name, code, or shortcut..." 
-                 className="w-full bg-stone-50 border border-stone-100 rounded-lg py-2 pl-10 pr-4 text-[11px] font-bold uppercase tracking-wider outline-none focus:ring-1 focus:ring-[#5D4037]/10 transition-all placeholder:text-stone-300"
+                 className="w-full bg-stone-50 border border-stone-100 rounded-lg py-2 pl-10 pr-4 text-[11px] font-bold uppercase tracking-wider outline-none focus:ring-1 focus:ring-[#E1261C]/10 transition-all placeholder:text-stone-300"
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                />
@@ -176,7 +176,7 @@ export default function MenuManagement() {
              </div>
              <button 
                onClick={() => { playClickSound(); activeTab === 'items' ? handleOpenModal() : handleOpenCategoryModal(); }}
-               className="h-9 px-6 bg-[#5D4037] text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-95 transition-all hover:bg-[#4E342E]"
+               className="h-9 px-6 bg-[#E1261C] text-white rounded-lg text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-95 transition-all hover:bg-[#4E342E]"
              >
                 <Plus size={14} strokeWidth={3} />
                 Add {activeTab === 'items' ? 'Menu Item' : 'New Category'}
@@ -188,7 +188,7 @@ export default function MenuManagement() {
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' : 'space-y-3'}>
            {filteredItems.map(item => (
               viewMode === 'grid' ? (
-                <div key={item.id} className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm hover:border-[#5D4037]/30 transition-all group">
+                <div key={item.id} className="bg-white border border-stone-100 rounded-2xl overflow-hidden shadow-sm hover:border-[#E1261C]/30 transition-all group">
                    <div className="aspect-[4/3] bg-stone-50 relative overflow-hidden underline decoration-transparent">
                       <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90" />
                        <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm border border-stone-100 px-2 py-1 rounded-lg text-[8px] font-black text-stone-900 tracking-tighter uppercase line-clamp-1 flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function MenuManagement() {
                    <div className="p-4">
                        <div className="flex items-start justify-between mb-1">
                           <h4 className="text-[11px] font-black text-stone-800 uppercase tracking-tight line-clamp-1">{item.name}</h4>
-                          <span className="text-[10px] font-black text-[#5D4037] tracking-tighter">₹{item.price}</span>
+                          <span className="text-[10px] font-black text-[#E1261C] tracking-tighter">₹{item.price}</span>
                        </div>
                       <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-4">
                         {categories.find(c => c.id === item.catId)?.name}
@@ -269,9 +269,9 @@ export default function MenuManagement() {
               <div 
                 key={cat.id} 
                 onClick={() => handleOpenCategoryModal(cat)}
-                className="bg-white border border-stone-100 rounded-2xl p-6 shadow-sm hover:border-[#5D4037]/30 transition-all group cursor-pointer"
+                className="bg-white border border-stone-100 rounded-2xl p-6 shadow-sm hover:border-[#E1261C]/30 transition-all group cursor-pointer"
               >
-                 <div className="w-12 h-12 bg-stone-50 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-[#5D4037] group-hover:text-white transition-all mb-4">
+                 <div className="w-12 h-12 bg-stone-50 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-[#E1261C] group-hover:text-white transition-all mb-4">
                     <Utensils size={24} />
                  </div>
                  <h4 className="text-[13px] font-black text-stone-800 uppercase tracking-tight mb-1">{cat.name}</h4>
@@ -304,7 +304,7 @@ export default function MenuManagement() {
                {/* Modal Header */}
                <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#2C2C2C]">
                   <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 bg-[#5D4037] text-white rounded-lg flex items-center justify-center shadow-lg shadow-stone-900/20">
+                     <div className="w-8 h-8 bg-[#E1261C] text-white rounded-lg flex items-center justify-center shadow-lg shadow-stone-900/20">
                         {editingItem ? <Edit3 size={16} /> : <Plus size={16} />}
                      </div>
                      <div>
@@ -325,7 +325,7 @@ export default function MenuManagement() {
                         <input 
                            type="text" 
                            required
-                           className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                           className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                            value={formData.name}
                            onChange={(e) => setFormData({...formData, name: e.target.value})}
                            placeholder="e.g. PANEER BUTTER MASALA"
@@ -335,7 +335,7 @@ export default function MenuManagement() {
                      <div className="space-y-2">
                         <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Category</label>
                         <select 
-                           className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                           className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                            value={formData.catId}
                            onChange={(e) => setFormData({...formData, catId: parseInt(e.target.value)})}
                         >
@@ -350,7 +350,7 @@ export default function MenuManagement() {
                         <input 
                            type="number" 
                            required
-                           className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                           className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                            value={formData.price}
                            onChange={(e) => setFormData({...formData, price: e.target.value})}
                            placeholder="0.00"
@@ -373,7 +373,7 @@ export default function MenuManagement() {
                          <input 
                             type="text" 
                             required
-                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                             value={formData.shortcut}
                             onChange={(e) => setFormData({...formData, shortcut: e.target.value.toUpperCase()})}
                             placeholder="e.g. PBM"
@@ -384,7 +384,7 @@ export default function MenuManagement() {
                       <div className="space-y-2">
                          <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Spice Level (0-3)</label>
                          <select 
-                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                             value={formData.spiceLevel}
                             onChange={(e) => setFormData({...formData, spiceLevel: parseInt(e.target.value)})}
                          >
@@ -416,7 +416,7 @@ export default function MenuManagement() {
                          <input 
                             type="text" 
                             required
-                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                             value={formData.prepTime}
                             onChange={(e) => setFormData({...formData, prepTime: e.target.value.toUpperCase()})}
                             placeholder="e.g. 20 MINS"
@@ -441,7 +441,7 @@ export default function MenuManagement() {
                       <button 
                          type="submit"
                          onClick={playClickSound}
-                         className="flex-1 py-3 bg-[#5D4037] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#4E342E]"
+                         className="flex-1 py-3 bg-[#E1261C] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-[#4E342E]"
                       >
                          <Save size={14} />
                          {editingItem ? 'Save Changes' : 'Add to Menu'}
@@ -471,7 +471,7 @@ export default function MenuManagement() {
              >
                 <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#2C2C2C]">
                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-[#5D4037] text-white rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-[#E1261C] text-white rounded-lg flex items-center justify-center">
                          {editingCategory ? <Edit3 size={16} /> : <Plus size={16} />}
                       </div>
                       <div>
@@ -491,7 +491,7 @@ export default function MenuManagement() {
                          <input 
                             type="text" 
                             required
-                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                             value={categoryFormData.name}
                             onChange={(e) => setCategoryFormData({...categoryFormData, name: e.target.value})}
                             placeholder="e.g. STARTERS"
@@ -501,7 +501,7 @@ export default function MenuManagement() {
                       <div className="space-y-2">
                          <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Display Icon</label>
                          <select 
-                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#5D4037]/20 rounded-lg"
+                            className="w-full bg-stone-50 border border-stone-100 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-[#E1261C]/20 rounded-lg"
                             value={categoryFormData.icon}
                             onChange={(e) => setCategoryFormData({...categoryFormData, icon: e.target.value})}
                          >
@@ -522,7 +522,7 @@ export default function MenuManagement() {
                       >Cancel</button>
                       <button 
                          type="submit"
-                         className="flex-1 py-3 bg-[#5D4037] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-[#4E342E]"
+                         className="flex-1 py-3 bg-[#E1261C] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-lg shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-[#4E342E]"
                       >
                          <Save size={14} />
                          {editingCategory ? 'Save' : 'Create'}

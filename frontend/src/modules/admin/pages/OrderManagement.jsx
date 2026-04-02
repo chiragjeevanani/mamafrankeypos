@@ -29,7 +29,7 @@ export default function OrderManagement() {
        <div className="flex items-center justify-between">
         <div>
            <div className="flex items-center gap-2.5 mb-1">
-             <ShoppingBag size={18} className="text-[#5D4037]" />
+             <ShoppingBag size={18} className="text-[#E1261C]" />
              <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">Live Order Monitor</h1>
            </div>
            <p className="text-xs text-stone-400 font-semibold">Real-time view of all dine-in, takeaway and QR orders</p>
@@ -38,15 +38,15 @@ export default function OrderManagement() {
            <div className="flex bg-white p-1 border border-stone-200 rounded-lg shadow-sm">
               <button 
                 onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'all' ? 'bg-[#5D4037] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'all' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
               >All</button>
               <button 
                 onClick={() => setFilterStatus('Staff App')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'Staff App' ? 'bg-[#5D4037] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'Staff App' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
               >Staff</button>
               <button 
                 onClick={() => setFilterStatus('QR Ordering')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'QR Ordering' ? 'bg-[#5D4037] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'QR Ordering' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
               >QR</button>
            </div>
         </div>
@@ -63,7 +63,7 @@ export default function OrderManagement() {
                     placeholder="Search by order # or table..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 py-2 pl-9 pr-4 text-[11px] font-semibold rounded-lg outline-none focus:ring-2 focus:ring-[#5D4037]/20 focus:border-[#5D4037] transition-all placeholder:text-stone-300" 
+                    className="w-full bg-stone-50 border border-stone-200 py-2 pl-9 pr-4 text-[11px] font-semibold rounded-lg outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all placeholder:text-stone-300" 
                   />
                </div>
                <div className="flex items-center gap-2 px-3 py-2 bg-stone-50 border border-stone-200 rounded-lg cursor-pointer whitespace-nowrap hover:bg-stone-100 transition-colors">
@@ -125,7 +125,7 @@ export default function OrderManagement() {
                         </td>
                         <td className="px-5 py-3.5">
                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button className="p-1.5 text-stone-400 hover:text-[#5D4037] bg-white border border-stone-200 rounded-lg shadow-sm transition-all"><Eye size={12} /></button>
+                              <button className="p-1.5 text-stone-400 hover:text-[#E1261C] bg-white border border-stone-200 rounded-lg shadow-sm transition-all"><Eye size={12} /></button>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -170,7 +170,7 @@ export default function OrderManagement() {
             >
                <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#2C2C2C]">
                   <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 bg-[#5D4037] text-white rounded-lg flex items-center justify-center">
+                     <div className="w-8 h-8 bg-[#E1261C] text-white rounded-lg flex items-center justify-center">
                         <ShoppingBag size={16} />
                      </div>
                      <div>
@@ -193,7 +193,7 @@ export default function OrderManagement() {
                      </div>
                      <div className="bg-stone-50 border border-stone-100 rounded-xl p-3">
                         <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">Total</p>
-                        <p className="text-sm font-black text-[#5D4037]">₹{selectedOrder.total.toLocaleString()}</p>
+                        <p className="text-sm font-black text-[#E1261C]">₹{selectedOrder.total.toLocaleString()}</p>
                      </div>
                   </div>
                   <div className="flex items-center justify-between px-1">
@@ -201,7 +201,7 @@ export default function OrderManagement() {
                      <select 
                         value={selectedOrder.status}
                         onChange={(e) => updateOrderStatus(selectedOrder.id, e.target.value)}
-                        className="text-[11px] font-bold bg-stone-100 border border-stone-200 outline-none px-3 py-1.5 rounded-lg text-stone-700 focus:ring-2 focus:ring-[#5D4037]/20"
+                        className="text-[11px] font-bold bg-stone-100 border border-stone-200 outline-none px-3 py-1.5 rounded-lg text-stone-700 focus:ring-2 focus:ring-[#E1261C]/20"
                      >
                         <option value="new">New</option>
                         <option value="preparing">Preparing</option>
@@ -222,7 +222,7 @@ export default function OrderManagement() {
                         ))}
                         <div className="border-t border-stone-200 pt-2.5 mt-2 flex items-center justify-between">
                            <span className="text-sm font-black text-stone-800">Grand Total</span>
-                           <span className="text-sm font-black text-[#5D4037]">₹{selectedOrder.total}</span>
+                           <span className="text-sm font-black text-[#E1261C]">₹{selectedOrder.total}</span>
                         </div>
                      </div>
                   </div>
@@ -237,7 +237,7 @@ export default function OrderManagement() {
                      </button>
                      <button 
                         onClick={() => window.alert('Print receipt...')}
-                        className="flex-1 py-3 bg-[#5D4037] text-white text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-stone-900/15 hover:bg-[#4E342E]"
+                        className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-stone-900/15 hover:bg-[#4E342E]"
                      >
                         <Receipt size={14} />
                         Print Receipt

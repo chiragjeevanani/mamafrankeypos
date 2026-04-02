@@ -51,7 +51,7 @@ export default function DataVisibility() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2.5 mb-1">
-            <Eye size={18} className="text-[#5D4037]" />
+            <Eye size={18} className="text-[#E1261C]" />
             <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">
               📊 Data Visibility Control
             </h1>
@@ -72,7 +72,7 @@ export default function DataVisibility() {
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-6 space-y-6">
         <div className="flex items-center gap-3 pb-4 border-b border-stone-100">
           <div className="w-9 h-9 bg-stone-50 rounded-lg flex items-center justify-center">
-            <BarChart3 size={18} className="text-[#5D4037]" />
+            <BarChart3 size={18} className="text-[#E1261C]" />
           </div>
           <div>
             <h2 className="text-xs font-black uppercase tracking-widest text-stone-800">
@@ -97,7 +97,7 @@ export default function DataVisibility() {
               value={inputVal}
               onChange={(e) => handleInput(e.target.value)}
               onBlur={() => { const v = clamp(globalPct); setGlobalPct(v); setInputVal(String(v)); }}
-              className="w-20 border-2 border-stone-200 rounded-lg px-3 py-2 text-sm font-black text-center text-stone-800 outline-none focus:border-[#5D4037] focus:ring-2 focus:ring-[#5D4037]/10 transition-all"
+              className="w-20 border-2 border-stone-200 rounded-lg px-3 py-2 text-sm font-black text-center text-stone-800 outline-none focus:border-[#E1261C] focus:ring-2 focus:ring-[#E1261C]/10 transition-all"
             />
             <span className="text-sm font-black text-stone-500">%</span>
           </div>
@@ -112,9 +112,9 @@ export default function DataVisibility() {
               max={100}
               value={globalPct}
               onChange={(e) => handleSlider(e.target.value)}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#5D4037]"
+              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#E1261C]"
               style={{
-                background: `linear-gradient(to right, #5D4037 ${globalPct}%, #e7e5e4 ${globalPct}%)`
+                background: `linear-gradient(to right, #E1261C ${globalPct}%, #e7e5e4 ${globalPct}%)`
               }}
             />
           </div>
@@ -135,7 +135,7 @@ export default function DataVisibility() {
           </div>
           <div className="h-3 w-full bg-stone-100 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-[#5D4037] rounded-full"
+              className="h-full bg-[#E1261C] rounded-full"
               animate={{ width: `${globalPct}%` }}
               transition={{ type: 'spring', stiffness: 200, damping: 22 }}
             />
@@ -154,7 +154,7 @@ export default function DataVisibility() {
         <div className="flex items-center gap-3 pt-2">
           <button
             onClick={handleApply}
-            className="h-9 px-6 bg-stone-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-stone-900/10 active:scale-95 transition-all flex items-center gap-2 hover:bg-[#5D4037]"
+            className="h-9 px-6 bg-stone-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-stone-900/10 active:scale-95 transition-all flex items-center gap-2 hover:bg-[#E1261C]"
           >
             {saved ? <CheckCircle2 size={14} className="text-emerald-400" /> : <Zap size={14} />}
             {saved ? 'Applied!' : 'Apply Changes'}
@@ -200,7 +200,7 @@ export default function DataVisibility() {
                   onChange={(e) => setPerMetric(prev => ({ ...prev, [m.key]: Number(e.target.value) }))}
                   className={`w-full h-1.5 rounded-full appearance-none cursor-pointer`}
                   style={{
-                    background: `linear-gradient(to right, #5D4037 ${perMetric[m.key]}%, #e7e5e4 ${perMetric[m.key]}%)`
+                    background: `linear-gradient(to right, #E1261C ${perMetric[m.key]}%, #e7e5e4 ${perMetric[m.key]}%)`
                   }}
                 />
               </div>

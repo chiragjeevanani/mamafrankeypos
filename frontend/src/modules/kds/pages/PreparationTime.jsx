@@ -13,7 +13,7 @@ export default function PreparationTime() {
       }`}>
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
-            <h1 className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-[#5D4037]'}`}>
+            <h1 className={`text-lg font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-[#E1261C]'}`}>
               Preparation Time
             </h1>
             <p className="text-[9px] font-black uppercase tracking-widest text-stone-500">
@@ -22,7 +22,7 @@ export default function PreparationTime() {
           </div>
         </div>
 
-        <button className="flex items-center gap-2 px-6 py-2 bg-[#D4AF37] text-[#5D4037] font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-[#C5A028] transition-all shadow-lg shadow-[#D4AF37]/20">
+        <button className="flex items-center gap-2 px-6 py-2 bg-[#D4AF37] text-[#E1261C] font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-[#C5A028] transition-all shadow-lg shadow-[#D4AF37]/20">
           <Save size={14} strokeWidth={3} />
           Save Configuration
         </button>
@@ -40,7 +40,7 @@ export default function PreparationTime() {
                 <div>
                   <label className="text-[9px] font-black text-stone-500 uppercase tracking-widest mb-3 block">Ideal Window</label>
                   <div className="flex items-end gap-3">
-                    <input type="number" defaultValue="12" className={`text-4xl font-black bg-transparent border-b-2 outline-none w-24 ${isDarkMode ? 'border-white/10 text-white' : 'border-stone-200 text-[#5D4037]'}`} />
+                    <input type="number" defaultValue="12" className={`text-4xl font-black bg-transparent border-b-2 outline-none w-24 ${isDarkMode ? 'border-white/10 text-white' : 'border-stone-200 text-[#E1261C]'}`} />
                     <span className="text-xl font-black text-stone-400 mb-1">MINS</span>
                   </div>
                 </div>

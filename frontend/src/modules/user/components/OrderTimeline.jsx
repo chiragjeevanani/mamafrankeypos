@@ -33,7 +33,7 @@ export function OrderTimeline({ status }) {
                 initial={false}
                 animate={{
                   scale: isActive ? 1.2 : 1,
-                  backgroundColor: isCompleted || isActive ? '#ff7a00' : 'transparent',
+                  backgroundColor: isCompleted || isActive ? '#E1261C' : 'transparent',
                   color: isCompleted || isActive ? '#000000' : 'currentColor',
                 }}
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all ${

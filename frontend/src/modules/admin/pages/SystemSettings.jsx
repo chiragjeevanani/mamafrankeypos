@@ -261,6 +261,14 @@ export default function SystemSettings() {
   });
 
   const [tablesSaved, setTablesSaved] = useState(false);
+  const [activeTableSection, setActiveTableSection] = useState(sections[0]?.id || '');
+
+  // Update active section if sections change or on first load
+  React.useEffect(() => {
+    if (!activeTableSection && sections.length > 0) {
+      setActiveTableSection(sections[0].id);
+    }
+  }, [sections, activeTableSection]);
 
   // ── Counter Billing Series state ──
   const [counters, setCounters] = useState([
@@ -632,93 +640,141 @@ export default function SystemSettings() {
                       </div>
 
                       {/* --- 1. Section Management --- */}
-                      <div className="space-y-4">
+                      <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-slate-900 pl-3">Dining Sections</h4>
-                          <button 
-                            onClick={() => {
-                              const label = window.prompt('Enter new section name:');
-                              if (label) setSections([...sections, { id: label.toLowerCase().replace(/\s/g, '-'), label }]);
-                            }}
-                            className="bg-slate-900 text-white px-3 py-1 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2"
-                          >
-                            <Plus size={12} /> Add Section
-                          </button>
+                           <div>
+                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-slate-900 pl-3">Dining Sections</h4>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Define your physical dining areas</p>
+                           </div>
+                           <button 
+                             onClick={() => {
+                               const label = window.prompt('Enter new section name:');
+                               if (label) {
+                                 const newId = label.toLowerCase().replace(/\s/g, '-');
+                                 setSections([...sections, { id: newId, label }]);
+                                 setActiveTableSection(newId);
+                               }
+                             }}
+                             className="bg-slate-900 text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10"
+                           >
+                             <Plus size={12} /> Add New Section
+                           </button>
                         </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="flex flex-wrap gap-3">
                           {sections.map(sec => (
-                            <div key={sec.id} className="bg-slate-50 border border-slate-100 rounded-sm p-4 flex items-center justify-between">
-                              <span className="text-[11px] font-black uppercase tracking-tight">{sec.label}</span>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    const label = window.prompt('Edit section name:', sec.label);
-                                    if (label) setSections(sections.map(s => s.id === sec.id ? { ...s, label } : s));
-                                  }}
-                                  className="p-1 hover:bg-slate-200 rounded-sm transition-colors text-slate-400"
-                                >
-                                  <Edit size={12} />
-                                </button>
-                                <button 
-                                  onClick={() => setSections(sections.filter(s => s.id !== sec.id))}
-                                  className="p-1 hover:bg-rose-50 hover:text-rose-500 rounded-sm transition-colors text-slate-300"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            </div>
+                            <button 
+                              key={sec.id} 
+                              onClick={() => setActiveTableSection(sec.id)}
+                              className={`px-4 py-2.5 rounded-sm border transition-all flex items-center gap-3 ${
+                                activeTableSection === sec.id 
+                                  ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
+                                  : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                              }`}
+                            >
+                               <span className="text-[10px] font-black uppercase tracking-widest">{sec.label}</span>
+                               <div className="flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const label = window.prompt('Edit section name:', sec.label);
+                                      if (label) setSections(sections.map(s => s.id === sec.id ? { ...s, label } : s));
+                                    }}
+                                    className="p-1 hover:bg-white/10 rounded-sm"
+                                  >
+                                    <Edit size={10} />
+                                  </div>
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Delete ${sec.label} and all its tables?`)) {
+                                         setSections(sections.filter(s => s.id !== sec.id));
+                                         if (activeTableSection === sec.id) setActiveTableSection(sections.find(s => s.id !== sec.id)?.id || '');
+                                      }
+                                    }}
+                                    className="p-1 hover:bg-rose-500 rounded-sm"
+                                  >
+                                    <Trash2 size={10} />
+                                  </div>
+                               </div>
+                            </button>
                           ))}
                         </div>
                       </div>
 
-                      {/* --- 2. Table Management --- */}
-                      {sections.map(sec => (
-                        <div key={sec.id} className="space-y-4 pt-4 border-t border-slate-50">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-[10px] font-black uppercase tracking-[2px] text-slate-400 flex items-center gap-2">
-                              <Layout size={12} /> Section: {sec.label}
-                            </h4>
+                      {/* --- 2. Table Management (Active Section Only) --- */}
+                      <div className="pt-8 border-t border-slate-50 space-y-6">
+                        <div className="flex items-center justify-between">
+                           <div>
+                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry — {sections.find(s => s.id === activeTableSection)?.label}</h4>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Configure individual table identifiers and statuses</p>
+                           </div>
+                           <button 
+                             onClick={() => {
+                               const name = window.prompt(`Add new table to ${sections.find(s => s.id === activeTableSection)?.label}:`);
+                               if (name) setTables([...tables, { id: Date.now(), name, sectionId: activeTableSection, status: 'Active' }]);
+                             }}
+                             className="bg-[#E1261C] text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-rose-900/10"
+                           >
+                             <Plus size={12} /> Add Table
+                           </button>
+                        </div>
+
+                        <div className="bg-white border border-slate-100 rounded-sm overflow-hidden">
+                          <div className="grid grid-cols-[1fr_120px_100px] bg-slate-50 border-b border-slate-100 px-6 py-3">
+                            {['Table Identifier', 'Operational Status', 'Tools'].map((h, i) => (
+                              <span key={i} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
+                            ))}
                           </div>
 
-                          <div className="border border-slate-100 rounded-sm overflow-hidden">
-                            <div className="grid grid-cols-[1fr_120px_100px] bg-slate-50 border-b border-slate-100 px-4 py-2.5">
-                              {['Table Name', 'Status', 'Actions'].map((h, i) => (
-                                <span key={i} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
-                              ))}
-                            </div>
-
-                            <AnimatePresence initial={false}>
-                              {tables.filter(t => t.sectionId === sec.id).map((table, idx) => (
+                          <div className="divide-y divide-slate-50">
+                            <AnimatePresence mode="popLayout" initial={false}>
+                              {tables.filter(t => t.sectionId === activeTableSection).length === 0 ? (
+                                 <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="py-12 flex flex-col items-center justify-center gap-2 text-slate-200"
+                                 >
+                                    <Table size={32} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">No tables assigned to this section</span>
+                                 </motion.div>
+                              ) : tables.filter(t => t.sectionId === activeTableSection).map((table, idx) => (
                                 <motion.div
                                   key={table.id}
-                                  layout
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  className="grid grid-cols-[1fr_120px_100px] items-center px-4 py-2.5 hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-b-0"
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: 10 }}
+                                  transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                  className="grid grid-cols-[1fr_120px_100px] items-center px-6 py-4 hover:bg-slate-50/50 transition-colors group"
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-slate-200" />
-                                    <span className="text-[11px] font-bold text-slate-800">{table.name}</span>
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-8 h-8 rounded-sm bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#E1261C] group-hover:text-white transition-all">
+                                       <Table size={14} />
+                                    </div>
+                                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{table.name}</span>
                                   </div>
                                   <div>
-                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border ${table.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                                    <span className={`text-[8px] font-black px-2.5 py-1 rounded-sm border ${table.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
                                       {table.status.toUpperCase()}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 opacity-20 group-hover:opacity-100 transition-all">
                                     <button 
                                       onClick={() => {
                                         const name = window.prompt('Table Name:', table.name);
                                         if (name) setTables(tables.map(t => t.id === table.id ? { ...t, name } : t));
                                       }}
-                                      className="p-1.5 hover:bg-slate-100 rounded-sm text-slate-400"
+                                      className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-slate-900 hover:border-slate-300"
                                     >
                                       <Edit size={12} />
                                     </button>
                                     <button 
-                                      onClick={() => setTables(tables.filter(t => t.id !== table.id))}
-                                      className="p-1.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-sm"
+                                      onClick={() => {
+                                         if (window.confirm(`Delete table ${table.name}?`)) {
+                                            setTables(tables.filter(t => t.id !== table.id));
+                                         }
+                                      }}
+                                      className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-rose-600 hover:border-rose-100"
                                     >
                                       <Trash2 size={12} />
                                     </button>
@@ -727,18 +783,8 @@ export default function SystemSettings() {
                               ))}
                             </AnimatePresence>
                           </div>
-                          
-                          <button 
-                            onClick={() => {
-                              const name = window.prompt(`Add new table to ${sec.label}:`);
-                              if (name) setTables([...tables, { id: Date.now(), name, sectionId: sec.id, status: 'Active' }]);
-                            }}
-                            className="bg-white border border-slate-200 px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 active:scale-95 transition-all flex items-center gap-2"
-                          >
-                            <Plus size={12} /> Add Table
-                          </button>
                         </div>
-                      ))}
+                      </div>
 
                       {/* --- Save Changes Button --- */}
                       <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">

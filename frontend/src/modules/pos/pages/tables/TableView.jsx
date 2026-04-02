@@ -432,12 +432,16 @@ export default function TableView() {
                 </button>
               </div>
 
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Car / Vehicle Number</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Vehicle Number (Last 4 Digits)</p>
               <input
                 type="text"
-                placeholder="e.g. MP09 AB 1234"
+                placeholder="E.G. 1234"
                 value={newCarNumber}
-                onChange={(e) => setNewCarNumber(e.target.value.toUpperCase())}
+                maxLength={4}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 4) setNewCarNumber(val);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newCarNumber.trim()) {
                     addCarOrder(newCarNumber);
@@ -445,7 +449,7 @@ export default function TableView() {
                     setShowAddCar(false);
                   }
                 }}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E1261C]/30 bg-gray-50 tracking-widest uppercase mb-4"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-black outline-none focus:ring-2 focus:ring-[#E1261C]/30 bg-gray-50 tracking-[0.2em] text-center uppercase mb-4"
                 autoFocus
               />
 

@@ -20,7 +20,7 @@ export function StaffNavbar({ activeTab }) {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 pb-safe">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-staff-card border-t border-staff-border pb-safe">
       <nav className="max-w-lg mx-auto px-6 py-3 flex items-center justify-between">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -30,10 +30,10 @@ export function StaffNavbar({ activeTab }) {
               whileTap={{ scale: 0.9 }}
               onClick={() => navigate(tab.path)}
               className={`flex flex-col items-center gap-1 flex-1 transition-all ${
-                isActive ? 'text-slate-900' : 'text-slate-400'
+                isActive ? 'text-staff-text-primary' : 'text-staff-text-muted'
               }`}
             >
-              <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : ''}`}>
+              <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-staff-primary text-staff-text-white shadow-lg shadow-staff-primary/20' : ''}`}>
                 <tab.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
               </div>
               <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-60'}`}>
@@ -42,7 +42,7 @@ export function StaffNavbar({ activeTab }) {
               {isActive && (
                 <motion.div 
                   layoutId="nav-pill"
-                  className="w-1 h-1 rounded-full bg-slate-900 absolute -bottom-1"
+                  className="w-1 h-1 rounded-full bg-staff-primary absolute -bottom-1"
                 />
               )}
             </motion.button>

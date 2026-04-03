@@ -21,35 +21,35 @@ export default function CustomerList() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-100 px-6 py-8">
+    <div className="min-h-screen bg-staff-bg flex flex-col font-sans">
+      <header className="sticky top-0 z-40 bg-staff-card/95 backdrop-blur-xl border-b border-staff-border px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Guests</h1>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer Directory</p>
+            <h1 className="text-2xl font-black text-staff-text-primary tracking-tight mb-1">Guests</h1>
+            <p className="text-[10px] font-black uppercase tracking-widest text-staff-text-muted">Customer Directory</p>
           </div>
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate('/staff/customers/add')}
-            className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-900/20"
+            className="w-12 h-12 rounded-2xl bg-staff-primary text-white flex items-center justify-center shadow-lg shadow-slate-900/20"
           >
             <Plus size={24} />
           </motion.button>
         </div>
 
         <div className="relative group">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" />
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-staff-text-muted group-focus-within:text-staff-text-primary transition-colors" />
           <input 
             type="text" 
             placeholder="Search name or phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-xs font-bold outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-white transition-all"
+            className="w-full bg-staff-bg border border-staff-border rounded-2xl py-4 pl-12 pr-4 text-xs font-bold outline-none focus:ring-4 focus:ring-slate-900/5 focus:bg-staff-card transition-all"
           />
         </div>
       </header>
 
-      <main className="flex-1 max-w-lg mx-auto w-full bg-white shadow-xl shadow-slate-200/50 p-6 pb-32">
+      <main className="flex-1 max-w-lg mx-auto w-full bg-staff-card shadow-xl shadow-slate-200/50 p-6 pb-32">
         <div className="space-y-4">
           {filteredCustomers.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 opacity-20 text-center">
@@ -61,14 +61,14 @@ export default function CustomerList() {
               <motion.div
                 key={customer.id}
                 whileTap={{ scale: 0.98 }}
-                className="p-5 rounded-[2rem] border border-slate-100 bg-slate-50/50 flex items-center justify-between group hover:bg-white hover:shadow-xl hover:shadow-slate-900/5 transition-all"
+                className="p-5 rounded-[2rem] border border-staff-border bg-staff-bg/50 flex items-center justify-between group hover:bg-staff-card hover:shadow-xl hover:shadow-slate-900/5 transition-all"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-900 font-black text-xl shadow-sm group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                  <div className="w-14 h-14 rounded-2xl bg-staff-card border border-staff-border flex items-center justify-center text-staff-text-primary font-black text-xl shadow-sm group-hover:bg-staff-primary group-hover:text-white transition-colors">
                     {customer.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 tracking-tight leading-none mb-2">{customer.name}</h3>
+                    <h3 className="text-sm font-black text-staff-text-primary tracking-tight leading-none mb-2">{customer.name}</h3>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1.5 opacity-60">
                         <Phone size={10} />
@@ -83,11 +83,11 @@ export default function CustomerList() {
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-50 border border-yellow-100">
-                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-staff-secondary/10 border border-yellow-100">
+                    <Star size={10} className="text-staff-secondary fill-yellow-500" />
                     <span className="text-[10px] font-black text-yellow-700">{customer.points}</span>
                   </div>
-                  <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-900 transition-colors" />
+                  <ChevronRight size={16} className="text-slate-300 group-hover:text-staff-text-primary transition-colors" />
                 </div>
               </motion.div>
             ))

@@ -55,6 +55,31 @@
   /* Typography */
   --font-family-display: 'Playfair Display SC', serif;
   --font-family-sans: 'Outfit', 'Karla', system-ui, sans-serif;
+  --font-family-staff: 'Inter', 'Poppins', sans-serif;
+
+  /* Staff Module Theme */
+  --color-staff-primary: #D32F2F;
+  --color-staff-primary-dark: #B71C1C;
+  --color-staff-primary-light: #FF6659;
+  --color-staff-primary-soft: #FDECEC;
+  
+  --color-staff-secondary: #FBC02D;
+  --color-staff-secondary-dark: #F9A825;
+  --color-staff-secondary-light: #FFF176;
+  --color-staff-secondary-soft: #FFF8E1;
+
+  --color-staff-bg: #F9FAFB;
+  --color-staff-card: #FFFFFF;
+  --color-staff-border: #E5E7EB;
+
+  --color-staff-text-primary: #111827;
+  --color-staff-text-secondary: #6B7280;
+  --color-staff-text-muted: #9CA3AF;
+  --color-staff-text-white: #FFFFFF;
+
+  --color-staff-success: #22C55E;
+  --color-staff-warning: #F59E0B;
+  --color-staff-error: #EF4444;
 }
 
 /* ─── Global Reset & UI Polish ─── */
@@ -104,3 +129,38 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--font-family-sans); }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Staff Module Scoped Styles ─── */
+.staff-module {
+  font-family: var(--font-family-staff) !important;
+  background-color: var(--color-staff-bg);
+  color: var(--color-staff-text-primary);
+}
+
+.staff-module h1, .staff-module h2, .staff-module h3, .staff-module h4, .staff-module h5, .staff-module h6 {
+  font-family: var(--font-family-staff);
+  color: var(--color-staff-text-primary);
+}
+
+.staff-card {
+  background-color: var(--color-staff-card);
+  border: 1px solid var(--color-staff-border);
+}
+
+.staff-btn-primary {
+  background-color: var(--color-staff-primary);
+  color: var(--color-staff-text-white);
+  transition: background-color 0.2s;
+}
+
+.staff-btn-primary:hover {
+  background-color: var(--color-staff-primary-dark);
+}
+
+.staff-text-secondary {
+  color: var(--color-staff-text-secondary);
+}
+
+.staff-text-muted {
+  color: var(--color-staff-text-muted);
+}

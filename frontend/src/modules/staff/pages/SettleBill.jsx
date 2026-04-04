@@ -36,9 +36,9 @@ export default function SettleBill() {
 
   return (
     <div className="min-h-screen bg-staff-bg flex flex-col items-center font-staff">
-      <div className="w-full max-w-lg bg-staff-card min-h-screen flex flex-col shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-lg bg-staff-card h-screen flex flex-col shadow-2xl relative overflow-hidden">
         {/* Red Header as per mockup */}
-        <header className="bg-staff-primary px-6 py-6 flex items-center justify-between shrink-0 shadow-lg relative z-10 text-staff-text-white">
+        <header className="bg-staff-primary px-6 py-6 flex items-center justify-between shrink-0 shadow-lg sticky top-0 z-50 text-staff-text-white">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate(-1)} 
@@ -50,7 +50,7 @@ export default function SettleBill() {
           </div>
           <button 
             onClick={() => setShowInvoice(true)}
-            className="text-xs font-black uppercase tracking-widest bg-staff-card/20 px-4 py-3 rounded-xl hover:bg-staff-card/30 transition-all border border-white/10 active:scale-95"
+            className="text-[10px] font-bold uppercase tracking-widest bg-staff-card/20 px-4 py-2.5 rounded-xl hover:bg-staff-card/30 transition-all border border-white/10 active:scale-95"
           >
              View Invoice
           </button>
@@ -58,15 +58,15 @@ export default function SettleBill() {
 
         <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
            {/* Amount Display */}
-           <div className="flex flex-col items-center py-10 bg-staff-bg rounded-[3rem] border border-staff-border shadow-sm relative overflow-hidden">
+           <div className="flex flex-col items-center py-8 bg-staff-bg rounded-[2rem] border border-staff-border shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-5">
-                 <Receipt size={120} />
+                 <Receipt size={100} />
               </div>
-               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-staff-text-muted mb-2">Total Amount Due</p>
-              <h2 className="text-6xl font-black text-staff-text-primary tracking-tighter">
-                <span className="text-staff-secondary text-3xl mr-1">₹</span>{totalAmount.toFixed(1)}
+               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-staff-text-muted mb-2">Total Amount Due</p>
+              <h2 className="text-5xl font-bold text-staff-text-primary tracking-tighter">
+                <span className="text-staff-secondary text-2xl mr-1">₹</span>{totalAmount.toFixed(1)}
               </h2>
-              <div className="mt-4 flex items-center gap-2 text-staff-text-muted text-[10px] font-bold">
+              <div className="mt-4 flex items-center gap-2 text-staff-text-muted text-[10px] font-semibold">
                  <Clock size={12} />
                  <span>Printed {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
@@ -76,9 +76,9 @@ export default function SettleBill() {
            <motion.div 
              initial={{ opacity: 0, y: 10 }}
              animate={{ opacity: 1, y: 0 }}
-             className="bg-staff-success/10 border border-staff-success/20 rounded-3xl p-6 flex gap-4 items-start shadow-sm"
+             className="bg-staff-success/10 border border-staff-success/20 rounded-2xl p-5 flex gap-4 items-start shadow-sm"
            >
-              <div className="w-10 h-10 bg-staff-success rounded-2xl flex items-center justify-center text-staff-text-white shrink-0 shadow-lg shadow-staff-success/20">
+              <div className="w-10 h-10 bg-staff-success rounded-xl flex items-center justify-center text-staff-text-white shrink-0 shadow-lg shadow-staff-success/20">
                  <CheckCircle2 size={24} />
               </div>
               <div className="space-y-1">
@@ -90,8 +90,8 @@ export default function SettleBill() {
            {/* Payment Selection */}
            <div className="space-y-6 pt-4">
               <div className="flex flex-col gap-1 ml-1">
-                 <h3 className="text-lg font-black text-staff-text-primary">Collect Payment</h3>
-                 <p className="text-[10px] font-black uppercase tracking-widest text-staff-text-muted">Manual Settlement Mode</p>
+                 <h3 className="text-lg font-bold text-staff-text-primary">Collect Payment</h3>
+                 <p className="text-[10px] font-semibold uppercase tracking-widest text-staff-text-muted">Manual Settlement Mode</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -103,12 +103,12 @@ export default function SettleBill() {
                      key={method.id}
                      whileTap={{ scale: 0.95 }}
                      onClick={() => handleSettle(method.id)}
-                     className="bg-staff-card border border-staff-border rounded-[2.5rem] p-8 flex flex-col items-center gap-4 hover:border-slate-900 hover:shadow-xl transition-all group"
+                     className="bg-staff-card border border-staff-border rounded-[1.5rem] p-6 flex flex-col items-center gap-4 hover:border-slate-900 transition-all group shadow-sm active:shadow-inner"
                    >
-                      <div className={`w-16 h-16 ${method.color} text-staff-text-white rounded-3xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform`}>
+                      <div className={`w-14 h-14 ${method.color} text-staff-text-white rounded-2xl flex items-center justify-center shadow-lg transition-transform`}>
                          {method.icon}
                       </div>
-                      <span className="text-sm font-black uppercase tracking-widest text-staff-text-primary">{method.label}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-staff-text-primary">{method.label}</span>
                    </motion.button>
                  ))}
               </div>
@@ -117,12 +117,12 @@ export default function SettleBill() {
 
         {/* Cancel Action */}
         <div className="p-8 shrink-0">
-           <button 
-             onClick={() => navigate(-1)}
-             className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-staff-text-muted hover:text-staff-error transition-colors text-center"
-           >
-              Go Back to Floor Map
-           </button>
+            <button 
+              onClick={() => navigate(-1)}
+              className="w-full py-4 text-[10px] font-bold uppercase tracking-widest text-staff-text-muted hover:text-staff-error transition-colors text-center"
+            >
+               Go Back to Floor Map
+            </button>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ export default function SettleBill() {
                initial={{ y: '100%' }}
                animate={{ y: 0 }}
                exit={{ y: '100%' }}
-               className="relative w-full max-w-lg bg-staff-card rounded-t-[3rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+               className="relative w-full max-w-lg bg-staff-card rounded-t-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
              >
                 <div className="p-8 border-b border-staff-border flex items-center justify-between bg-staff-bg/50 shrink-0">
                    <div className="flex items-center gap-4">
@@ -149,8 +149,8 @@ export default function SettleBill() {
                          <Receipt size={24} />
                       </div>
                       <div>
-                         <h3 className="text-xl font-black text-staff-text-primary uppercase italic leading-none mb-1">Final Invoice</h3>
-                         <p className="text-[10px] font-black uppercase tracking-widest text-staff-text-muted leading-none">Table {id} • Review Draft</p>
+                         <h3 className="text-xl font-bold text-staff-text-primary uppercase leading-none mb-1">Final Invoice</h3>
+                         <p className="text-[10px] font-semibold uppercase tracking-widest text-staff-text-muted leading-none">Table {id} • Review Draft</p>
                       </div>
                    </div>
                    <button 
@@ -163,7 +163,7 @@ export default function SettleBill() {
 
                 <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
                    {/* Table Header Section */}
-                   <div className="flex items-center justify-between text-staff-text-muted text-[10px] uppercase font-black tracking-widest border-b border-staff-border pb-4">
+                   <div className="flex items-center justify-between text-staff-text-muted text-[10px] uppercase font-semibold tracking-widest border-b border-staff-border pb-4">
                       <span>Item Name</span>
                       <div className="flex items-center gap-12">
                          <span className="w-10 text-center">Qty</span>
@@ -176,42 +176,42 @@ export default function SettleBill() {
                       {order?.kots?.flatMap(kot => kot.items).map((item, i) => (
                         <div key={i} className="flex items-center justify-between group">
                            <div className="flex flex-col flex-1">
-                              <span className="text-sm font-bold text-staff-text-primary group-hover:text-staff-secondary transition-colors">{item.name}</span>
-                              <span className="text-[9px] font-black uppercase tracking-widest text-staff-text-muted italic">Hsn 2106 • Service</span>
+                               <span className="text-sm font-bold text-staff-text-primary group-hover:text-staff-secondary transition-colors">{item.name}</span>
+                               <span className="text-[9px] font-semibold uppercase tracking-widest text-staff-text-muted italic">Hsn 2106 • Service</span>
                            </div>
                            <div className="flex items-center gap-12">
-                              <span className="w-10 text-center text-sm font-black text-staff-text-muted">{item.quantity}</span>
-                              <span className="w-16 text-right text-sm font-black text-staff-text-primary">₹{item.price * item.quantity}</span>
+                              <span className="w-10 text-center text-sm font-semibold text-staff-text-muted">{item.quantity}</span>
+                              <span className="w-16 text-right text-sm font-bold text-staff-text-primary">₹{item.price * item.quantity}</span>
                            </div>
                         </div>
                       ))}
                    </div>
 
                    {/* Calculations */}
-                   <div className="pt-8 border-t border-staff-border space-y-4">
-                      <div className="flex justify-between text-sm font-bold text-slate-500">
-                         <span>Subtotal</span>
-                         <span>₹{totalAmount.toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-bold text-slate-500">
-                         <span>GST (18%)</span>
-                         <span>₹{(totalAmount * 0.18).toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between pt-4 border-t border-staff-border">
-                         <span className="text-lg font-black text-staff-text-primary uppercase italic">Grand Total</span>
-                         <span className="text-2xl font-black text-staff-secondary tracking-tighter">₹{(totalAmount * 1.18).toFixed(0)}</span>
-                      </div>
-                   </div>
+                    <div className="pt-8 border-t border-staff-border space-y-4">
+                       <div className="flex justify-between text-xs font-semibold text-staff-text-muted">
+                          <span>Subtotal</span>
+                          <span>₹{totalAmount.toFixed(1)}</span>
+                       </div>
+                       <div className="flex justify-between text-xs font-semibold text-staff-text-muted">
+                          <span>GST (18%)</span>
+                          <span>₹{(totalAmount * 0.18).toFixed(1)}</span>
+                       </div>
+                       <div className="flex justify-between pt-6 border-t-2 border-dashed border-staff-border">
+                          <span className="text-xl font-bold text-staff-text-primary uppercase tracking-tight">Grand Total</span>
+                          <span className="text-3xl font-bold text-staff-primary tracking-tighter">₹{(totalAmount * 1.18).toFixed(0)}</span>
+                       </div>
+                    </div>
                 </div>
 
-                <div className="p-8 bg-staff-primary flex items-center gap-4 shrink-0">
-                   <button className="flex-1 bg-staff-card/10 text-staff-text-white border border-white/10 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-staff-card/20 transition-all">
-                      <Download size={16} /> Save PDF
-                   </button>
-                   <button className="flex-1 bg-teal-500 text-staff-text-primary py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-teal-500/20 hover:bg-teal-400 transition-all">
-                      <Printer size={16} /> Print Copy
-                   </button>
-                </div>
+                 <div className="p-8 bg-white border-t border-staff-border flex items-center gap-4 shrink-0">
+                    <button className="flex-1 bg-staff-bg text-staff-text-primary border border-staff-border py-4.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all">
+                       <Download size={16} className="text-staff-text-muted" /> Save PDF
+                    </button>
+                    <button className="flex-1 bg-staff-primary text-white py-4.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-staff-primary/20 hover:bg-rose-700 transition-all">
+                       <Printer size={16} /> Print Copy
+                    </button>
+                 </div>
              </motion.div>
           </div>
         )}
@@ -235,7 +235,7 @@ export default function SettleBill() {
                className="relative w-full max-w-sm bg-staff-card rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col"
              >
                 <div className="bg-staff-primary p-6 flex flex-col items-center text-staff-text-white relative">
-                   <h3 className="text-lg font-black uppercase tracking-tight">Cash</h3>
+                   <h3 className="text-lg font-bold uppercase tracking-tight">Cash</h3>
                    <button 
                      onClick={() => setShowCashModal(false)}
                      className="absolute top-4 right-4 p-2 bg-staff-card/10 rounded-xl hover:bg-staff-card/20 transition-colors"
@@ -247,7 +247,7 @@ export default function SettleBill() {
                 <div className="p-8 space-y-4">
                    <div className="space-y-4">
                       <div className="space-y-1">
-                         <label className="text-[9px] font-black uppercase tracking-widest text-staff-text-muted ml-1">Customer Paid</label>
+                         <label className="text-[9px] font-semibold uppercase tracking-widest text-staff-text-muted ml-1">Customer Paid</label>
                          <input 
                            type="number" 
                            placeholder="0"
@@ -255,7 +255,7 @@ export default function SettleBill() {
                          />
                       </div>
                       <div className="space-y-1">
-                         <label className="text-[9px] font-black uppercase tracking-widest text-staff-text-muted ml-1">Return to Customer</label>
+                         <label className="text-[9px] font-semibold uppercase tracking-widest text-staff-text-muted ml-1">Return to Customer</label>
                          <input 
                            type="number" 
                            readOnly
@@ -264,7 +264,7 @@ export default function SettleBill() {
                          />
                       </div>
                       <div className="space-y-1">
-                         <label className="text-[9px] font-black uppercase tracking-widest text-staff-text-muted ml-1">Enter Tip</label>
+                         <label className="text-[9px] font-semibold uppercase tracking-widest text-staff-text-muted ml-1">Enter Tip</label>
                          <input 
                            type="number" 
                            placeholder="0"
@@ -272,7 +272,7 @@ export default function SettleBill() {
                          />
                       </div>
                       <div className="space-y-1">
-                         <label className="text-[9px] font-black uppercase tracking-widest text-staff-text-muted ml-1">Settlement Amount</label>
+                         <label className="text-[9px] font-semibold uppercase tracking-widest text-staff-text-muted ml-1">Settlement Amount</label>
                          <input 
                            type="number" 
                            placeholder={totalAmount.toFixed(0)}
@@ -285,7 +285,7 @@ export default function SettleBill() {
                    <div className="grid grid-cols-2 gap-4 mt-6">
                       <button 
                         onClick={() => setShowCashModal(false)}
-                        className="py-4 bg-slate-100 rounded-2xl text-[9px] font-black uppercase tracking-widest text-staff-text-muted hover:bg-slate-200 transition-colors"
+                        className="py-4 bg-slate-100 rounded-2xl text-[9px] font-bold uppercase tracking-widest text-staff-text-muted hover:bg-slate-200 transition-colors"
                       >
                          Cancel
                       </button>
@@ -294,7 +294,7 @@ export default function SettleBill() {
                           setShowCashModal(false);
                           processPayment('Cash');
                         }}
-                        className="py-4 bg-staff-primary rounded-2xl text-[9px] font-black uppercase tracking-widest text-staff-text-white shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all"
+                        className="py-4 bg-staff-primary rounded-2xl text-[9px] font-bold uppercase tracking-widest text-staff-text-white shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all"
                       >
                          Submit
                       </button>
@@ -314,7 +314,7 @@ export default function SettleBill() {
             exit={{ opacity: 0, scale: 0.8 }}
             className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-staff-primary/40 backdrop-blur-sm"
           >
-             <div className="bg-staff-card rounded-[3rem] p-12 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
+             <div className="bg-staff-card rounded-[2rem] p-12 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -323,7 +323,7 @@ export default function SettleBill() {
                 >
                    <CheckCircle2 size={48} />
                 </motion.div>
-                <h3 className="text-2xl font-black text-staff-text-primary mb-2 uppercase italic tracking-tight">Payment Success!</h3>
+                <h3 className="text-2xl font-bold text-staff-text-primary mb-2 uppercase italic tracking-tight">Payment Success!</h3>
                 <p className="text-sm font-bold text-staff-text-secondary max-w-[200px]">Transaction completed. Table {id} has been cleared.</p>
                 <div className="absolute top-0 left-0 w-full h-2 bg-staff-success" />
              </div>

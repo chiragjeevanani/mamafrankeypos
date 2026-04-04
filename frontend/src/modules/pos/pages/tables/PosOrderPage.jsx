@@ -464,7 +464,7 @@ export default function PosOrderPage() {
               onClick={() => setOrderType('delivery')}
               className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'delivery' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
             >
-              Delivery
+              Car Service
             </button>
             <button 
               onClick={() => setOrderType('pickup')}
@@ -680,7 +680,7 @@ export default function PosOrderPage() {
 
                     {/* Delivery Charge */}
                     <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Delivery Charge</span>
+                      <span className="text-gray-400">Car Service Charge</span>
                       <input 
                         type="number" 
                         value={deliveryCharge || ''}
@@ -868,12 +868,10 @@ export default function PosOrderPage() {
             </div>
 
             {/* Always Visible Action Buttons (Row 4) */}
-            <div className="grid grid-cols-6 gap-1 p-2 border-t border-white/5">
+            <div className="grid grid-cols-4 gap-1 p-2 border-t border-white/5">
               <ActionButton onClick={() => handleSave(false)} label="Save" color="bg-[#E1261C]" />
-              <ActionButton onClick={() => handleSave(true)} label="Save & Print" color="bg-[#E1261C]" />
-              <ActionButton onClick={() => { playClickSound(); alert('Digital Bill Sent!'); handleSave(false); }} label="Save & eBill" color="bg-[#E1261C]" />
+              <ActionButton onClick={() => handleSave(true)} label="Print" color="bg-[#E1261C]" />
               <ActionButton onClick={() => handleKOT(false)} label="KOT" color="bg-white" textColor="text-gray-800" />
-              <ActionButton onClick={handleHold} label="Hold" color="bg-white" textColor="text-gray-800" />
               <ActionButton 
                 onClick={handleClearTable} 
                 label="Clear Table" 

@@ -114,14 +114,14 @@ export default function MyTables() {
                     navigate(`/staff/table/${table.id}`);
                   }
                 }}
-                className={`relative p-6 rounded-[2rem] border-2 transition-all cursor-pointer group shadow-sm hover:shadow-xl hover:shadow-staff-primary/5 ${getStatusBg(table.status)}`}
+                className={`relative p-6 rounded-[2rem] border transition-all cursor-pointer group shadow-sm hover:shadow-xl hover:shadow-staff-primary/5 ${getStatusBg(table.status)}`}
               >
                 <div className="flex justify-between items-start mb-6">
                    <div className="flex flex-col">
-                      <span className="text-2xl font-black text-slate-900 leading-none mb-1">{table.name}</span>
+                      <span className="text-2xl font-bold text-slate-900 leading-none mb-1">{table.name}</span>
                       <div className="flex items-center gap-1.5 opacity-60">
                          <Users size={12} className="text-slate-400" />
-                         <span className="text-[10px] font-bold text-slate-500 uppercase">{table.capacity || 4} Pax</span>
+                         <span className="text-[10px] font-semibold text-slate-500 uppercase">{table.capacity || 4} Pax</span>
                       </div>
                    </div>
                    <div className={`w-3 h-3 rounded-full ${getStatusColor(table.status)} shadow-lg shadow-current/20`} />
@@ -130,28 +130,17 @@ export default function MyTables() {
                 {table.order ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Order</span>
-                       <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase italic animate-pulse ${table.order.status === 'printed' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Active Order</span>
+                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase italic animate-pulse ${table.order.status === 'printed' ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
                          {table.order.status}
                        </span>
                     </div>
                     <div className="flex items-end justify-between">
-                       <div className="flex flex-col">
-                          <span className="text-lg font-black text-slate-900 tracking-tighter">
-                            ₹{table.order.kots?.reduce((acc, k) => acc + k.total, 0) || 0}
-                          </span>
-                          <div className="flex items-center gap-1 text-slate-400">
-                             <Clock size={10} />
-                             <span className="text-[9px] font-bold">
-                               {new Date(table.order.sessionStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                             </span>
-                          </div>
-                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="pt-4 mt-auto border-t border-dashed border-staff-border flex flex-col items-center">
-                    <button className="w-full flex items-center justify-center gap-2 bg-staff-card border border-staff-border py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-staff-text-primary hover:bg-staff-primary hover:text-staff-text-white transition-all">
+                    <button className="w-full flex items-center justify-center gap-2 bg-staff-card border border-staff-border py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest text-staff-text-primary hover:bg-staff-primary hover:text-staff-text-white transition-all">
                        <Plus size={14} /> Open Tab
                     </button>
                   </div>
@@ -181,17 +170,17 @@ export default function MyTables() {
                animate={{ y: 0 }}
                exit={{ y: '100%' }}
                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-               className="relative w-full max-w-lg bg-white rounded-t-[3rem] overflow-hidden shadow-2xl p-8"
+               className="relative w-full max-w-lg bg-white rounded-t-[3rem] overflow-hidden shadow-2xl p-6"
              >
-                <div className="flex flex-col items-center mb-8">
-                   <div className="w-12 h-1.5 bg-slate-200 rounded-full mb-6" />
+                <div className="flex flex-col items-center mb-5">
+                   <div className="w-12 h-1.5 bg-slate-200 rounded-full mb-4" />
                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Options for</span>
-                      <h3 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Table {selectedTableForOptions.name}</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Options for</span>
+                      <h3 className="text-2xl font-bold text-slate-900 uppercase italic tracking-tighter">Table {selectedTableForOptions.name}</h3>
                    </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                    {[
                      { label: 'View KOT(s)', onClick: () => navigate(`/staff/table/${selectedTableForOptions.id}/kots`) },
                      { label: 'Move Table', onClick: () => alert('Coming Soon!') },
@@ -205,7 +194,7 @@ export default function MyTables() {
                          opt.onClick();
                          setSelectedTableForOptions(null);
                        }}
-                       className="w-full bg-staff-bg border border-staff-border transition-all py-5 rounded-[1.5rem] text-sm font-black uppercase tracking-widest text-staff-text-primary flex items-center justify-center gap-3 group"
+                       className="w-full bg-staff-bg border border-staff-border transition-all py-3.5 rounded-[1.5rem] text-sm font-bold uppercase tracking-widest text-staff-text-primary flex items-center justify-center gap-3 group"
                      >
                         {opt.label}
                      </button>
@@ -214,7 +203,7 @@ export default function MyTables() {
 
                 <button 
                   onClick={() => setSelectedTableForOptions(null)}
-                  className="w-full mt-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors"
+                  className="w-full mt-4 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors"
                 >
                    Cancel
                 </button>

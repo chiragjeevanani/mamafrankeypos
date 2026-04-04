@@ -414,8 +414,8 @@ export default function TableOrderScreen() {
             >
               <div className="p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Select Size</p>
-                  <h3 className="text-xl font-black text-slate-900">{selectedItemForVariants.name}</h3>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Select Size</p>
+                  <h3 className="text-xl font-bold text-slate-900">{selectedItemForVariants.name}</h3>
                 </div>
                 <button 
                   onClick={() => setSelectedItemForVariants(null)}
@@ -430,14 +430,14 @@ export default function TableOrderScreen() {
                   <button
                     key={variant.id}
                     onClick={() => addToOrder(selectedItemForVariants, variant)}
-                    className="w-full bg-staff-bg border border-staff-border rounded-[2rem] p-6 flex items-center justify-between group hover:bg-staff-primary hover:border-staff-primary transition-all"
+                    className="w-full bg-staff-bg border border-staff-border rounded-[2rem] p-5 flex items-center justify-between group hover:bg-staff-primary hover:border-staff-primary transition-all"
                   >
                     <div className="text-left">
-                      <p className="text-sm font-bold text-staff-text-primary group-hover:text-staff-text-white transition-colors">{variant.name}</p>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-staff-text-muted group-hover:text-staff-text-white/40 transition-colors">Portion</p>
+                      <p className="text-sm font-semibold text-staff-text-primary group-hover:text-staff-text-white transition-colors">{variant.name}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-widest text-staff-text-muted group-hover:text-staff-text-white/40 transition-colors">Portion</p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <p className="text-xl font-black text-staff-primary group-hover:text-staff-secondary transition-colors">₹{variant.price}</p>
+                      <p className="text-xl font-bold text-staff-primary group-hover:text-staff-secondary transition-colors">₹{variant.price}</p>
                       <div className="w-10 h-10 bg-staff-primary text-staff-text-white rounded-xl flex items-center justify-center group-hover:bg-staff-card group-hover:text-staff-text-primary transition-all">
                         <Plus size={18} />
                       </div>
@@ -447,7 +447,7 @@ export default function TableOrderScreen() {
               </div>
 
               <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest text-center">
                   Prices inclusive of all taxes
                 </p>
               </div>

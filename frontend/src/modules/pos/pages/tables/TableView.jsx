@@ -89,8 +89,11 @@ export default function TableView() {
             <RefreshCw size={18} className="text-gray-500" />
           </button>
           <div className="h-4 w-px bg-gray-200 mx-1" />
-          <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
-            Delivery
+          <button 
+            onClick={() => setShowAddCar(true)}
+            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95 flex items-center gap-1.5"
+          >
+            <Car size={14} /> Car Service
           </button>
           <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
             Pick Up

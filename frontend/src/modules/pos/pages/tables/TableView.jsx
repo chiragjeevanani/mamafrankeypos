@@ -410,6 +410,7 @@ export default function TableView() {
                       exit={{ opacity: 0, scale: 0.7 }}
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
+                      onClick={() => handleTableClick({ id: car.carNumber, sectionId: 'car-service' })}
                       className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                       style={{
                         borderStyle: statusConfig.borderStyle,
@@ -450,19 +451,12 @@ export default function TableView() {
 
                       {/* Action buttons */}
                       <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
-                        {/* Cycle status */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const cycle = { 'running-kot': 'running', running: 'printed', printed: 'paid' };
-                            updateCarOrderStatus(car.carNumber, cycle[car.status] || car.status);
-                          }}
-                          className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-600 hover:bg-white transition-all active:scale-90"
-                          title="Advance Status"
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${car.carNumber}`, { state: { fromCarService: true } }); }}
+                          className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
                         >
-                          <ArrowRightLeft size={10} strokeWidth={2.5} />
+                           <Eye size={12} strokeWidth={2.5} />
                         </button>
-                        {/* Clear car (only when paid) */}
                         {car.status === 'paid' && (
                           <button
                             onClick={(e) => {
@@ -472,7 +466,7 @@ export default function TableView() {
                             className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
                             title="Clear Car Order"
                           >
-                            <Trash2 size={10} strokeWidth={2.5} />
+                            <Trash2 size={12} strokeWidth={2.5} />
                           </button>
                         )}
                       </div>

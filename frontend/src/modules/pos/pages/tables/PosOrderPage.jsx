@@ -115,7 +115,11 @@ export default function PosOrderPage() {
   
   // Initialize cart from existing order if any
   const [cart, setCart] = useState(() => orders[tableId]?.items || []);
-  const [orderType, setOrderType] = useState('dine-in'); // dine-in, delivery, pickup
+  const isPickupMode = location.state?.fromPickup === true;
+  const isCarServiceMode = location.state?.fromCarService === true;
+  const [orderType, setOrderType] = useState(
+    isPickupMode ? 'pickup' : isCarServiceMode ? 'delivery' : 'dine-in'
+  ); // dine-in, delivery, pickup
   
   // States for interactive checkboxes/radios
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -454,24 +458,33 @@ export default function PosOrderPage() {
         <div className="w-[40%] flex flex-col bg-white shrink-0">
           {/* Top Tabs */}
           <div className="flex h-12 shrink-0">
-            <button 
-              onClick={() => setOrderType('dine-in')}
-              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'dine-in' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
-            >
-              Dine In
-            </button>
-            <button 
-              onClick={() => setOrderType('delivery')}
-              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'delivery' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
-            >
-              Car Service
-            </button>
-            <button 
-              onClick={() => setOrderType('pickup')}
-              className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'pickup' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
-            >
-              Pick Up
-            </button>
+            {/* Dine In - hidden in pickup mode and car service mode */}
+            {!isPickupMode && !isCarServiceMode && (
+              <button 
+                onClick={() => setOrderType('dine-in')}
+                className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'dine-in' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+              >
+                Dine In
+              </button>
+            )}
+            {/* Car Service - only shown in car service mode */}
+            {isCarServiceMode && (
+              <button 
+                onClick={() => setOrderType('delivery')}
+                className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'delivery' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+              >
+                Car Service
+              </button>
+            )}
+            {/* Pick Up - only in pickup mode */}
+            {isPickupMode && (
+              <button 
+                onClick={() => setOrderType('pickup')}
+                className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'pickup' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+              >
+                Pick Up
+              </button>
+            )}
           </div>
 
           {/* Table Details Bar */}
@@ -485,22 +498,30 @@ export default function PosOrderPage() {
             <div onClick={() => { playClickSound(); toggleCustomerSection(); }} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
               <User size={20} className={`${isCustomerSectionOpen ? 'text-[#E1261C]' : 'text-gray-400'} group-hover:text-[#E1261C] transition-colors`} />
             </div>
-            <div onClick={() => { playClickSound(); setIsWaiterModalOpen(true); }} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
-              <Users size={20} className={`${selectedWaiter ? 'text-[#E1261C]' : 'text-gray-400'} group-hover:text-[#E1261C] transition-colors`} />
-              {selectedWaiter && (
-                 <span className="absolute bottom-0.5 text-[8px] font-black text-[#E1261C] uppercase">
-                    {selectedWaiter.name.split(' ')[0]}
-                 </span>
-              )}
-            </div>
-            <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-              <Edit3 size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
-            </div>
-            <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-              <Bell size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
-            </div>
-            <div className="flex-1 flex items-center justify-center"></div>
-            <div className="w-[20%] bg-[#FFD600] flex items-center justify-center font-bold text-sm shadow-inner">{tableInfo.section}</div>
+            {!isPickupMode && (
+              <div onClick={() => { playClickSound(); setIsWaiterModalOpen(true); }} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
+                <Users size={20} className={`${selectedWaiter ? 'text-[#E1261C]' : 'text-gray-400'} group-hover:text-[#E1261C] transition-colors`} />
+                {selectedWaiter && (
+                   <span className="absolute bottom-0.5 text-[8px] font-black text-[#E1261C] uppercase">
+                      {selectedWaiter.name.split(' ')[0]}
+                   </span>
+                )}
+              </div>
+            )}
+            {!isPickupMode && (
+              <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
+                <Edit3 size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
+              </div>
+            )}
+            {!isPickupMode && (
+              <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
+                <Bell size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
+              </div>
+            )}
+            {!isPickupMode && !isCarServiceMode && <div className="flex-1 flex items-center justify-center"></div>}
+            {!isPickupMode && !isCarServiceMode && (
+              <div className="w-[20%] bg-[#FFD600] flex items-center justify-center font-bold text-sm shadow-inner">{tableInfo.section}</div>
+            )}
           </div>
 
           {/* Customer Details Section (Animated) */}
@@ -639,17 +660,19 @@ export default function PosOrderPage() {
 
           {/* Bottom Area (Sticky) */}
           <div className="bg-[#424242] shrink-0 flex flex-col relative">
-            {/* Arrow Extender Tab (Now for Extra Menu) */}
-            <button 
-              onClick={() => { playClickSound(); setIsExtraMenuOpen(!isExtraMenuOpen); }}
-              className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#424242] text-white p-1 rounded-t-md border-t border-x border-white/10 hover:brightness-125 transition-all shadow-lg z-20 flex items-center justify-center w-8 h-4"
-            >
-              <ChevronUp size={14} className={`transition-transform duration-300 ${isExtraMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
+            {/* Arrow Extender Tab (hidden in pickup mode) */}
+            {!isPickupMode && (
+              <button 
+                onClick={() => { playClickSound(); setIsExtraMenuOpen(!isExtraMenuOpen); }}
+                className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#424242] text-white p-1 rounded-t-md border-t border-x border-white/10 hover:brightness-125 transition-all shadow-lg z-20 flex items-center justify-center w-8 h-4"
+              >
+                <ChevronUp size={14} className={`transition-transform duration-300 ${isExtraMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+            )}
 
-            {/* Extra Menu (Summary Panel Revealed by Extender) */}
+            {/* Extra Menu (Summary Panel Revealed by Extender) - hidden in pickup mode */}
             <AnimatePresence>
-              {isExtraMenuOpen && (
+              {!isPickupMode && isExtraMenuOpen && (
                 <motion.div 
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
@@ -782,110 +805,128 @@ export default function PosOrderPage() {
 
             {/* FIXED ROWS (Row 1-3) */}
             <div className="p-2 flex flex-col gap-2">
-              {/* Row 1: Promo / Split / Return */}
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => { playClickSound(); setIsBogoActive(!isBogoActive); }}
-                  className={`${isBogoActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
-                >
-                  Bogo Offer
-                </button>
-                <button 
-                  onClick={() => { playClickSound(); setIsSplitModalOpen(true); }}
-                  className={`${isSplitActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
-                >
-                  Split
-                </button>
-                <label className="flex items-center gap-1.5 ml-1 cursor-pointer select-none">
-                   <input 
-                     type="checkbox" 
-                     className="w-4 h-4 rounded-sm" 
-                     checked={isSalesReturn}
-                     onChange={(e) => { playClickSound(); setIsSalesReturn(e.target.checked); }}
-                   />
-                   <span className="text-white font-bold text-[10px] uppercase tracking-tighter">Sales Return</span>
-                </label>
-                
-                <div className="ml-auto bg-[#FFD600] text-[#424242] px-3 py-1 flex items-center gap-2 rounded-sm shadow-inner">
-                   <div className="bg-[#E1261C] text-white p-0.5 rounded-full"><Receipt size={10} strokeWidth={3} /></div>
-                   <span className="text-[10px] font-bold uppercase">Total</span>
-                   <span className="text-base font-black italic tracking-tighter">₹{total.toFixed(0)}</span>
-                </div>
-              </div>
-
-              {/* Row 2: Payment Methods */}
-              <div className="flex items-center justify-between px-2 py-1 border-y border-white/5">
-                {['Cash', 'Card', 'Due', 'Other', 'Part'].map(method => (
-                  <label key={method} className="flex items-center gap-1.5 cursor-pointer group">
-                     <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
-                        <div className={`w-full h-full rounded-full ${paymentMode === method ? 'bg-white' : 'group-hover:bg-white/10'}`} />
-                     </div>
+              {/* Row 1: Promo / Split / Return - hidden in pickup mode */}
+              {!isPickupMode ? (
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => { playClickSound(); setIsBogoActive(!isBogoActive); }}
+                    className={`${isBogoActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
+                  >
+                    Bogo Offer
+                  </button>
+                  <button 
+                    onClick={() => { playClickSound(); setIsSplitModalOpen(true); }}
+                    className={`${isSplitActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
+                  >
+                    Split
+                  </button>
+                  <label className="flex items-center gap-1.5 ml-1 cursor-pointer select-none">
                      <input 
-                       type="radio" 
-                       className="hidden" 
-                       name="payment" 
-                       value={method} 
-                       checked={paymentMode === method}
-                       onChange={() => { 
-                         playClickSound(); 
-                         setPaymentMode(method);
-                         if (method === 'Other') setIsOtherPaymentModalOpen(true);
-                       }}
+                       type="checkbox" 
+                       className="w-4 h-4 rounded-sm" 
+                       checked={isSalesReturn}
+                       onChange={(e) => { playClickSound(); setIsSalesReturn(e.target.checked); }}
                      />
-                     <span className={`font-bold text-[10px] transition-colors ${paymentMode === method ? 'text-white' : 'text-white/60'}`}>{method}</span>
+                     <span className="text-white font-bold text-[10px] uppercase tracking-tighter">Sales Return</span>
                   </label>
-                ))}
-              </div>
+                  <div className="ml-auto bg-[#FFD600] text-[#424242] px-3 py-1 flex items-center gap-2 rounded-sm shadow-inner">
+                     <div className="bg-[#E1261C] text-white p-0.5 rounded-full"><Receipt size={10} strokeWidth={3} /></div>
+                     <span className="text-[10px] font-bold uppercase">Total</span>
+                     <span className="text-base font-black italic tracking-tighter">₹{total.toFixed(0)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end">
+                  <div className="bg-[#FFD600] text-[#424242] px-3 py-1 flex items-center gap-2 rounded-sm shadow-inner">
+                     <div className="bg-[#E1261C] text-white p-0.5 rounded-full"><Receipt size={10} strokeWidth={3} /></div>
+                     <span className="text-[10px] font-bold uppercase">Total</span>
+                     <span className="text-base font-black italic tracking-tighter">₹{total.toFixed(0)}</span>
+                  </div>
+                </div>
+              )}
 
-              {/* Row 3: Options */}
-              <div className="flex items-center gap-4 px-2">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                   <input 
-                     type="checkbox" 
-                     className="w-4 h-4 rounded-sm font-bold border-2" 
-                     checked={isPaid}
-                     onChange={(e) => { playClickSound(); setIsPaid(e.target.checked); }}
-                   />
-                   <span className="text-white font-bold text-[10px] uppercase tracking-tighter transition-all">It's Paid</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                   <input 
-                     type="checkbox" 
-                     className="w-4 h-4 rounded-sm accent-[#E1261C] border-2" 
-                     checked={isLoyalty}
-                     onChange={(e) => { playClickSound(); setIsLoyalty(e.target.checked); }}
-                   />
-                   <span className="text-white font-bold text-[10px] uppercase tracking-tighter transition-all">Loyalty</span>
-                </label>
-                <button 
-                  onClick={() => { playClickSound(); alert('Virtual Wallet Activated'); }}
-                  className="flex items-center gap-2 hover:bg-white/5 p-1 rounded transition-colors group active:scale-95"
-                >
-                   <div className="bg-[#FF9800] text-white p-1 rounded-sm shadow-sm"><Zap size={10} fill="currentColor" /></div>
-                   <span className="text-white font-bold text-[10px] uppercase opacity-60 group-hover:opacity-100 transition-opacity">Virtual Wallet</span>
-                </button>
-              </div>
+              {/* Row 2: Payment Methods - hidden in pickup mode */}
+              {!isPickupMode && (
+                <div className="flex items-center justify-between px-2 py-1 border-y border-white/5">
+                  {['Cash', 'Card', 'Due', 'Other', 'Part'].map(method => (
+                    <label key={method} className="flex items-center gap-1.5 cursor-pointer group">
+                       <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
+                          <div className={`w-full h-full rounded-full ${paymentMode === method ? 'bg-white' : 'group-hover:bg-white/10'}`} />
+                       </div>
+                       <input 
+                         type="radio" 
+                         className="hidden" 
+                         name="payment" 
+                         value={method} 
+                         checked={paymentMode === method}
+                         onChange={() => { 
+                           playClickSound(); 
+                           setPaymentMode(method);
+                           if (method === 'Other') setIsOtherPaymentModalOpen(true);
+                         }}
+                       />
+                       <span className={`font-bold text-[10px] transition-colors ${paymentMode === method ? 'text-white' : 'text-white/60'}`}>{method}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* Row 3: Options - hidden in pickup mode */}
+              {!isPickupMode && (
+                <div className="flex items-center gap-4 px-2">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                     <input 
+                       type="checkbox" 
+                       className="w-4 h-4 rounded-sm font-bold border-2" 
+                       checked={isPaid}
+                       onChange={(e) => { playClickSound(); setIsPaid(e.target.checked); }}
+                     />
+                     <span className="text-white font-bold text-[10px] uppercase tracking-tighter transition-all">It's Paid</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                     <input 
+                       type="checkbox" 
+                       className="w-4 h-4 rounded-sm accent-[#E1261C] border-2" 
+                       checked={isLoyalty}
+                       onChange={(e) => { playClickSound(); setIsLoyalty(e.target.checked); }}
+                     />
+                     <span className="text-white font-bold text-[10px] uppercase tracking-tighter transition-all">Loyalty</span>
+                  </label>
+                  <button 
+                    onClick={() => { playClickSound(); alert('Virtual Wallet Activated'); }}
+                    className="flex items-center gap-2 hover:bg-white/5 p-1 rounded transition-colors group active:scale-95"
+                  >
+                     <div className="bg-[#FF9800] text-white p-1 rounded-sm shadow-sm"><Zap size={10} fill="currentColor" /></div>
+                     <span className="text-white font-bold text-[10px] uppercase opacity-60 group-hover:opacity-100 transition-opacity">Virtual Wallet</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Always Visible Action Buttons (Row 4) */}
-            <div className="grid grid-cols-4 gap-1 p-2 border-t border-white/5">
-              <ActionButton onClick={() => handleSave(false)} label="Save" color="bg-[#E1261C]" />
-              <ActionButton onClick={() => handleSave(true)} label="Print" color="bg-[#E1261C]" />
-              <ActionButton onClick={() => handleKOT(false)} label="KOT" color="bg-white" textColor="text-gray-800" />
-              <ActionButton 
-                onClick={handleClearTable} 
-                label="Clear Table" 
-                color={orders[tableId]?.status === 'paid' ? "bg-emerald-600" : "bg-gray-100"} 
-                textColor={orders[tableId]?.status === 'paid' ? "text-white" : "text-gray-400"} 
-              />
-              {(orderType === 'pickup' || orderType === 'takeaway') && (
+            {/* Always Visible Action Buttons (Row 4) - hidden in pickup mode */}
+            {!isPickupMode && (
+              <div className="grid grid-cols-4 gap-1 p-2 border-t border-white/5">
+                <ActionButton onClick={() => handleSave(false)} label="Save" color="bg-[#E1261C]" />
+                <ActionButton onClick={() => handleSave(true)} label="Print" color="bg-[#E1261C]" />
+                <ActionButton onClick={() => handleKOT(false)} label="KOT" color="bg-white" textColor="text-gray-800" />
+                <ActionButton 
+                  onClick={handleClearTable} 
+                  label="Clear Table" 
+                  color={orders[tableId]?.status === 'paid' ? "bg-emerald-600" : "bg-gray-100"} 
+                  textColor={orders[tableId]?.status === 'paid' ? "text-white" : "text-gray-400"} 
+                />
+              </div>
+            )}
+            {/* Download Bill + KOT - only shown in pickup mode */}
+            {isPickupMode && (
+              <div className="grid grid-cols-1 gap-1 p-2 border-t border-white/5">
                 <ActionButton 
                   onClick={handleDownloadBillAndKOT} 
                   label="Download Bill + KOT" 
                   color="bg-[#00BCD4]" 
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

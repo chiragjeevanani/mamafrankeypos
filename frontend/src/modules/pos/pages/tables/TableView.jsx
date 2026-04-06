@@ -14,17 +14,23 @@ export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, clearTable, carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-    sections, tables, setTableWaiter
+    sections, tables, setTableWaiter, addPosTable
   } = usePos();
 
   // --- Car Service state ---
   const [carSearch, setCarSearch] = useState('');
   const [showAddCar, setShowAddCar] = useState(false);
   const [newCarNumber, setNewCarNumber] = useState('');
+  const [pendingCarNumber, setPendingCarNumber] = useState(null); // car number waiting for waiter selection
   
   // --- Waiter Selection state ---
   const [showWaiterModal, setShowWaiterModal] = useState(false);
   const [selectedTableForWaiter, setSelectedTableForWaiter] = useState(null);
+
+  // --- Add Table Modal state ---
+  const [showAddTable, setShowAddTable] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState('');
+  const [newTableNumber, setNewTableNumber] = useState('');
 
   const handleTableClick = (table) => {
     // Check if waiter is already assigned
@@ -33,7 +39,8 @@ export default function TableView() {
       : orders[table.id];
 
     if (existingOrder?.waiter) {
-      navigate(`/pos/order/${table.id}`, { state: { waiter: existingOrder.waiter } });
+      const isCarOrder = (table.type === 'CAR' || table.sectionId === 'car-service');
+      navigate(`/pos/order/${table.id}`, { state: { waiter: existingOrder.waiter, fromCarService: isCarOrder } });
       return;
     }
 
@@ -44,7 +51,17 @@ export default function TableView() {
   const handleWaiterSelect = (waiter) => {
     playClickSound();
     setShowWaiterModal(false);
+
+    // === NEW CAR flow: car number was entered, now create order and navigate ===
+    if (pendingCarNumber) {
+      addCarOrder(pendingCarNumber, [], 0, waiter);
+      const carId = pendingCarNumber;
+      setPendingCarNumber(null);
+      navigate(`/pos/order/${carId}`, { state: { waiter, fromCarService: true } });
+      return;
+    }
     
+    // === EXISTING TABLE / CAR CARD flow ===
     // Set waiter in context immediately
     if (selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service') {
        // if it doesn't has an order yet, start one with the waiter
@@ -55,7 +72,8 @@ export default function TableView() {
        setTableWaiter(selectedTableForWaiter.id, waiter);
     }
 
-    navigate(`/pos/order/${selectedTableForWaiter.id}`, { state: { waiter } });
+    const isCarTable = selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service';
+    navigate(`/pos/order/${selectedTableForWaiter.id}`, { state: { waiter, fromCarService: isCarTable } });
   };
 
   const handlePrintKOT = (e, order, tableName) => {
@@ -95,10 +113,19 @@ export default function TableView() {
           >
             <Car size={14} /> Car Service
           </button>
-          <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95">
+          <button
+            onClick={() => navigate('/pos/order/pickup', { state: { fromPickup: true } })}
+            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95"
+          >
             Pick Up
           </button>
-          <button className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors flex items-center gap-1 uppercase shadow-sm active:scale-95">
+          <button 
+            onClick={() => {
+              if (sections.length > 0) setSelectedSectionId(sections[0].id);
+              setShowAddTable(true);
+            }}
+            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors flex items-center gap-1 uppercase shadow-sm active:scale-95"
+          >
             <Plus size={14} /> Add Table
           </button>
         </div>
@@ -336,7 +363,7 @@ export default function TableView() {
 
                       <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${car.id}`); }}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${car.id}`, { state: { fromCarService: true } }); }}
                           className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
                         >
                           <Eye size={12} strokeWidth={2.5} />
@@ -507,9 +534,11 @@ export default function TableView() {
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newCarNumber.trim()) {
-                    addCarOrder(newCarNumber);
+                    setPendingCarNumber(newCarNumber);
                     setNewCarNumber('');
                     setShowAddCar(false);
+                    setSelectedTableForWaiter(null);
+                    setShowWaiterModal(true);
                   }
                 }}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-black outline-none focus:ring-2 focus:ring-[#E1261C]/30 bg-gray-50 tracking-[0.2em] text-center uppercase mb-4"
@@ -526,9 +555,12 @@ export default function TableView() {
                 <button
                   onClick={() => {
                     if (!newCarNumber.trim()) return;
-                    addCarOrder(newCarNumber);
+                    // Store the car number and open waiter selection
+                    setPendingCarNumber(newCarNumber);
                     setNewCarNumber('');
                     setShowAddCar(false);
+                    setSelectedTableForWaiter(null); // clear table selection — pending car will be used
+                    setShowWaiterModal(true);
                   }}
                   className="flex-1 py-2.5 bg-[#E1261C] text-white rounded-xl text-[11px] font-black hover:bg-[#4E342E] transition-colors uppercase tracking-wider shadow-sm active:scale-95"
                 >
@@ -586,6 +618,161 @@ export default function TableView() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      {/* Add Table Modal */}
+      <AnimatePresence>
+        {showAddTable && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddTable(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border border-gray-100"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-[#E1261C] rounded-xl flex items-center justify-center">
+                    <Plus size={16} className="text-white" />
+                  </div>
+                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight">Add New Table</h3>
+                </div>
+                <button onClick={() => setShowAddTable(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                  <X size={16} className="text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-5">
+                {/* Section Select */}
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">1. Select Section</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {sections.filter(s => s.id !== 'car-service').map(section => (
+                      <button
+                        key={section.id}
+                        onClick={() => {
+                          setSelectedSectionId(section.id);
+                          setNewTableNumber('');
+                        }}
+                        className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                          selectedSectionId === section.id 
+                            ? 'bg-[#E1261C] border-[#E1261C] text-white shadow-md shadow-[#E1261C]/20 scale-[1.02]' 
+                            : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
+                        }`}
+                      >
+                        {section.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Table Number Selection Grid */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">2. Select Table Number</label>
+                    {newTableNumber && (
+                      <span className="text-[10px] font-black text-[#E1261C] uppercase bg-[#E1261C]/10 px-2 py-0.5 rounded-md">
+                        Selected: {(() => {
+                           let prefix = '';
+                           if (selectedSectionId === 'ac') prefix = 'AC';
+                           else if (selectedSectionId === 'garden') prefix = 'G';
+                           else if (selectedSectionId === 'non-ac') prefix = 'NAC';
+                           else if (selectedSectionId === 'rooftops') prefix = 'R';
+                           else if (selectedSectionId === 'second-floor') prefix = 'SF';
+                           else {
+                             const section = sections.find(s => s.id === selectedSectionId);
+                             prefix = section ? section.label.split(' ').map(w => w[0]).join('').toUpperCase() : '';
+                           }
+                           return `${prefix}${newTableNumber}`;
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3">
+                    <div className="grid grid-cols-5 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                      {Array.from({ length: 100 }, (_, i) => i + 1).map(num => {
+                        let prefix = '';
+                        if (selectedSectionId === 'ac') prefix = 'AC';
+                        else if (selectedSectionId === 'garden') prefix = 'G';
+                        else if (selectedSectionId === 'non-ac') prefix = 'NAC';
+                        else if (selectedSectionId === 'rooftops') prefix = 'R';
+                        else if (selectedSectionId === 'second-floor') prefix = 'SF';
+                        else {
+                          const section = sections.find(s => s.id === selectedSectionId);
+                          prefix = section ? section.label.split(' ').map(w => w[0]).join('').toUpperCase() : '';
+                        }
+                        
+                        const tableName = `${prefix}${num}`;
+                        const exists = tables.some(t => t.sectionId === selectedSectionId && t.name === tableName);
+                        
+                        if (exists) return null;
+
+                        return (
+                          <button
+                            key={num}
+                            onClick={() => setNewTableNumber(num.toString())}
+                            className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-black transition-all border ${
+                              newTableNumber === num.toString()
+                                ? 'bg-gray-800 border-gray-800 text-white scale-110 shadow-lg z-10'
+                                : 'bg-white border-gray-200 text-gray-600 hover:border-[#E1261C] hover:text-[#E1261C]'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => setShowAddTable(false)}
+                  className="flex-1 py-3 border border-gray-100 rounded-xl text-[10px] font-black text-gray-400 hover:bg-gray-50 transition-colors uppercase tracking-[0.1em]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!selectedSectionId || !newTableNumber) return;
+                    
+                    let prefix = '';
+                    if (selectedSectionId === 'ac') prefix = 'AC';
+                    else if (selectedSectionId === 'garden') prefix = 'G';
+                    else if (selectedSectionId === 'non-ac') prefix = 'NAC';
+                    else if (selectedSectionId === 'rooftops') prefix = 'R';
+                    else if (selectedSectionId === 'second-floor') prefix = 'SF';
+                    else {
+                      const section = sections.find(s => s.id === selectedSectionId);
+                      prefix = section ? section.label.split(' ').map(w => w[0]).join('').toUpperCase() : '';
+                    }
+                    
+                    const tableName = `${prefix}${newTableNumber}`;
+                    addPosTable(selectedSectionId, tableName);
+                    setNewTableNumber('');
+                    setShowAddTable(false);
+                  }}
+                  disabled={!selectedSectionId || !newTableNumber}
+                  className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black transition-all uppercase tracking-[0.1em] shadow-lg active:scale-95 ${
+                    (!selectedSectionId || !newTableNumber) 
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                      : 'bg-[#E1261C] hover:bg-[#4E342E]'
+                  }`}
+                >
+                  Add Table
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

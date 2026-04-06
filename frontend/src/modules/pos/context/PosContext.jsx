@@ -214,13 +214,30 @@ export function PosProvider({ children }) {
     });
   };
 
+  const addPosTable = (sectionId, tableName) => {
+    setTables(prev => {
+      // Duplicate table check (same section and same name)
+      if (prev.some(t => t.sectionId === sectionId && t.name === tableName)) {
+        return prev;
+      }
+      const newTable = {
+        id: tableName.toUpperCase(),
+        name: tableName,
+        sectionId: sectionId,
+        status: 'blank',
+        capacity: 4
+      };
+      return [...prev, newTable];
+    });
+  };
+
   return (
     <PosContext.Provider value={{ 
       isSidebarOpen, orders, toggleSidebar, closeSidebar, 
       isCustomerSectionOpen, toggleCustomerSection,
       placeKOT, saveOrder, holdOrder, settleOrder, clearTable, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-      sections, setSections, tables, setTables,
+      sections, setSections, tables, setTables, addPosTable,
       user, setUser
     }}>
       {children}

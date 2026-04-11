@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check } from 'lucide-react';
+import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PosTopNavbar from '../../components/PosTopNavbar';
-import { TABLE_STATUS_COLORS } from '../../data/tablesMockData';
 import { usePos } from '../../context/PosContext';
 import { Trash2 } from 'lucide-react';
-import { printKOTReceipt } from '../../utils/printKOT';
+import { printBillReceipt } from '../../utils/printBill';
 import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
 import { playClickSound } from '../../utils/sounds';
+import { getTableColor, getTableStatusText } from '../../utils/tableLifecycle';
 
 export default function TableView() {
   const navigate = useNavigate();
   const { 
-    orders, clearTable, carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-    sections, tables, setTableWaiter, addPosTable
+    orders, saveOrder, settleOrder, clearTable, carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
+    sections, tables, setTableWaiter, addPosTable, user
   } = usePos();
 
   // --- Car Service state ---
@@ -31,9 +31,10 @@ export default function TableView() {
   const [showAddTable, setShowAddTable] = useState(false);
   const [selectedSectionId, setSelectedSectionId] = useState('');
   const [newTableNumber, setNewTableNumber] = useState('');
+  const [showSettlementModal, setShowSettlementModal] = useState(false);
+  const [settlementTarget, setSettlementTarget] = useState(null);
 
   const handleTableClick = (table) => {
-    // Check if waiter is already assigned
     const existingOrder = (table.type === 'CAR' || table.sectionId === 'car-service') 
       ? carOrders[table.id] 
       : orders[table.id];
@@ -76,9 +77,45 @@ export default function TableView() {
     navigate(`/pos/order/${selectedTableForWaiter.id}`, { state: { waiter, fromCarService: isCarTable } });
   };
 
-  const handlePrintKOT = (e, order, tableName) => {
+  const handlePrintBill = (e, order, table, orderType = 'dine-in', options = {}) => {
     e.stopPropagation();
-    printKOTReceipt(order, { name: tableName });
+    const subTotal = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+    const tax = Number((subTotal * 0.05).toFixed(2));
+    const total = Math.round(subTotal + tax);
+    
+    printBillReceipt(
+      order, 
+      { name: table.name }, 
+      { total, subTotal, tax, discount: 0, orderType, billerName: user?.name }
+    );
+
+    saveOrder(table.id, { isCarOrder: options.isCarOrder });
+  };
+
+  const handleOpenSettlement = (e, table, options = {}) => {
+    e.stopPropagation();
+    setSettlementTarget({
+      id: table.id,
+      name: table.name,
+      isCarOrder: !!options.isCarOrder,
+    });
+    setShowSettlementModal(true);
+  };
+
+  const handleSettlement = (mode) => {
+    if (!settlementTarget) return;
+
+    const paymentMethod =
+      mode === 'cash' ? 'Cash' : mode === 'upi' ? 'UPI' : 'Cashless';
+
+    settleOrder(settlementTarget.id, paymentMethod, {
+      isCarOrder: settlementTarget.isCarOrder,
+    });
+    clearTable(settlementTarget.id, {
+      isCarOrder: settlementTarget.isCarOrder,
+    });
+    setShowSettlementModal(false);
+    setSettlementTarget(null);
   };
 
   const handleClearTable = (e, tableId) => {
@@ -150,11 +187,9 @@ export default function TableView() {
 
           <div className="flex items-center gap-3 ml-2 border-l border-gray-100 pl-4">
             {[
-              { label: 'BLANK', color: '#d1d5db' },
-              { label: 'RUNNING', color: '#3b82f6' },
-              { label: 'PRINTED', color: '#f59e0b' },
-              { label: 'PAID', color: '#10b981' },
-              { label: 'RUNNING KOT', color: '#facc15' },
+              { label: 'DEFAULT', color: '#d1d5db' },
+              { label: 'ORDER PLACED', color: '#facc15' },
+              { label: 'KOT PRINTED', color: '#10b981' },
             ].map((config, idx) => (
               <div key={idx} className="flex items-center gap-1.5">
                 <div 
@@ -179,8 +214,11 @@ export default function TableView() {
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2 md:gap-3">
               {tables.filter(t => t.sectionId === section.id).map((table) => {
                 const order = orders[table.id];
-                const statusConfig = TABLE_STATUS_COLORS[order?.status || table.status] || TABLE_STATUS_COLORS.blank;
-                const isRunningKOT = !!order;
+                const tableLifecycle = order ? { ...table, ...order } : table;
+                const statusConfig = getTableColor(tableLifecycle);
+                const statusLabel = getTableStatusText(tableLifecycle);
+                const isRunningKOT = !!(order?.kots?.length || order?.orderPlaced || order?.billPrinted);
+                const showSettlement = order?.billPrinted;
                 
                 // Calculate cumulative total for the table
                 const tableTotal = isRunningKOT 
@@ -193,7 +231,7 @@ export default function TableView() {
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleTableClick(table)}
-                    className={`aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden`}
+                    className={`aspect-square rounded-xl flex flex-col items-center justify-between p-2 pb-1.5 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden`}
                     style={{
                       borderStyle: statusConfig.borderStyle,
                       borderColor: statusConfig.borderColor,
@@ -203,18 +241,9 @@ export default function TableView() {
                   >
                     {isRunningKOT ? (
                       <>
-                        {/* Time Badge */}
-                        <div className="w-full flex justify-center">
-                          <div className="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
-                            <Clock size={8} className={statusConfig.textColor === '#ffffff' ? 'text-white' : 'text-gray-600'} />
-                            <span className="text-[8px] font-black whitespace-nowrap uppercase tracking-tighter" style={{ color: statusConfig.textColor }}>
-                              {getElapsedTime(order.sessionStartTime)}
-                            </span>
-                          </div>
-                        </div>
 
                         {/* Center Info */}
-                        <div className="flex-1 flex flex-col items-center justify-center -mt-1">
+                        <div className="flex-1 flex flex-col items-center justify-center min-h-0">
                           <span className="font-black text-[13px] tracking-tight leading-none" style={{ color: statusConfig.textColor }}>
                             {table.name}
                           </span>
@@ -223,28 +252,37 @@ export default function TableView() {
                               {order.waiter.name}
                             </span>
                           )}
-                          <div className="mt-1.5 px-2 py-0.5 bg-black/5 rounded-md">
-                            <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                          <span className="mt-0.5 text-[6.5px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                            {statusLabel}
+                          </span>
+                          <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
+                            <span className="font-black text-[9px] tracking-tight" style={{ color: statusConfig.textColor }}>
                                ₹ {tableTotal.toFixed(0)}
                             </span>
                           </div>
                         </div>
 
                         {/* Bottom Actions */}
-                        <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
-                           <button 
-                             onClick={(e) => handlePrintKOT(e, order, table.name)}
-                             className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90"
-                           >
-                              <Printer size={12} strokeWidth={2.5} />
-                           </button>
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${table.id}`); }}
-                             className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
-                           >
-                               <Eye size={12} strokeWidth={2.5} />
-                           </button>
-                           {order.status === 'paid' && (
+                         <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[30px]">
+                            {!showSettlement && (
+                              <button 
+                                onClick={(e) => handlePrintBill(e, order, table)}
+                                className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                              >
+                                 <Printer size={10} strokeWidth={2.5} />
+                                 Print Bill
+                              </button>
+                            )}
+                            {showSettlement && (
+                              <button
+                                onClick={(e) => handleOpenSettlement(e, table)}
+                                className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                              >
+                                <Wallet size={10} strokeWidth={2.5} />
+                                Settlement
+                              </button>
+                            )}
+                           {order.billPrinted && (
                              <button 
                                onClick={(e) => handleClearTable(e, table.id)}
                                className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
@@ -313,9 +351,12 @@ export default function TableView() {
             {/* ── Admin-configured car tables ── */}
             {tables.filter(t => t.sectionId === 'car-service').map((car) => {
               const order = carOrders[car.id];
-              const statusConfig = TABLE_STATUS_COLORS[order?.status || 'blank'] || TABLE_STATUS_COLORS.blank;
-              const isActive = !!order;
+              const carLifecycle = order ? { ...car, ...order } : car;
+              const statusConfig = getTableColor(carLifecycle);
+              const statusLabel = getTableStatusText(carLifecycle);
+              const isActive = !!(order?.kots?.length || order?.orderPlaced || order?.billPrinted);
               const carTotal = isActive ? order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0 : 0;
+              const showSettlement = order?.billPrinted;
 
               return (
                 <motion.div
@@ -323,7 +364,7 @@ export default function TableView() {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleTableClick({ id: car.id, name: car.name, sectionId: 'car-service' })}
-                  className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
+                  className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 pb-1.5 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                   style={{
                     borderStyle: statusConfig.borderStyle,
                     borderColor: statusConfig.borderColor,
@@ -333,16 +374,8 @@ export default function TableView() {
                 >
                   {isActive ? (
                     <>
-                      <div className="w-full flex justify-center">
-                        <div className="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
-                          <Clock size={8} className={statusConfig.textColor === '#ffffff' ? 'text-white' : 'text-gray-600'} />
-                          <span className="text-[8px] font-black whitespace-nowrap uppercase tracking-tighter" style={{ color: statusConfig.textColor }}>
-                            {getElapsedTime(order.sessionStartTime)}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="flex-1 flex flex-col items-center justify-center -mt-1 w-full px-1">
+                      <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
                         <span
                           className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
                           style={{ color: statusConfig.textColor }}
@@ -354,21 +387,37 @@ export default function TableView() {
                             {order.waiter.name}
                           </span>
                         )}
-                        <div className="mt-1.5 px-2 py-0.5 bg-black/5 rounded-md">
+                        <span className="mt-1 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                          {statusLabel}
+                        </span>
+                        <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
                           <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
                             ₹{carTotal.toFixed(0)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${car.id}`, { state: { fromCarService: true } }); }}
-                          className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
-                        >
-                          <Eye size={12} strokeWidth={2.5} />
-                        </button>
-                        {order.status === 'paid' && (
+                      <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
+                        {!showSettlement && (
+                          <button
+                            onClick={(e) => handlePrintBill(e, order, car, 'car-service', { isCarOrder: true })}
+                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                          >
+                            <Printer size={10} strokeWidth={2.5} />
+                            Print Bill
+                          </button>
+                        )}
+                        {showSettlement && (
+                          <button
+                            onClick={(e) => handleOpenSettlement(e, car, { isCarOrder: true })}
+                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                          >
+                            <Wallet size={10} strokeWidth={2.5} />
+                            Settlement
+                          </button>
+                        )}
+
+                        {order.billPrinted && (
                           <button
                             onClick={(e) => { e.stopPropagation(); if (window.confirm(`Clear car ${car.name}?`)) clearCarOrder(car.id); }}
                             className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
@@ -398,8 +447,10 @@ export default function TableView() {
                   car.carNumber.toLowerCase().includes(carSearch.toLowerCase())
                 )
                 .map((car) => {
-                  const statusConfig = TABLE_STATUS_COLORS[car.status] || TABLE_STATUS_COLORS.blank;
+                  const statusConfig = getTableColor(car);
+                  const statusLabel = getTableStatusText(car);
                   const carTotal = car.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+                  const showSettlement = car.billPrinted;
 
                   return (
                     <motion.div
@@ -411,7 +462,7 @@ export default function TableView() {
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleTableClick({ id: car.carNumber, sectionId: 'car-service' })}
-                      className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
+                      className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 pb-1.5 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                       style={{
                         borderStyle: statusConfig.borderStyle,
                         borderColor: statusConfig.borderColor,
@@ -419,18 +470,9 @@ export default function TableView() {
                         backgroundColor: statusConfig.color
                       }}
                     >
-                      {/* Elapsed time badge */}
-                      <div className="w-full flex justify-center">
-                        <div className="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/20">
-                          <Clock size={8} className={statusConfig.textColor === '#ffffff' ? 'text-white' : 'text-gray-600'} />
-                          <span className="text-[8px] font-black whitespace-nowrap uppercase tracking-tighter" style={{ color: statusConfig.textColor }}>
-                            {getElapsedTime(car.sessionStartTime)}
-                          </span>
-                        </div>
-                      </div>
 
                       {/* Car number + total */}
-                      <div className="flex-1 flex flex-col items-center justify-center -mt-1 w-full px-1">
+                      <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
                         <span
                           className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
                           style={{ color: statusConfig.textColor }}
@@ -442,7 +484,10 @@ export default function TableView() {
                             {car.waiter.name}
                           </span>
                         )}
-                        <div className="mt-1.5 px-2 py-0.5 bg-black/5 rounded-md">
+                        <span className="mt-1 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                          {statusLabel}
+                        </span>
+                        <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
                           <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
                             ₹{carTotal.toFixed(0)}
                           </span>
@@ -450,14 +495,27 @@ export default function TableView() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="w-full flex items-center justify-center gap-1.5 opacity-90 pb-1">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); navigate(`/pos/order/${car.carNumber}`, { state: { fromCarService: true } }); }}
-                          className="p-1.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-gray-500 hover:bg-white transition-all active:scale-90"
-                        >
-                           <Eye size={12} strokeWidth={2.5} />
-                        </button>
-                        {car.status === 'paid' && (
+                      <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
+                        {!showSettlement && (
+                          <button
+                            onClick={(e) => handlePrintBill(e, car, { id: car.carNumber, name: car.carNumber }, 'car-service', { isCarOrder: true })}
+                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                          >
+                            <Printer size={10} strokeWidth={2.5} />
+                            Print Bill
+                          </button>
+                        )}
+                        {showSettlement && (
+                          <button
+                            onClick={(e) => handleOpenSettlement(e, { id: car.carNumber, name: car.carNumber }, { isCarOrder: true })}
+                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                          >
+                            <Wallet size={10} strokeWidth={2.5} />
+                            Settlement
+                          </button>
+                        )}
+
+                        {car.billPrinted && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -560,6 +618,66 @@ export default function TableView() {
                 >
                   🚗 Create
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSettlementModal && settlementTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => {
+              setShowSettlementModal(false);
+              setSettlementTarget(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#E1261C]">Settlement</p>
+                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight mt-1">
+                    {settlementTarget.name}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSettlementModal(false);
+                    setSettlementTarget(null);
+                  }}
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X size={16} className="text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3">
+                {[
+                  { id: 'cash', label: 'Cash' },
+                  { id: 'upi', label: 'UPI' },
+                  { id: 'cashless', label: 'Cashless' },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => handleSettlement(option.id)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-[#E1261C] hover:bg-red-50 transition-all"
+                  >
+                    <span className="text-sm font-black text-gray-700 uppercase tracking-wide">
+                      {option.label}
+                    </span>
+                    <Check size={15} className="text-[#E1261C]" />
+                  </button>
+                ))}
               </div>
             </motion.div>
           </motion.div>

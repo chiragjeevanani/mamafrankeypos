@@ -1,13 +1,29 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import {
+  applyTableLifecycle,
+  normalizePaymentMode,
+  normalizeTableLifecycle,
+  resetTableLifecycle,
+} from '../utils/tableLifecycle';
 
 const PosContext = createContext();
+
+const normalizeStoredSession = (session = {}) => normalizeTableLifecycle(session);
+const normalizeStoredTables = (items = []) => items.map((table) => normalizeTableLifecycle(table));
 
 export function PosProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('rms_pos_orders');
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) return {};
+
+      return Object.fromEntries(
+        Object.entries(JSON.parse(saved)).map(([tableId, order]) => [
+          tableId,
+          normalizeStoredSession(order),
+        ])
+      );
     } catch {
       return {};
     }
@@ -17,7 +33,14 @@ export function PosProvider({ children }) {
   const [carOrders, setCarOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('rms_pos_car_orders');
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) return {};
+
+      return Object.fromEntries(
+        Object.entries(JSON.parse(saved)).map(([tableId, order]) => [
+          tableId,
+          normalizeStoredSession(order),
+        ])
+      );
     } catch {
       return {};
     }
@@ -44,7 +67,7 @@ export function PosProvider({ children }) {
   const [tables, setTables] = useState(() => {
     try {
       const saved = localStorage.getItem('rms_pos_tables');
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeStoredTables(JSON.parse(saved));
 
       // Default Tables generated from sections logic
       const defaultTables = [
@@ -54,7 +77,7 @@ export function PosProvider({ children }) {
         ...Array.from({ length: 10 }, (_, i) => ({ id: `R${i + 1}`, name: `R${i + 1}`, sectionId: 'rooftops', status: 'blank', capacity: 4 })),
         ...Array.from({ length: 12 }, (_, i) => ({ id: `SF${i + 1}`, name: `SF${i + 1}`, sectionId: 'second-floor', status: 'blank', capacity: 4 }))
       ];
-      return defaultTables;
+      return normalizeStoredTables(defaultTables);
     } catch { return []; }
   });
 
@@ -74,8 +97,8 @@ export function PosProvider({ children }) {
     setTables(prev => prev.map(table => {
       const order = orders[table.id];
       // If no active order session, reset to blank
-      if (!order) return { ...table, status: 'blank' };
-      return table;
+      if (!order) return resetTableLifecycle(table);
+      return applyTableLifecycle(table, order);
     }));
   }, []); // Run once on mount
 
@@ -95,14 +118,28 @@ export function PosProvider({ children }) {
   const closeSidebar = () => setIsSidebarOpen(false);
   const toggleCustomerSection = () => setIsCustomerSectionOpen(prev => !prev);
 
-  const placeKOT = (tableId, cart, total, staff = null) => {
+  const updateTableLifecycleById = (tableId, updates) => {
+    setTables(prev => prev.map(table => (
+      table.id === tableId ? applyTableLifecycle(table, updates) : table
+    )));
+  };
+
+  const resetTableById = (tableId) => {
+    setTables(prev => prev.map(table => (
+      table.id === tableId ? resetTableLifecycle(table) : table
+    )));
+  };
+
+  const placeKOT = (tableId, cart, total, staff = null, options = {}) => {
+    const { kotPrinted = false } = options;
+
     setOrders(prev => {
-      const existingOrder = prev[tableId] || { 
+      const existingOrder = normalizeStoredSession(prev[tableId] || { 
         kots: [], 
         status: 'blank', 
         sessionStartTime: new Date().toISOString(),
         waiter: staff
-      };
+      });
       
       const newKOT = {
         id: (existingOrder.kots?.length || 0) + 1,
@@ -118,20 +155,75 @@ export function PosProvider({ children }) {
           ...existingOrder,
           kots: [...(existingOrder.kots || []), newKOT],
           waiter: staff || existingOrder.waiter, // Primary waiter for the table
-          status: 'running-kot'
+          orderPlaced: true,
+          kotPrinted,
+          billPrinted: false,
+          paymentMode: null,
+          status: kotPrinted ? 'printed' : 'running-kot'
         }
       };
     });
+
+    updateTableLifecycleById(tableId, {
+      orderPlaced: true,
+      kotPrinted,
+      billPrinted: false,
+      paymentMode: null,
+    });
   };
 
-  const saveOrder = (tableId) => {
-     setOrders(prev => ({
-       ...prev,
-       [tableId]: {
-         ...prev[tableId],
-         status: 'printed'
-       }
-     }));
+  const markKOTPrinted = (tableId, options = {}) => {
+    const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
+    const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+
+    setOrderStore(prev => {
+      if (!prev[tableId]) return prev;
+
+      return {
+        ...prev,
+        [tableId]: {
+          ...normalizeStoredSession(prev[tableId]),
+          orderPlaced: true,
+          kotPrinted: true,
+          status: 'printed',
+        }
+      };
+    });
+
+    if (!isCarOrder) {
+      updateTableLifecycleById(tableId, {
+        orderPlaced: true,
+        kotPrinted: true,
+      });
+    }
+  };
+
+  const saveOrder = (tableId, options = {}) => {
+     const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
+     const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+
+     setOrderStore(prev => {
+       if (!prev[tableId]) return prev;
+
+       return {
+         ...prev,
+         [tableId]: {
+           ...normalizeStoredSession(prev[tableId]),
+           orderPlaced: true,
+           kotPrinted: true,
+           billPrinted: true,
+           status: 'printed'
+         }
+       };
+     });
+
+     if (!isCarOrder) {
+       updateTableLifecycleById(tableId, {
+         orderPlaced: true,
+         kotPrinted: true,
+         billPrinted: true,
+       });
+     }
   };
 
   const holdOrder = (tableId) => {
@@ -144,33 +236,71 @@ export function PosProvider({ children }) {
     }));
   };
 
-  const settleOrder = (tableId, paymentMethod) => {
-     setOrders(prev => ({
-       ...prev,
-       [tableId]: {
-         ...prev[tableId],
-         status: 'paid',
-         paymentMethod
-       }
-     }));
+  const settleOrder = (tableId, paymentMethod, options = {}) => {
+     const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
+     const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+     const paymentMode = normalizePaymentMode(paymentMethod);
+
+     setOrderStore(prev => {
+       if (!prev[tableId]) return prev;
+
+       return {
+         ...prev,
+         [tableId]: {
+           ...normalizeStoredSession(prev[tableId]),
+           orderPlaced: true,
+           kotPrinted: true,
+           billPrinted: true,
+           status: 'paid',
+           paymentMethod,
+           paymentMode
+         }
+       };
+     });
+
+     if (!isCarOrder) {
+       updateTableLifecycleById(tableId, {
+         orderPlaced: true,
+         kotPrinted: true,
+         billPrinted: true,
+         paymentMode,
+       });
+     }
   };
 
-  const clearTable = (tableId) => {
+  const clearTable = (tableId, options = {}) => {
+    const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
+
     setOrders(prev => {
+      if (!prev[tableId]) return prev;
       const newOrders = { ...prev };
       delete newOrders[tableId];
       return newOrders;
     });
+
+    if (isCarOrder) {
+      setCarOrders(prev => {
+        if (!prev[tableId]) return prev;
+        const newOrders = { ...prev };
+        delete newOrders[tableId];
+        return newOrders;
+      });
+    }
+
+    resetTableById(tableId);
   };
 
   const setTableWaiter = (tableId, staff) => {
     setOrders(prev => ({
       ...prev,
       [tableId]: {
-        ...(prev[tableId] || { kots: [], status: 'blank', sessionStartTime: new Date().toISOString() }),
-        waiter: staff
+        ...normalizeStoredSession(prev[tableId] || { kots: [], status: 'running-kot', sessionStartTime: new Date().toISOString() }),
+        waiter: staff,
+        orderPlaced: true
       }
     }));
+    
+    updateTableLifecycleById(tableId, { orderPlaced: true });
   };
 
   // ---- Car Service helpers ----
@@ -184,6 +314,10 @@ export function PosProvider({ children }) {
         status: 'running-kot',
         sessionStartTime: new Date().toISOString(),
         waiter: staff,
+        orderPlaced: true,
+        kotPrinted: false,
+        billPrinted: false,
+        paymentMode: null,
         kots: [
           {
             id: 1,
@@ -201,7 +335,7 @@ export function PosProvider({ children }) {
     const key = carNumber.trim().toUpperCase();
     setCarOrders(prev => ({
       ...prev,
-      [key]: { ...prev[key], status }
+      [key]: { ...normalizeStoredSession(prev[key]), status }
     }));
   };
 
@@ -225,7 +359,8 @@ export function PosProvider({ children }) {
         name: tableName,
         sectionId: sectionId,
         status: 'blank',
-        capacity: 4
+        capacity: 4,
+        ...normalizeTableLifecycle()
       };
       return [...prev, newTable];
     });
@@ -235,7 +370,7 @@ export function PosProvider({ children }) {
     <PosContext.Provider value={{ 
       isSidebarOpen, orders, toggleSidebar, closeSidebar, 
       isCustomerSectionOpen, toggleCustomerSection,
-      placeKOT, saveOrder, holdOrder, settleOrder, clearTable, setTableWaiter,
+      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       sections, setSections, tables, setTables, addPosTable,
       user, setUser

@@ -31,6 +31,14 @@ export const TABLE_STATUS_COLORS = {
     borderColor: '#059669',
     borderStyle: 'solid'
   },
+  'kot-printed': {
+    label: 'KOT Printed',
+    color: '#10b981',
+    textColor: '#ffffff',
+    dot: '#ffffff',
+    borderColor: '#059669',
+    borderStyle: 'solid'
+  },
   'running-kot': {
     label: 'Running KOT Table',
     color: '#facc15',

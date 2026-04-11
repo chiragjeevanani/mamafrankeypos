@@ -337,7 +337,7 @@ export default function TableOrderScreen() {
                      <div className="pt-6 flex flex-col gap-4">
                         <button 
                           onClick={() => {
-                            placeKOT(tableId, currentOrder, total, staff);
+                            placeKOT(tableId, currentOrder, total, staff, { kotPrinted: true });
                             setShowCustomerInfoModal(false);
                             alert(`KOT Sent for Table ${id}!`);
                             navigate(-1);

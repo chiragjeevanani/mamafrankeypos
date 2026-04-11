@@ -9,7 +9,8 @@ export const printKOTReceipt = (orderData, tableInfo) => {
   const latestKot = orderData.kots?.[orderData.kots.length - 1];
   const kotNumber = latestKot?.id || Math.floor(100 + Math.random() * 900);
   const orderType = latestKot?.orderType || tableInfo?.orderType || 'Dine In';
-  const billerName = latestKot?.waiter?.name || tableInfo?.billerName || 'Biller';
+  const billerName = tableInfo?.billerName || latestKot?.waiter?.name || 'Biller';
+  const waiterName = tableInfo?.waiterName || latestKot?.waiter?.name || '';
 
   if (items.length === 0) return;
 
@@ -35,7 +36,8 @@ export const printKOTReceipt = (orderData, tableInfo) => {
   
   doc.setFont('courier', 'bold');
   doc.setFontSize(11);
-  doc.text(orderType.toUpperCase(), 40, 27, { align: 'center' });
+  const displayOrderType = orderType.toLowerCase() === 'car-service' ? 'CAR SERVICE' : orderType.toUpperCase();
+  doc.text(displayOrderType, 40, 27, { align: 'center' });
 
   // Helper for Drawing Dashed Lines
   const drawDashedLine = (yPos) => {
@@ -48,21 +50,28 @@ export const printKOTReceipt = (orderData, tableInfo) => {
   // Separator 1
   drawDashedLine(30);
 
-  // Biller Info
+  // Biller / Car Info
   doc.setFont('courier', 'normal');
   doc.setFontSize(11);
-  doc.text(`Biller: ${billerName}`, 5, 35);
   
-  // Separator 2
-  drawDashedLine(38);
+  let headerShift = 0;
+  if (orderType.toLowerCase() === 'car-service') {
+    doc.text(`CAR NO: ${tableNo}`, 5, 35);
+    doc.text(`WAITER: ${waiterName || 'Staff'}`, 5, 41);
+    drawDashedLine(44);
+    headerShift = 6;
+  } else {
+    doc.text(`WAITER: ${waiterName || billerName}`, 5, 35);
+    drawDashedLine(38);
+  }
 
   // Column Headers
   doc.setFontSize(10);
-  doc.text('Item', 5, 43);
-  doc.text('Qty.', 75, 43, { align: 'right' });
+  doc.text('Item', 5, 43 + headerShift);
+  doc.text('Qty.', 75, 43 + headerShift, { align: 'right' });
 
   // Items List
-  let y = 50;
+  let y = 50 + headerShift;
   items.forEach(item => {
     doc.setFont('courier', 'bold');
     const splitName = doc.splitTextToSize(item.name, 60);

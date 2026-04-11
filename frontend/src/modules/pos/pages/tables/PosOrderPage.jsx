@@ -25,7 +25,7 @@ export default function PosOrderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { 
-    placeKOT, saveOrder, settleOrder, holdOrder, clearTable,
+    placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable,
     orders, isCustomerSectionOpen, toggleCustomerSection, user
   } = usePos();
   
@@ -118,8 +118,8 @@ export default function PosOrderPage() {
   const isPickupMode = location.state?.fromPickup === true;
   const isCarServiceMode = location.state?.fromCarService === true;
   const [orderType, setOrderType] = useState(
-    isPickupMode ? 'pickup' : isCarServiceMode ? 'delivery' : 'dine-in'
-  ); // dine-in, delivery, pickup
+    isPickupMode ? 'pickup' : isCarServiceMode ? 'car-service' : 'dine-in'
+  ); // dine-in, car-service, pickup
   
   // States for interactive checkboxes/radios
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -306,10 +306,13 @@ export default function PosOrderPage() {
        return;
     }
     placeKOT(tableId, cart, total, selectedWaiter);
-    if (isPrint) printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name });
+    if (isPrint) {
+      printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
+      markKOTPrinted(tableId);
+    }
     setTimeout(() => {
       setCart([]); // Reset local cart after placing
-      navigate('/pos/tables');
+      window.location.reload(); 
     }, 300);
   };
 
@@ -470,8 +473,8 @@ export default function PosOrderPage() {
             {/* Car Service - only shown in car service mode */}
             {isCarServiceMode && (
               <button 
-                onClick={() => setOrderType('delivery')}
-                className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'delivery' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
+                onClick={() => setOrderType('car-service')}
+                className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'car-service' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
               >
                 Car Service
               </button>
@@ -808,27 +811,6 @@ export default function PosOrderPage() {
               {/* Row 1: Promo / Split / Return - hidden in pickup mode */}
               {!isPickupMode ? (
                 <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => { playClickSound(); setIsBogoActive(!isBogoActive); }}
-                    className={`${isBogoActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
-                  >
-                    Bogo Offer
-                  </button>
-                  <button 
-                    onClick={() => { playClickSound(); setIsSplitModalOpen(true); }}
-                    className={`${isSplitActive ? 'bg-[#4E342E]' : 'bg-[#E1261C]'} text-white px-3 py-1.5 rounded-sm font-bold text-[10px] uppercase transition-colors`}
-                  >
-                    Split
-                  </button>
-                  <label className="flex items-center gap-1.5 ml-1 cursor-pointer select-none">
-                     <input 
-                       type="checkbox" 
-                       className="w-4 h-4 rounded-sm" 
-                       checked={isSalesReturn}
-                       onChange={(e) => { playClickSound(); setIsSalesReturn(e.target.checked); }}
-                     />
-                     <span className="text-white font-bold text-[10px] uppercase tracking-tighter">Sales Return</span>
-                  </label>
                   <div className="ml-auto bg-[#FFD600] text-[#424242] px-3 py-1 flex items-center gap-2 rounded-sm shadow-inner">
                      <div className="bg-[#E1261C] text-white p-0.5 rounded-full"><Receipt size={10} strokeWidth={3} /></div>
                      <span className="text-[10px] font-bold uppercase">Total</span>
@@ -870,51 +852,12 @@ export default function PosOrderPage() {
                   ))}
                 </div>
               )}
-
-              {/* Row 3: Options - hidden in pickup mode */}
-              {!isPickupMode && (
-                <div className="flex items-center gap-4 px-2">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                     <input 
-                       type="checkbox" 
-                       className="w-4 h-4 rounded-sm font-bold border-2" 
-                       checked={isPaid}
-                       onChange={(e) => { playClickSound(); setIsPaid(e.target.checked); }}
-                     />
-                     <span className="text-white font-bold text-[10px] uppercase tracking-tighter transition-all">It's Paid</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                     <input 
-                       type="checkbox" 
-                       className="w-4 h-4 rounded-sm accent-[#E1261C] border-2" 
-                       checked={isLoyalty}
-                       onChange={(e) => { playClickSound(); setIsLoyalty(e.target.checked); }}
-                     />
-                     <span className="text-white font-bold text-[10px] uppercase tracking-tighter transition-all">Loyalty</span>
-                  </label>
-                  <button 
-                    onClick={() => { playClickSound(); alert('Virtual Wallet Activated'); }}
-                    className="flex items-center gap-2 hover:bg-white/5 p-1 rounded transition-colors group active:scale-95"
-                  >
-                     <div className="bg-[#FF9800] text-white p-1 rounded-sm shadow-sm"><Zap size={10} fill="currentColor" /></div>
-                     <span className="text-white font-bold text-[10px] uppercase opacity-60 group-hover:opacity-100 transition-opacity">Virtual Wallet</span>
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Always Visible Action Buttons (Row 4) - hidden in pickup mode */}
             {!isPickupMode && (
-              <div className="grid grid-cols-4 gap-1 p-2 border-t border-white/5">
-                <ActionButton onClick={() => handleSave(false)} label="Save" color="bg-[#E1261C]" />
-                <ActionButton onClick={() => handleSave(true)} label="Print" color="bg-[#E1261C]" />
-                <ActionButton onClick={() => handleKOT(false)} label="KOT" color="bg-white" textColor="text-gray-800" />
-                <ActionButton 
-                  onClick={handleClearTable} 
-                  label="Clear Table" 
-                  color={orders[tableId]?.status === 'paid' ? "bg-emerald-600" : "bg-gray-100"} 
-                  textColor={orders[tableId]?.status === 'paid' ? "text-white" : "text-gray-400"} 
-                />
+              <div className="grid grid-cols-1 p-2 border-t border-white/5">
+                <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" />
               </div>
             )}
             {/* Download Bill + KOT - only shown in pickup mode */}

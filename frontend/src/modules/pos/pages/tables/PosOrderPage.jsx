@@ -378,9 +378,9 @@ export default function PosOrderPage() {
       markKOTPrinted(tableId, { isCarOrder: orderType === 'car-service' });
     }
     setTimeout(() => {
-      setCart([]); // Reset local cart after placing
-      window.location.reload(); 
-    }, 300);
+      setCart([]);
+      navigate('/pos/tables'); 
+    }, 1500);
   };
 
   const handleSave = (isPrint = false) => {
@@ -414,7 +414,6 @@ export default function PosOrderPage() {
   return (
     <div className="h-screen bg-[#F4F4F7] flex flex-col font-sans text-gray-800 overflow-hidden">
       <PosTopNavbar />
-      {/* ... (rest of JSX) */}
 
       <div className="flex-1 flex overflow-hidden">
         {/* 1. Categories Sidebar (Left - 12%) */}

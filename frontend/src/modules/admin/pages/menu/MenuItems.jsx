@@ -1,21 +1,81 @@
 
-import React, { useState } from 'react';
-import { Search, Plus, Filter, LayoutGrid, List, Leaf, Flame, MoreVertical, Edit2, Trash2, Tag, Save, Image as ImageIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Filter, LayoutGrid, List, Leaf, Flame, MoreVertical, Edit2, Trash2, Tag, Save, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import AdminModal from '../../components/ui/AdminModal';
+import { usePos } from '../../../pos/context/PosContext';
 
 export default function MenuItems() {
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const { variantGroups, dishVariants, assignVariantsToDish } = usePos();
 
-  const [items, setItems] = useState([
-    { id: 1, name: 'Truffle Mushroom Risotto', price: 549, category: 'Main Course', code: 'M101', isVeg: true, spiceLevel: 0, image: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?q=80&w=2070&auto=format&fit=crop' },
-    { id: 2, name: 'Spicy Peri Peri Wings', price: 389, category: 'Starters', code: 'S204', isVeg: false, spiceLevel: 3, image: 'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?q=80&w=2070&auto=format&fit=crop' },
-    { id: 3, name: 'Vibrant Summer Salad', price: 299, category: 'Salads', code: 'SL05', isVeg: true, spiceLevel: 1, image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=2080&auto=format&fit=crop' },
-    { id: 4, name: 'Belgian Chocolate Fondue', price: 449, category: 'Desserts', code: 'D402', isVeg: true, spiceLevel: 0, image: 'https://images.unsplash.com/photo-1511381939415-e44015466834?q=80&w=2144&auto=format&fit=crop' },
-  ]);
+  const [items, setItems] = useState([]);
+
+  // Fetch and parse CSV data
+  useEffect(() => {
+    const fetchCSV = async () => {
+      try {
+        const response = await fetch('/data/mama franky menu.csv');
+        const text = await response.text();
+        const lines = text.split('\n');
+        
+        if (lines.length < 2) return;
+
+        const parseRow = (row) => {
+          const result = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < row.length; i++) {
+            const char = row[i];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim());
+          return result;
+        };
+
+        const csvItems = [];
+        // Skip header row
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseRow(line);
+          if (row.length < 11) continue;
+
+          const name = row[0].replace(/^"|"$/g, '');
+          const category = row[8].replace(/^"|"$/g, '') || 'General';
+          const price = parseFloat(row[10]) || 0;
+          const code = row[3].replace(/^"|"$/g, '') || '';
+          const isVeg = (row[11] || '').toLowerCase().includes('veg') && !(row[11] || '').toLowerCase().includes('non-veg');
+
+          csvItems.push({
+            id: `csv-${i}`,
+            name: name,
+            price: price,
+            category: category,
+            code: code,
+            isVeg: isVeg,
+            spiceLevel: 0,
+            image: ''
+          });
+        }
+        setItems(csvItems);
+      } catch (error) {
+        console.error('Error loading menu CSV:', error);
+      }
+    };
+    fetchCSV();
+  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,7 +84,8 @@ export default function MenuItems() {
     code: '',
     isVeg: true,
     spiceLevel: 0,
-    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200'
+    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
+    variants: []
   });
 
   const handleOpenModal = (item = null) => {
@@ -40,19 +101,31 @@ export default function MenuItems() {
         code: `ITEM-${items.length + 101}`,
         isVeg: true,
         spiceLevel: 0,
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200'
+        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
+        variants: []
       });
     }
+
+    if (item) {
+       setFormData(prev => ({ ...prev, variants: dishVariants[item.id] || [] }));
+    }
+    
     setIsModalOpen(true);
   };
 
   const handleSave = (e) => {
     e.preventDefault();
+    const dishId = editingItem ? editingItem.id : Date.now();
+
     if (editingItem) {
-      setItems(items.map(i => i.id === editingItem.id ? { ...formData, id: i.id } : i));
+      setItems(items.map(i => i.id === dishId ? { ...formData, id: dishId } : i));
     } else {
-      setItems([...items, { ...formData, id: Date.now() }]);
+      setItems([...items, { ...formData, id: dishId }]);
     }
+
+    // Save variant mappings to Context
+    assignVariantsToDish(dishId, formData.variants || []);
+
     setIsModalOpen(false);
   };
 
@@ -124,14 +197,13 @@ export default function MenuItems() {
               whileHover={{ scale: 1.02 }}
               className="bg-white border border-slate-100 rounded-sm overflow-hidden shadow-sm group relative"
             >
-              <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden underline decoration-transparent">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                <div className="absolute top-2 left-2 px-2 py-1 bg-white/90 backdrop-blur-md rounded-sm border border-slate-100 text-[8px] font-black uppercase tracking-widest">
+              <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <div className="px-2 py-0.5 bg-white rounded-sm border border-slate-200 text-[8px] font-black uppercase tracking-widest text-slate-400">
                   #{item.code}
                 </div>
                 {item.isVeg && (
-                  <div className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-md rounded-full shadow-sm">
-                    <Leaf size={12} className="text-emerald-500" />
+                  <div className="p-1.5 bg-white rounded-full border border-slate-100 shadow-sm flex items-center justify-center">
+                    <Leaf size={10} className="text-emerald-500" />
                   </div>
                 )}
               </div>
@@ -141,7 +213,7 @@ export default function MenuItems() {
                   <span className="text-[10px] font-black text-blue-600">₹{item.price}</span>
                 </div>
                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">{item.category}</p>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <div className="flex items-center gap-2 transition-all duration-300">
                   <button 
                     onClick={() => handleOpenModal(item)}
                     className="flex-1 py-1.5 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded-sm hover/bg-slate-800 outline-none"
@@ -156,8 +228,8 @@ export default function MenuItems() {
           ) : (
             <div key={item.id} className="bg-white border border-slate-100 p-3 rounded-sm flex items-center justify-between hover:shadow-md transition-all group underline decoration-transparent">
               <div className="flex items-center gap-4 underline decoration-transparent">
-                <div className="w-12 h-12 rounded-sm overflow-hidden bg-slate-100 border border-slate-100">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                <div className="w-10 h-10 rounded-sm bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
+                   <ImageIcon size={16} />
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">{item.name}</h4>
@@ -216,8 +288,8 @@ export default function MenuItems() {
                 type="number" 
                 required
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                value={formData.price}
-                onChange={(e) => setFormData({...formData, price: e.target.value})}
+                value={formData.price === 0 ? '' : formData.price}
+                onChange={(e) => setFormData({...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
                 placeholder="0.00"
               />
             </div>
@@ -273,6 +345,67 @@ export default function MenuItems() {
             >
               <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.isVeg ? 'right-1' : 'left-1'}`} />
             </button>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 space-y-4">
+             <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Tag size={12} /> Assign Variant Groups
+                </label>
+             </div>
+             
+             {variantGroups.length === 0 ? (
+                <div className="text-[10px] font-bold text-slate-400 italic bg-slate-50 p-4 rounded-sm border border-slate-100/50">
+                   No variant groups defined. Create them in System Settings > Variant Master.
+                </div>
+             ) : (
+                <div className="space-y-3">
+                   {variantGroups.map(group => {
+                      const assignment = formData.variants?.find(v => v.groupId === group.id);
+                      const isAssigned = !!assignment;
+                      
+                      return (
+                         <div key={group.id} className={`p-3 border rounded-sm transition-all ${isAssigned ? 'border-slate-900 bg-slate-50' : 'border-slate-100 bg-slate-50/50'}`}>
+                            <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-3">
+                                  <input 
+                                     type="checkbox" 
+                                     checked={isAssigned}
+                                     onChange={(e) => {
+                                        if (e.target.checked) {
+                                           setFormData({ ...formData, variants: [...(formData.variants || []), { groupId: group.id, required: false }] });
+                                        } else {
+                                           setFormData({ ...formData, variants: formData.variants.filter(v => v.groupId !== group.id) });
+                                        }
+                                     }}
+                                     className="w-4 h-4 rounded-sm border-slate-300 text-slate-900 focus:ring-slate-900"
+                                  />
+                                  <span className={`text-[11px] font-black uppercase ${isAssigned ? 'text-slate-900' : 'text-slate-400'}`}>{group.name}</span>
+                               </div>
+                               
+                               {isAssigned && (
+                                  <div className="flex items-center gap-2">
+                                     <span className="text-[9px] font-bold text-slate-400 uppercase">Required?</span>
+                                     <button 
+                                        type="button"
+                                        onClick={() => {
+                                           setFormData({
+                                              ...formData,
+                                              variants: formData.variants.map(v => v.groupId === group.id ? { ...v, required: !v.required } : v)
+                                           });
+                                        }}
+                                        className={`w-8 h-4 rounded-full transition-all relative ${assignment.required ? 'bg-slate-900' : 'bg-slate-300'}`}
+                                     >
+                                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${assignment.required ? 'right-0.5' : 'left-0.5'}`} />
+                                     </button>
+                                  </div>
+                               )}
+                            </div>
+                         </div>
+                      );
+                   })}
+                </div>
+             )}
           </div>
         </div>
       </AdminModal>

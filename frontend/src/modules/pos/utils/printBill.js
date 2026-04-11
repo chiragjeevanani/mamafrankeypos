@@ -23,7 +23,7 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   const cashierName = waiter?.name || billingDetails?.billerName || 'Biller';
   const billNo = Math.floor(200000 + Math.random() * 90000);
   const tokenNo = Math.floor(100 + Math.random() * 900);
-  const { subTotal, tax, discount, total, orderType } = billingDetails;
+  const { subTotal, tax, discount, total, orderType, appliedTaxes } = billingDetails;
 
   // Header Section - Restaurant Info (Centered as per image)
   doc.setFont('courier', 'normal');
@@ -89,6 +89,16 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
     doc.text(`${(item.price * item.quantity).toFixed(2)}`, 75, y, { align: 'right' });
     
     y += (splitName.length * 4.5);
+
+    // Print Variants if exist
+    if (item.variantLabel) {
+       doc.setFontSize(7);
+       doc.setFont('courier', 'normal');
+       const splitVariants = doc.splitTextToSize(`(${item.variantLabel})`, 35);
+       doc.text(splitVariants, 8, y - 1);
+       y += (splitVariants.length * 3.5);
+       doc.setFontSize(8);
+    }
     
     if (y > 180) {
       doc.addPage();
@@ -117,12 +127,22 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
     y += 4;
   }
 
-  doc.text('SGST 2.5%:', 40, y);
-  doc.text(`${gstEach}`, 75, y, { align: 'right' });
-  y += 4;
-  doc.text('CGST 2.5%:', 40, y);
-  doc.text(`${gstEach}`, 75, y, { align: 'right' });
-  y += 4;
+  if (appliedTaxes && appliedTaxes.length > 0) {
+    appliedTaxes.forEach(t => {
+      doc.text(`${t.name} ${t.rate}%:`, 40, y);
+      doc.text(`${t.amount.toFixed(2)}`, 75, y, { align: 'right' });
+      y += 4;
+    });
+  } else if (tax > 0) {
+    // Fallback for backward compatibility if appliedTaxes is missing
+    const gstEach = (tax / 2).toFixed(2);
+    doc.text('SGST 2.5%:', 40, y);
+    doc.text(`${gstEach}`, 75, y, { align: 'right' });
+    y += 4;
+    doc.text('CGST 2.5%:', 40, y);
+    doc.text(`${gstEach}`, 75, y, { align: 'right' });
+    y += 4;
+  }
   
   doc.setLineWidth(0.2);
   doc.line(40, y - 0.5, 75, y - 0.5);

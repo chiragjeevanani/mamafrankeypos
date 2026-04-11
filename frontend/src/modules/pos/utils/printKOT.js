@@ -81,6 +81,16 @@ export const printKOTReceipt = (orderData, tableInfo) => {
     doc.text(`${item.quantity}`, 75, y, { align: 'right' });
     
     y += (splitName.length * 5);
+
+    // Print Variants if exist
+    if (item.variantLabel) {
+       doc.setFont('courier', 'normal');
+       doc.setFontSize(8);
+       const splitVariants = doc.splitTextToSize(`(${item.variantLabel})`, 60);
+       doc.text(splitVariants, 7, y - 1);
+       y += (splitVariants.length * 4);
+       doc.setFontSize(10);
+    }
     
     if (y > 130) {
       doc.addPage();

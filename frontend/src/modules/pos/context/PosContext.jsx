@@ -111,6 +111,95 @@ export function PosProvider({ children }) {
     localStorage.setItem('rms_pos_tables', JSON.stringify(tables));
   }, [tables]);
 
+  // --- Dynamic Tax Management ---
+  const [appliedTaxes, setAppliedTaxes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rms_pos_taxes');
+      if (saved) return JSON.parse(saved);
+      // Default fallback (backward compatibility with hardcoded 5%)
+      return [{ id: 'tax-default', name: 'GST', rate: 5, enabled: true }];
+    } catch { return []; }
+  });
+
+  // --- Variant Management ---
+  const [variantGroups, setVariantGroups] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rms_pos_variant_groups');
+      return saved ? JSON.parse(saved) : [
+        { 
+          id: 'size', 
+          name: 'Plate Size', 
+          options: [
+            { id: 'full', name: 'Full', priceType: 'fixed', priceValue: 200 },
+            { id: 'half', name: 'Half', priceType: 'fixed', priceValue: 120 }
+          ]
+        },
+        {
+          id: 'style',
+          name: 'Cooking Style',
+          options: [
+            { id: 'grilled', name: 'Grilled', priceType: 'addon', priceValue: 20 },
+            { id: 'dry', name: 'Dry', priceType: 'addon', priceValue: 10 }
+          ]
+        }
+      ];
+    } catch { return []; }
+  });
+
+  const [dishVariants, setDishVariants] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rms_pos_dish_variants');
+      return saved ? JSON.parse(saved) : {}; // dishId -> array of { groupId, required }
+    } catch { return {}; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('rms_pos_variant_groups', JSON.stringify(variantGroups));
+  }, [variantGroups]);
+
+  useEffect(() => {
+    localStorage.setItem('rms_pos_dish_variants', JSON.stringify(dishVariants));
+  }, [dishVariants]);
+
+  const addVariantGroup = (group) => setVariantGroups(prev => [...prev, { ...group, id: `vg-${Date.now()}` }]);
+  const updateVariantGroup = (id, updates) => setVariantGroups(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+  const deleteVariantGroup = (id) => setVariantGroups(prev => prev.filter(g => g.id !== id));
+  
+  const assignVariantsToDish = (dishId, mappings) => setDishVariants(prev => ({ ...prev, [dishId]: mappings }));
+
+  useEffect(() => {
+    localStorage.setItem('rms_pos_taxes', JSON.stringify(appliedTaxes));
+  }, [appliedTaxes]);
+
+  const addTax = (name, rate) => {
+    const newTax = {
+      id: `tax-${Date.now()}`,
+      name,
+      rate: Number(rate),
+      enabled: true
+    };
+    setAppliedTaxes(prev => [...prev, newTax]);
+  };
+
+  const updateTax = (id, updates) => {
+    setAppliedTaxes(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const deleteTax = (id) => {
+    setAppliedTaxes(prev => prev.filter(t => t.id !== id));
+  };
+
+  const calculateTaxes = (subtotal) => {
+    return appliedTaxes
+      .filter(t => t.enabled)
+      .map(tax => ({
+        id: tax.id,
+        name: tax.name,
+        rate: tax.rate,
+        amount: Number(((subtotal * tax.rate) / 100).toFixed(2))
+      }));
+  };
+
   const [isCustomerSectionOpen, setIsCustomerSectionOpen] = useState(false);
   const [user, setUser] = useState({ name: 'Biller' });
 
@@ -131,9 +220,10 @@ export function PosProvider({ children }) {
   };
 
   const placeKOT = (tableId, cart, total, staff = null, options = {}) => {
-    const { kotPrinted = false } = options;
+    const { kotPrinted = false, isCarOrder = false } = options;
+    const setOrderStore = isCarOrder ? setCarOrders : setOrders;
 
-    setOrders(prev => {
+    setOrderStore(prev => {
       const existingOrder = normalizeStoredSession(prev[tableId] || { 
         kots: [], 
         status: 'blank', 
@@ -164,12 +254,14 @@ export function PosProvider({ children }) {
       };
     });
 
-    updateTableLifecycleById(tableId, {
-      orderPlaced: true,
-      kotPrinted,
-      billPrinted: false,
-      paymentMode: null,
-    });
+    if (!isCarOrder) {
+      updateTableLifecycleById(tableId, {
+        orderPlaced: true,
+        kotPrinted,
+        billPrinted: false,
+        paymentMode: null,
+      });
+    }
   };
 
   const markKOTPrinted = (tableId, options = {}) => {
@@ -373,6 +465,9 @@ export function PosProvider({ children }) {
       placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       sections, setSections, tables, setTables, addPosTable,
+      appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
+      variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup,
+      dishVariants, assignVariantsToDish,
       user, setUser
     }}>
       {children}

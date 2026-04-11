@@ -251,7 +251,11 @@ function DangerZone() {
 export default function SystemSettings() {
   const { section = 'general' } = useParams();
   const navigate = useNavigate();
-  const { sections, setSections, tables, setTables } = usePos();
+  const { 
+    sections, setSections, tables, setTables, 
+    appliedTaxes, addTax, updateTax, deleteTax,
+    variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup 
+  } = usePos();
 
   const [isSaving, setIsSaving] = useState(false);
   const [autoCommit, setAutoCommit] = useState(true);
@@ -259,6 +263,45 @@ export default function SystemSettings() {
     currency: 'INR (₹) - Indian Rupee',
     timezone: '(UTC+05:30) IST'
   });
+  const [newTax, setNewTax] = useState({ name: '', rate: '' });
+
+  // Variant Master State
+  const [showVariantModal, setShowVariantModal] = useState(false);
+  const [editingVariant, setEditingVariant] = useState(null);
+  const [variantForm, setVariantForm] = useState({ name: '', options: [] });
+
+  const handleAddOption = () => {
+    setVariantForm(prev => ({
+      ...prev,
+      options: [...prev.options, { id: Date.now(), name: '', priceType: 'fixed', priceValue: 0 }]
+    }));
+  };
+
+  const updateOption = (id, field, value) => {
+    setVariantForm(prev => ({
+      ...prev,
+      options: prev.options.map(opt => opt.id === id ? { ...opt, [field]: value } : opt)
+    }));
+  };
+
+  const removeOption = (id) => {
+    setVariantForm(prev => ({
+      ...prev,
+      options: prev.options.filter(opt => opt.id !== id)
+    }));
+  };
+
+  const handleSaveVariant = () => {
+    if (!variantForm.name || variantForm.options.length === 0) return;
+    if (editingVariant) {
+      updateVariantGroup(editingVariant.id, variantForm);
+    } else {
+      addVariantGroup(variantForm);
+    }
+    setShowVariantModal(false);
+    setEditingVariant(null);
+    setVariantForm({ name: '', options: [] });
+  };
 
   const [tablesSaved, setTablesSaved] = useState(false);
   const [activeTableSection, setActiveTableSection] = useState(sections[0]?.id || '');
@@ -310,6 +353,7 @@ export default function SystemSettings() {
     { id: 'printers',      label: 'Printers & KOT',      icon: Printer    },
     { id: 'security',      label: 'Staff Permissions',   icon: Shield     },
     { id: 'notifications', label: 'Alert Protocols',     icon: Bell       },
+    { id: 'variants',      label: 'Variant Master',      icon: Sliders    },
     { id: 'reports',       label: 'Reports & Reset',      icon: BarChart3  },
   ];
 
@@ -807,6 +851,286 @@ export default function SystemSettings() {
                           <Save size={14} /> Save Configuration
                         </button>
                       </div>
+                    </motion.div>
+                  )}
+
+                  {/* ══ Taxation & Billing Management ══ */}
+                  {section === 'payment' && (
+                    <motion.div
+                      key="payment"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-8"
+                    >
+                      {/* Section Header */}
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
+                          <CreditCard size={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black uppercase tracking-tight">⚖️ Tax Management Protocol</h3>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                            Configure dynamic tax structures and legislative compliance
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* --- 1. Add New Tax Protocol --- */}
+                      <div className="bg-slate-50 border border-slate-100 rounded-sm p-6 space-y-4">
+                         <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3 mb-4">Initialize New Tax Unit</h4>
+                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                            <div className="space-y-2">
+                               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tax Identity (e.g. GST)</label>
+                               <input 
+                                 type="text" 
+                                 placeholder="IDENTITY"
+                                 value={newTax.name}
+                                 onChange={(e) => setNewTax({...newTax, name: e.target.value.toUpperCase()})}
+                                 className="w-full bg-white border border-slate-200 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                               />
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Percentage Matrix (%)</label>
+                               <input 
+                                 type="number" 
+                                 placeholder="0.00"
+                                 value={newTax.rate}
+                                 onChange={(e) => setNewTax({...newTax, rate: e.target.value})}
+                                 className="w-full bg-white border border-slate-200 p-2.5 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                               />
+                            </div>
+                            <button 
+                              onClick={() => {
+                                if (!newTax.name || !newTax.rate) return window.alert('ERROR: Incomplete data matrices.');
+                                if (appliedTaxes.some(t => t.name === newTax.name)) return window.alert('ERROR: Identity duplication detected.');
+                                addTax(newTax.name, newTax.rate);
+                                setNewTax({ name: '', rate: '' });
+                              }}
+                              className="bg-slate-900 text-white h-[42px] px-6 rounded-sm text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10"
+                            >
+                               <Plus size={14} /> Initialize Unit
+                            </button>
+                         </div>
+                      </div>
+
+                      {/* --- 2. Tax Registry Registry --- */}
+                      <div className="space-y-4">
+                         <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-slate-900 pl-3">Active Tax Registry</h4>
+                         <div className="bg-white border border-slate-100 rounded-sm overflow-hidden">
+                            <div className="grid grid-cols-[1fr_120px_100px_120px] bg-slate-50 border-b border-slate-100 px-6 py-3">
+                              {['Tax Identity', 'Percentage', 'Protocol Status', 'Command Console'].map((h, i) => (
+                                <span key={i} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
+                              ))}
+                            </div>
+
+                            <div className="divide-y divide-slate-50">
+                              <AnimatePresence mode="popLayout" initial={false}>
+                                {appliedTaxes.length === 0 ? (
+                                   <motion.div 
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      className="py-12 flex flex-col items-center justify-center gap-2 text-slate-200"
+                                   >
+                                      <Shield size={32} />
+                                      <span className="text-[10px] font-black uppercase tracking-widest">No active tax protocols established</span>
+                                   </motion.div>
+                                ) : appliedTaxes.map((tax, idx) => (
+                                  <motion.div
+                                    key={tax.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    transition={{ duration: 0.2, delay: idx * 0.05 }}
+                                    className="grid grid-cols-[1fr_120px_100px_120px] items-center px-6 py-4 hover:bg-slate-50/50 transition-colors group"
+                                  >
+                                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{tax.name}</span>
+                                    <span className="text-[11px] font-bold text-slate-600 tabular-nums font-mono">{tax.rate}%</span>
+                                    <div>
+                                      <button 
+                                        onClick={() => updateTax(tax.id, { enabled: !tax.enabled })}
+                                        className={`text-[8px] font-black px-2.5 py-1 rounded-sm border transition-all ${
+                                          tax.enabled 
+                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                            : 'bg-slate-50 text-slate-400 border-slate-100'
+                                        }`}
+                                      >
+                                        {tax.enabled ? 'OPERATIONAL' : 'OFFLINE'}
+                                      </button>
+                                    </div>
+                                    <div className="flex items-center gap-2 opacity-20 group-hover:opacity-100 transition-all">
+                                      <button 
+                                        onClick={() => {
+                                          const newRate = window.prompt(`Update ${tax.name} percentage:`, tax.rate);
+                                          if (newRate !== null) updateTax(tax.id, { rate: Number(newRate) });
+                                        }}
+                                        className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-colors"
+                                      >
+                                        <Edit size={12} />
+                                      </button>
+                                      <button 
+                                        onClick={() => {
+                                          if (window.confirm(`SECURITY PROTOCOL: Authenticate deletion of ${tax.name} matrix?`)) {
+                                             deleteTax(tax.id);
+                                          }
+                                        }}
+                                        className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-rose-600 hover:border-rose-100 transition-colors"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </AnimatePresence>
+                            </div>
+                         </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-50 flex items-center gap-3">
+                         <Zap size={14} className="text-amber-500 shrink-0" />
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose">
+                            Warning: Modifications to active tax registry will synchronize with all secondary terminal billing calculations immediately.
+                         </p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {section === 'variants' && (
+                    <motion.div 
+                        key="variants"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="space-y-6"
+                    >
+                        <div className="flex items-center justify-between mb-8">
+                           <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
+                                 <Sliders size={24} />
+                              </div>
+                              <div>
+                                 <h3 className="text-sm font-black uppercase tracking-tight">Variant Master</h3>
+                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Control dynamic dish variants and overrides</p>
+                              </div>
+                           </div>
+                           <button 
+                             onClick={() => { setEditingVariant(null); setVariantForm({ name: '', options: [] }); setShowVariantModal(true); }}
+                             className="bg-slate-900 text-white px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+                           >
+                              Create Variant Group
+                           </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {variantGroups.map(group => (
+                              <div key={group.id} className="border border-slate-100 rounded-sm p-4 bg-slate-50 relative group">
+                                 <div className="flex items-center justify-between mb-4">
+                                    <h4 className="text-[11px] font-black uppercase text-slate-900">{group.name}</h4>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                       <button 
+                                         onClick={() => { setEditingVariant(group); setVariantForm(group); setShowVariantModal(true); }}
+                                         className="p-1 text-slate-400 hover:text-slate-900"
+                                       >
+                                          <Edit size={12} />
+                                       </button>
+                                       <button 
+                                         onClick={() => { if(window.confirm('Delete this variant group?')) deleteVariantGroup(group.id); }}
+                                         className="p-1 text-slate-400 hover:text-rose-600"
+                                       >
+                                          <Trash2 size={12} />
+                                       </button>
+                                    </div>
+                                 </div>
+                                 <div className="space-y-2">
+                                    {group.options.map(opt => (
+                                       <div key={opt.id} className="flex items-center justify-between text-[10px] font-bold text-slate-600 bg-white p-2 border border-slate-100 rounded-sm">
+                                          <span>{opt.name}</span>
+                                          <span className="text-slate-400">
+                                             {opt.priceType === 'fixed' ? `₹${opt.priceValue}` : `+₹${opt.priceValue}`}
+                                          </span>
+                                       </div>
+                                    ))}
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+
+                        {showVariantModal && (
+                           <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                              <motion.div 
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-white rounded-sm shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+                              >
+                                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                    <span className="text-xs font-black uppercase tracking-widest text-slate-900">{editingVariant ? 'Edit' : 'Create'} Variant Group</span>
+                                    <button onClick={() => setShowVariantModal(false)}><X size={18} /></button>
+                                 </div>
+                                 
+                                 <div className="p-6 space-y-6 overflow-y-auto no-scrollbar">
+                                    <div className="space-y-2">
+                                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Group Name (e.g. Size, Toppings)</label>
+                                       <input 
+                                          type="text" 
+                                          value={variantForm.name}
+                                          onChange={(e) => setVariantForm({ ...variantForm, name: e.target.value })}
+                                          className="w-full bg-slate-50 border border-slate-200 p-3 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                          placeholder="Enter group name"
+                                       />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                       <div className="flex items-center justify-between">
+                                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Options & Pricing</label>
+                                          <button 
+                                            onClick={handleAddOption}
+                                            className="text-[#E1261C] text-[10px] font-black flex items-center gap-1 hover:underline"
+                                          >
+                                             <Plus size={12} /> Add Option
+                                          </button>
+                                       </div>
+
+                                       <div className="space-y-3">
+                                          {variantForm.options.map(opt => (
+                                             <div key={opt.id} className="grid grid-cols-[1fr_100px_80px_32px] gap-2 items-center bg-slate-50/50 p-2 rounded-sm border border-slate-100">
+                                                <input 
+                                                   type="text" 
+                                                   placeholder="Name"
+                                                   value={opt.name}
+                                                   onChange={(e) => updateOption(opt.id, 'name', e.target.value)}
+                                                   className="bg-white border border-slate-200 p-2 text-[10px] font-bold outline-none rounded-sm"
+                                                />
+                                                <select 
+                                                   value={opt.priceType}
+                                                   onChange={(e) => updateOption(opt.id, 'priceType', e.target.value)}
+                                                   className="bg-white border border-slate-200 p-2 text-[10px] font-bold outline-none rounded-sm"
+                                                >
+                                                   <option value="fixed">Fixed Price</option>
+                                                   <option value="addon">Add-on Price</option>
+                                                </select>
+                                                <input 
+                                                   type="number" 
+                                                   placeholder="Value"
+                                                   value={opt.priceValue === 0 ? '' : opt.priceValue}
+                                                   onChange={(e) => updateOption(opt.id, 'priceValue', e.target.value === '' ? 0 : Number(e.target.value))}
+                                                   className="bg-white border border-slate-200 p-2 text-[10px] font-bold outline-none rounded-sm text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                />
+                                                <button onClick={() => removeOption(opt.id)} className="text-slate-300 hover:text-rose-500">
+                                                   <Trash2 size={14} />
+                                                </button>
+                                             </div>
+                                          ))}
+                                       </div>
+                                    </div>
+                                 </div>
+
+                                 <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                                    <button onClick={() => setShowVariantModal(false)} className="px-6 py-2 text-[10px] font-black uppercase text-slate-400 hover:bg-white rounded-sm border border-transparent hover:border-slate-100 transition-all">Cancel</button>
+                                    <button onClick={handleSaveVariant} className="px-10 py-2 text-[10px] font-black uppercase text-white bg-[#E1261C] rounded-sm shadow-lg shadow-rose-900/10">Synchronize Protocol</button>
+                                 </div>
+                              </motion.div>
+                           </div>
+                        )}
                     </motion.div>
                   )}
 

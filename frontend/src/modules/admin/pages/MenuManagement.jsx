@@ -9,7 +9,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { POS_CATEGORIES, POS_MENU_ITEMS as INITIAL_ITEMS } from '../../pos/data/posMenu';
 import { playClickSound } from '../../pos/utils/sounds';
 
+import { usePos } from '../../pos/context/PosContext';
+
 export default function MenuManagement() {
+  const { 
+    variantGroups, dishVariants, assignVariantsToDish 
+  } = usePos();
+
   const [viewMode, setViewMode] = useState('grid');
   const [activeTab, setActiveTab] = useState('items'); // 'items' or 'categories'
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,7 +34,8 @@ export default function MenuManagement() {
     shortcut: '',
     isVeg: true,
     spiceLevel: 0,
-    prepTime: '15 MINS'
+    prepTime: '15 MINS',
+    variants: [] // Array of { groupId, required }
   });
 
   const [categoryFormData, setCategoryFormData] = useState({
@@ -57,9 +64,16 @@ export default function MenuManagement() {
         shortcut: '',
         isVeg: true,
         spiceLevel: 0,
-        prepTime: '15 MINS'
+        prepTime: '15 MINS',
+        variants: []
       });
     }
+    
+    // Merge existing variant mappings if editing
+    if (item) {
+        setFormData(prev => ({ ...prev, variants: dishVariants[item.id] || [] }));
+    }
+    
     setIsModalOpen(true);
   };
 
@@ -99,11 +113,17 @@ export default function MenuManagement() {
 
   const handleSave = (e) => {
     e.preventDefault();
+    const dishId = editingItem ? editingItem.id : Date.now();
+    
     if (editingItem) {
-      setItems(items.map(i => i.id === editingItem.id ? { ...formData, id: i.id } : i));
+      setItems(items.map(i => i.id === dishId ? { ...formData, id: dishId } : i));
     } else {
-      setItems([...items, { ...formData, id: Date.now() }]);
+      setItems([...items, { ...formData, id: dishId }]);
     }
+    
+    // Save variant mappings to Context
+    assignVariantsToDish(dishId, formData.variants || []);
+    
     handleCloseModal();
   };
 
@@ -424,12 +444,72 @@ export default function MenuManagement() {
                       </div>
                    </div>
 
-                  <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-3">
-                     <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
-                     <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest leading-relaxed">
-                        Menu updates will be synced across all POS terminals and QR codes immediately.
-                     </p>
-                  </div>
+                   <div className="pt-4 border-t border-stone-100 space-y-4">
+                      <div className="flex items-center justify-between">
+                         <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Assign Variant Groups</label>
+                         <Tag size={14} className="text-stone-300" />
+                      </div>
+                      
+                      {variantGroups.length === 0 ? (
+                         <div className="text-[10px] font-bold text-stone-400 italic bg-stone-50 p-3 rounded-lg border border-stone-100">
+                            No variant groups defined. Create them in System Settings > Variant Master.
+                         </div>
+                      ) : (
+                         <div className="space-y-3">
+                            {variantGroups.map(group => {
+                               const assignment = formData.variants?.find(v => v.groupId === group.id);
+                               const isAssigned = !!assignment;
+                               
+                               return (
+                                  <div key={group.id} className={`p-3 border rounded-lg transition-all ${isAssigned ? 'border-[#E1261C] bg-rose-50/30' : 'border-stone-100 bg-stone-50/50'}`}>
+                                     <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                           <input 
+                                              type="checkbox" 
+                                              checked={isAssigned}
+                                              onChange={(e) => {
+                                                 if (e.target.checked) {
+                                                    setFormData({ ...formData, variants: [...(formData.variants || []), { groupId: group.id, required: false }] });
+                                                 } else {
+                                                    setFormData({ ...formData, variants: formData.variants.filter(v => v.groupId !== group.id) });
+                                                 }
+                                              }}
+                                              className="w-4 h-4 rounded accent-[#E1261C]"
+                                           />
+                                           <span className={`text-[11px] font-black uppercase ${isAssigned ? 'text-[#E1261C]' : 'text-stone-400'}`}>{group.name}</span>
+                                        </div>
+                                        
+                                        {isAssigned && (
+                                           <div className="flex items-center gap-2">
+                                              <span className="text-[9px] font-bold text-stone-400 uppercase">Required?</span>
+                                              <button 
+                                                 type="button"
+                                                 onClick={() => {
+                                                    setFormData({
+                                                       ...formData,
+                                                       variants: formData.variants.map(v => v.groupId === group.id ? { ...v, required: !v.required } : v)
+                                                    });
+                                                 }}
+                                                 className={`w-8 h-4 rounded-full transition-all relative ${assignment.required ? 'bg-[#E1261C]' : 'bg-stone-300'}`}
+                                              >
+                                                 <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${assignment.required ? 'right-0.5' : 'left-0.5'}`} />
+                                              </button>
+                                           </div>
+                                        )}
+                                     </div>
+                                  </div>
+                               );
+                            })}
+                         </div>
+                      )}
+                   </div>
+
+                   <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg flex items-start gap-3">
+                      <AlertCircle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                      <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest leading-relaxed">
+                         Variants will override or add to the base price of ₹{formData.price || '0'}. Ensure variant group logic is correctly defined.
+                      </p>
+                   </div>
 
                   {/* Modal Footer Actions */}
                   <div className="pt-6 flex items-center gap-3">

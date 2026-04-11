@@ -26,7 +26,8 @@ export default function PosOrderPage() {
   const location = useLocation();
   const { 
     placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable,
-    orders, isCustomerSectionOpen, toggleCustomerSection, user
+    orders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
+    variantGroups, dishVariants
   } = usePos();
   
   const [categories, setCategories] = useState(POS_CATEGORIES);
@@ -142,6 +143,7 @@ export default function PosOrderPage() {
   // Billing summary states
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState('percentage'); // or 'fixed'
+
   const [discountReason, setDiscountReason] = useState('');
   const [couponCode, setCouponCode] = useState('');
   
@@ -155,12 +157,15 @@ export default function PosOrderPage() {
   const [isOtherPaymentModalOpen, setIsOtherPaymentModalOpen] = useState(false);
   const [otherPaymentDetails, setOtherPaymentDetails] = useState({ type: 'UPI', note: '' });
 
+  // Dish Variant Selection State
+  const [variantModalItem, setVariantModalItem] = useState(null);
+  const [selectedVariants, setSelectedVariants] = useState({}); // groupId -> variantOptionId
+
   // Sync waiter and order data from shared context
   useEffect(() => {
     const existingOrder = orders[tableId];
     if (existingOrder) {
        if (existingOrder.waiter) {
-          // Find matching waiter in MOCK_WAITERS or create a new one for display
           const matched = MOCK_WAITERS.find(w => w.id === existingOrder.waiter.id || w.name === existingOrder.waiter.name);
           setSelectedWaiter(matched || existingOrder.waiter);
        }
@@ -200,7 +205,6 @@ export default function PosOrderPage() {
                               item.code.toLowerCase() === codeQuery ||
                               item.shortcut.toLowerCase() === codeQuery;
       
-      // If searching, show all matches globally
       const matchesCategory = (shortCode !== '' || searchQuery !== '') 
         ? true 
         : (selectedCategory === 'fav' ? true : item.catId === selectedCategory);
@@ -211,6 +215,15 @@ export default function PosOrderPage() {
 
   const addToCart = (item) => {
     playClickSound();
+    
+    // Check if dish has variants assigned
+    const assignedVariantGroups = dishVariants[item.id] || [];
+    if (assignedVariantGroups.length > 0) {
+      setVariantModalItem(item);
+      setSelectedVariants({});
+      return;
+    }
+
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) {
@@ -218,6 +231,60 @@ export default function PosOrderPage() {
       }
       return [...prev, { ...item, quantity: 1 }];
     });
+  };
+
+  const confirmVariantSelection = () => {
+    if (!variantModalItem) return;
+    
+    const assignedMapping = dishVariants[variantModalItem.id] || [];
+    const missingRequired = assignedMapping.find(m => m.required && !selectedVariants[m.groupId]);
+    
+    if (missingRequired) {
+       const groupName = variantGroups.find(g => g.id === missingRequired.groupId)?.name;
+       window.alert(`Please select a ${groupName}`);
+       return;
+    }
+
+    let finalPrice = variantModalItem.price;
+    const selectedVariantDetails = [];
+
+    Object.entries(selectedVariants).forEach(([groupId, optionId]) => {
+       const group = variantGroups.find(g => g.id === groupId);
+       const option = group?.options.find(o => o.id === optionId);
+       if (option) {
+          if (option.priceType === 'fixed') {
+             finalPrice = option.priceValue;
+          } else {
+             finalPrice += option.priceValue;
+          }
+          selectedVariantDetails.push({
+             groupName: group.name,
+             optionName: option.name,
+             price: option.priceValue,
+             type: option.priceType
+          });
+       }
+    });
+
+    const itemWithVariants = {
+       ...variantModalItem,
+       id: `${variantModalItem.id}-${Object.values(selectedVariants).sort().join('-')}`,
+       baseId: variantModalItem.id,
+       price: finalPrice,
+       variants: selectedVariantDetails,
+       variantLabel: selectedVariantDetails.map(v => v.optionName).join(', ')
+    };
+
+    setCart(prev => {
+       const existing = prev.find(i => i.id === itemWithVariants.id);
+       if (existing) {
+          return prev.map(i => i.id === itemWithVariants.id ? { ...i, quantity: i.quantity + 1 } : i);
+       }
+       return [...prev, { ...itemWithVariants, quantity: 1 }];
+    });
+
+    setVariantModalItem(null);
+    setSelectedVariants({});
   };
 
   const removeFromCart = (itemId) => {
@@ -253,10 +320,12 @@ export default function PosOrderPage() {
 
     const sTotal = allItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) - bDiscount;
     
-    const taxVal = Number((sTotal * 0.05).toFixed(2)); // 5% GST example
+    // Calculate Dynamic Taxes
+    const taxesArr = calculateTaxes(sTotal);
+    const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     
     // Intermediate Total
-    const iTotal = (sTotal + taxVal + Number(deliveryCharge) + Number(containerCharge) + Number(serviceCharge)) - Number(discount);
+    const iTotal = (sTotal + taxVal) - Number(discount);
     
     // Automatic Rounding
     const fTotalWhole = Math.round(iTotal);
@@ -270,14 +339,12 @@ export default function PosOrderPage() {
       subTotal: sTotal + bDiscount, 
       totalItemCount: count, 
       tax: taxVal, 
-      appliedTaxes: [
-        { name: 'Home Tax', rate: 5, base: sTotal, amount: taxVal }
-      ],
+      appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal })),
       roundOff: rOff, 
       changeToReturn: cToReturn,
       bogoDiscount: bDiscount
     };
-  }, [cart, orders, tableId, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive]);
+  }, [cart, orders, tableId, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
 
   // Sync manual return amount with calculated change
   useMemo(() => {
@@ -305,10 +372,10 @@ export default function PosOrderPage() {
        alert("No items in cart to place KOT!");
        return;
     }
-    placeKOT(tableId, cart, total, selectedWaiter);
+    placeKOT(tableId, cart, total, selectedWaiter, { isCarOrder: orderType === 'car-service' });
     if (isPrint) {
       printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
-      markKOTPrinted(tableId);
+      markKOTPrinted(tableId, { isCarOrder: orderType === 'car-service' });
     }
     setTimeout(() => {
       setCart([]); // Reset local cart after placing
@@ -317,37 +384,6 @@ export default function PosOrderPage() {
   };
 
   const handleSave = (isPrint = false) => {
-    playClickSound();
-    const existingKots = orders[tableId]?.kots || [];
-    if (cart.length === 0 && existingKots.length === 0) {
-       alert("Cannot generate bill for an empty table!");
-       return;
-    }
-    if (total <= 0) {
-       alert("Bill amount cannot be zero!");
-       return;
-    }
-
-    if (isPaid) {
-       settleOrder(tableId, paymentMode);
-    } else {
-       saveOrder(tableId);
-    }
-    
-    if (isPrint) {
-      const orderData = orders[tableId];
-      if (orderData || cart.length > 0) {
-        printBillReceipt(
-          { ...orderData, cart }, 
-          { name: tableInfo.name }, 
-          { total, subTotal, tax, discount, orderType, billerName: user?.name }
-        );
-      }
-    }
-    navigate('/pos/tables');
-  };
-
-  const handleHold = () => {
     playClickSound();
     holdOrder(tableId);
     navigate('/pos/tables');
@@ -1056,7 +1092,114 @@ export default function PosOrderPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Variant Selection Modal */}
+      <AnimatePresence>
+         {variantModalItem && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+               <motion.div 
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 exit={{ opacity: 0 }}
+                 onClick={() => setVariantModalItem(null)}
+                 className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+               />
+               <motion.div 
+                 initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                 exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                 className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden flex flex-col font-sans"
+               >
+                  <div className="px-6 py-5 bg-stone-900 flex items-center justify-between shadow-2xl">
+                     <div>
+                        <h4 className="text-sm font-black text-white uppercase tracking-tight">{variantModalItem.name}</h4>
+                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-0.5">Customise your dish</p>
+                     </div>
+                     <button onClick={() => setVariantModalItem(null)} className="p-1 text-stone-500 hover:text-white transition-colors"><X size={20} /></button>
+                  </div>
+
+                  <div className="p-8 space-y-8 overflow-y-auto no-scrollbar max-h-[60vh]">
+                     {(dishVariants[variantModalItem.id] || []).map(mapping => {
+                        const group = variantGroups.find(g => g.id === mapping.groupId);
+                        if (!group) return null;
+                        
+                        return (
+                           <div key={group.id} className="space-y-4">
+                              <div className="flex items-center justify-between px-1">
+                                 <h5 className="text-[11px] font-black uppercase text-stone-900 tracking-widest flex items-center gap-2">
+                                    {group.name}
+                                    {mapping.required && <span className="text-[9px] font-bold text-[#E1261C]">(Required)</span>}
+                                 </h5>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                 {group.options.map(opt => {
+                                    const isSelected = selectedVariants[group.id] === opt.id;
+                                    return (
+                                       <button 
+                                          key={opt.id}
+                                          type="button"
+                                          onClick={() => {
+                                             playClickSound();
+                                             setSelectedVariants(prev => ({ ...prev, [group.id]: opt.id }));
+                                          }}
+                                          className={`group relative p-4 rounded-2xl border-2 transition-all text-left ${
+                                             isSelected 
+                                                ? 'border-[#E1261C] bg-rose-50 text-[#E1261C] shadow-lg shadow-rose-900/10' 
+                                                : 'border-stone-100 bg-stone-50 text-stone-500 hover:border-stone-300'
+                                          }`}
+                                       >
+                                          <div className="flex flex-col gap-1">
+                                             <span className="text-[10px] font-black uppercase tracking-tight">{opt.name}</span>
+                                             <span className={`text-[9px] font-bold ${isSelected ? 'text-[#E1261C]' : 'text-stone-400'}`}>
+                                                {opt.priceType === 'fixed' ? `₹${opt.priceValue}` : `+₹${opt.priceValue}`}
+                                             </span>
+                                          </div>
+                                          {isSelected && (
+                                             <div className="absolute top-2 right-2">
+                                                <CheckCircle2 size={14} className="text-[#E1261C]" />
+                                             </div>
+                                          )}
+                                       </button>
+                                    );
+                                 })}
+                              </div>
+                           </div>
+                        );
+                     })}
+                  </div>
+
+                  <div className="p-6 bg-stone-50 border-t border-stone-100 flex items-center justify-between">
+                     <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Calculated Price</span>
+                        <span className="text-xl font-black text-stone-900">
+                           ₹{(() => {
+                              let p = variantModalItem.price;
+                              Object.entries(selectedVariants).forEach(([gid, oid]) => {
+                                 const g = variantGroups.find(vg => vg.id === gid);
+                                 const o = g?.options.find(vo => vo.id === oid);
+                                 if (o) {
+                                    if (o.priceType === 'fixed') p = o.priceValue;
+                                    else p += o.priceValue;
+                                 }
+                              });
+                              return p;
+                           })()}
+                        </span>
+                     </div>
+                     <button 
+                        type="button"
+                        onClick={() => { playClickSound(); confirmVariantSelection(); }}
+                        className="px-10 py-4 bg-[#E1261C] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-stone-900 transition-all shadow-xl shadow-rose-900/20 active:scale-95 flex items-center gap-2"
+                     >
+                        Confirm Selections <ArrowLeft className="rotate-180" size={14} />
+                     </button>
+                  </div>
+               </motion.div>
+            </div>
+         )}
+      </AnimatePresence>
     </div>
+
   );
 }
 
@@ -1075,10 +1218,15 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty }) {
         )}
       </div>
 
-      <div className="w-[35%]">
+      <div className="w-[35%] flex flex-col">
         <span className={`leading-tight ${isPlaced ? 'text-gray-400' : 'text-gray-700 underline decoration-gray-300 underline-offset-2'}`}>
           {item.name}
         </span>
+        {item.variantLabel && (
+          <span className="text-[9px] font-bold text-[#E1261C] uppercase tracking-tighter mt-0.5">
+            ({item.variantLabel})
+          </span>
+        )}
       </div>
 
       <div className="w-[45%] flex items-center justify-center gap-2">

@@ -14,7 +14,7 @@ export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, saveOrder, settleOrder, clearTable, carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-    sections, tables, setTableWaiter, addPosTable, user
+    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes
   } = usePos();
 
   // --- Car Service state ---
@@ -80,13 +80,14 @@ export default function TableView() {
   const handlePrintBill = (e, order, table, orderType = 'dine-in', options = {}) => {
     e.stopPropagation();
     const subTotal = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
-    const tax = Number((subTotal * 0.05).toFixed(2));
+    const taxesArr = calculateTaxes(subTotal);
+    const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     const total = Math.round(subTotal + tax);
     
     printBillReceipt(
       order, 
       { name: table.name }, 
-      { total, subTotal, tax, discount: 0, orderType, billerName: user?.name }
+      { total, subTotal, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal })) }
     );
 
     saveOrder(table.id, { isCarOrder: options.isCarOrder });

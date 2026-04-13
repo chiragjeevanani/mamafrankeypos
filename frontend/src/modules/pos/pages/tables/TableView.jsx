@@ -233,8 +233,8 @@ export default function TableView() {
           <div className="flex items-center gap-3 ml-2 border-l border-gray-100 pl-4">
             {[
               { label: 'DEFAULT', color: '#d1d5db' },
-              { label: 'ORDER PLACED', color: '#facc15' },
-              { label: 'KOT PRINTED', color: '#10b981' },
+              { label: 'KOT PRINTED', color: '#facc15' },
+              { label: 'BILL PRINTED', color: '#10b981' },
             ].map((config, idx) => (
               <div key={idx} className="flex items-center gap-1.5">
                 <div 
@@ -262,7 +262,7 @@ export default function TableView() {
                 const tableLifecycle = order ? { ...table, ...order } : table;
                 const statusConfig = getTableColor(tableLifecycle);
                 const statusLabel = getTableStatusText(tableLifecycle);
-                const isRunningKOT = !!(order?.kots?.length || order?.orderPlaced || order?.billPrinted);
+                const isRunningKOT = !!(order?.kotPrinted || order?.billPrinted);
                 const showSettlement = order?.billPrinted;
                 
                 // Calculate cumulative total for the table
@@ -399,7 +399,7 @@ export default function TableView() {
               const carLifecycle = order ? { ...car, ...order } : car;
               const statusConfig = getTableColor(carLifecycle);
               const statusLabel = getTableStatusText(carLifecycle);
-              const isActive = !!(order?.kots?.length || order?.orderPlaced || order?.billPrinted);
+              const isActive = !!(order?.kotPrinted || order?.billPrinted);
               const carTotal = isActive ? order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0 : 0;
               const showSettlement = order?.billPrinted;
 
@@ -496,6 +496,7 @@ export default function TableView() {
                   const statusLabel = getTableStatusText(car);
                   const carTotal = car.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
                   const showSettlement = car.billPrinted;
+                  const isActive = !!(car.kotPrinted || car.billPrinted);
 
                   return (
                     <motion.div
@@ -515,64 +516,74 @@ export default function TableView() {
                         backgroundColor: statusConfig.color
                       }}
                     >
+                      {isActive ? (
+                        <>
+                          {/* Car number + total */}
+                          <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
+                            <span
+                              className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
+                              style={{ color: statusConfig.textColor }}
+                            >
+                              🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
+                            </span>
+                            {car.waiter && (
+                              <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
+                                {car.waiter.name}
+                              </span>
+                            )}
+                            <span className="mt-1 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                              {statusLabel}
+                            </span>
+                            <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
+                              <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                                ₹{carTotal.toFixed(0)}
+                              </span>
+                            </div>
+                          </div>
 
-                      {/* Car number + total */}
-                      <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
-                        <span
-                          className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
-                          style={{ color: statusConfig.textColor }}
-                        >
-                          🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
-                        </span>
-                        {car.waiter && (
-                          <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
-                            {car.waiter.name}
+                          {/* Action buttons */}
+                          <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
+                            {!showSettlement && car.kotPrinted && (
+                              <button
+                                onClick={(e) => handlePrintBill(e, car, { id: car.carNumber, name: car.carNumber }, 'car-service', { isCarOrder: true })}
+                                className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                              >
+                                <Printer size={10} strokeWidth={2.5} />
+                                Print Bill
+                              </button>
+                            )}
+                            {showSettlement && (
+                              <button
+                                onClick={(e) => handleOpenSettlement(e, { id: car.carNumber, name: car.carNumber }, { isCarOrder: true })}
+                                className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                              >
+                                <Wallet size={10} strokeWidth={2.5} />
+                                Settlement
+                              </button>
+                            )}
+
+                            {car.billPrinted && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(`Clear car ${car.carNumber}?`)) clearCarOrder(car.carNumber);
+                                }}
+                                className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
+                                title="Clear Car Order"
+                              >
+                                <Trash2 size={12} strokeWidth={2.5} />
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
+                          <span className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full" style={{ color: statusConfig.textColor }}>
+                             🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
                           </span>
-                        )}
-                        <span className="mt-1 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
-                          {statusLabel}
-                        </span>
-                        <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
-                          <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
-                            ₹{carTotal.toFixed(0)}
-                          </span>
+                          <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
                         </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
-                        {!showSettlement && car.kotPrinted && (
-                          <button
-                            onClick={(e) => handlePrintBill(e, car, { id: car.carNumber, name: car.carNumber }, 'car-service', { isCarOrder: true })}
-                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
-                          >
-                            <Printer size={10} strokeWidth={2.5} />
-                            Print Bill
-                          </button>
-                        )}
-                        {showSettlement && (
-                          <button
-                            onClick={(e) => handleOpenSettlement(e, { id: car.carNumber, name: car.carNumber }, { isCarOrder: true })}
-                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
-                          >
-                            <Wallet size={10} strokeWidth={2.5} />
-                            Settlement
-                          </button>
-                        )}
-
-                        {car.billPrinted && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Clear car ${car.carNumber}?`)) clearCarOrder(car.carNumber);
-                            }}
-                            className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                            title="Clear Car Order"
-                          >
-                            <Trash2 size={12} strokeWidth={2.5} />
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </motion.div>
                   );
                 })}

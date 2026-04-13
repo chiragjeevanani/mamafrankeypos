@@ -475,6 +475,8 @@ export function PosProvider({ children }) {
   // ---- Car Service helpers ----
   const addCarOrder = (carNumber, initialCart = [], total = 0, staff = null) => {
     const key = carNumber.trim().toUpperCase();
+    const hasItems = initialCart && initialCart.length > 0;
+    
     setCarOrders(prev => ({
       ...prev,
       [key]: {
@@ -487,7 +489,7 @@ export function PosProvider({ children }) {
         kotPrinted: false,
         billPrinted: false,
         paymentMode: null,
-        kots: [
+        kots: hasItems ? [
           {
             id: 1,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -495,7 +497,7 @@ export function PosProvider({ children }) {
             total,
             staff
           }
-        ]
+        ] : []
       }
     }));
   };

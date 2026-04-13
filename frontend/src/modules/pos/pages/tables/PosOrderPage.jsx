@@ -26,7 +26,7 @@ export default function PosOrderPage() {
   const location = useLocation();
   const { 
     placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable,
-    orders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
+    orders, carOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
     variantGroups, dishVariants, categories, menuItems
   } = usePos();
   
@@ -41,13 +41,15 @@ export default function PosOrderPage() {
     }
   }, [categories]);
   
-  // Initialize cart from existing order if any
-  const [cart, setCart] = useState(() => orders[tableId]?.items || []);
   const isPickupMode = location.state?.fromPickup === true;
   const isCarServiceMode = location.state?.fromCarService === true;
   const [orderType, setOrderType] = useState(
     isPickupMode ? 'pickup' : isCarServiceMode ? 'car-service' : 'dine-in'
-  ); // dine-in, car-service, pickup
+  );
+
+  // Initialize cart from existing order if any
+  const currentOrderStore = isCarServiceMode ? carOrders : orders;
+  const [cart, setCart] = useState(() => currentOrderStore[tableId]?.items || []);
   
   // States for interactive checkboxes/radios
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -90,7 +92,7 @@ export default function PosOrderPage() {
 
   // Sync waiter and order data from shared context
   useEffect(() => {
-    const existingOrder = orders[tableId];
+    const existingOrder = isCarServiceMode ? carOrders[tableId] : orders[tableId];
     if (existingOrder) {
        if (existingOrder.waiter) {
           const matched = MOCK_WAITERS.find(w => w.id === existingOrder.waiter.id || w.name === existingOrder.waiter.name);
@@ -100,7 +102,7 @@ export default function PosOrderPage() {
           setCustomer(existingOrder.customer);
        }
     }
-  }, [tableId, orders]);
+  }, [tableId, orders, carOrders, isCarServiceMode]);
 
   // Customer Section States
   const [customer, setCustomer] = useState({
@@ -232,7 +234,7 @@ export default function PosOrderPage() {
 
   const { total, subTotal, totalItemCount, tax, appliedTaxes, roundOff, changeToReturn, bogoDiscount } = useMemo(() => {
     const cartItems = cart || [];
-    const kotItems = orders[tableId]?.kots?.flatMap(kot => kot.items) || [];
+    const kotItems = (isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.flatMap(kot => kot.items) || [];
     const allItems = [...cartItems, ...kotItems];
     
     const count = allItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -271,7 +273,7 @@ export default function PosOrderPage() {
       changeToReturn: cToReturn,
       bogoDiscount: bDiscount
     };
-  }, [cart, orders, tableId, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
+  }, [cart, orders, carOrders, tableId, isCarServiceMode, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
 
   const cartTotal = useMemo(() => {
     const sTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -318,6 +320,35 @@ export default function PosOrderPage() {
     }, 1500);
   };
 
+  const handleReprint = () => {
+    playClickSound();
+    const orderData = isCarServiceMode ? carOrders[tableId] : orders[tableId];
+    if (!orderData || !orderData.kots || orderData.kots.length === 0) {
+      alert("No active order to reprint!");
+      return;
+    }
+    
+    // Calculate totals for existing KOTs (excluding current cart)
+    const sTotal = orderData.kots.reduce((sum, kot) => sum + (kot.total || 0), 0);
+    const taxesArr = calculateTaxes(sTotal);
+    const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
+    const fTotal = Math.round(sTotal + taxVal);
+
+    printBillReceipt(
+      orderData, 
+      { name: tableInfo.name }, 
+      { 
+        total: fTotal, 
+        subTotal: sTotal, 
+        tax: taxVal, 
+        discount: 0, 
+        orderType, 
+        billerName: user?.name,
+        appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal }))
+      }
+    );
+  };
+
   const handleSave = (isPrint = false) => {
     playClickSound();
     holdOrder(tableId);
@@ -334,7 +365,7 @@ export default function PosOrderPage() {
   
   const handleDownloadBillAndKOT = () => {
     playClickSound();
-    const orderData = orders[tableId];
+    const orderData = isCarServiceMode ? carOrders[tableId] : orders[tableId];
     if (!orderData && cart.length === 0) {
       alert("No active order data to download!");
       return;
@@ -590,7 +621,7 @@ export default function PosOrderPage() {
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto bg-white">
             {/* 1. Placed KOTs (History) */}
-            {orders[tableId]?.kots?.map((kot) => (
+            {(isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.map((kot) => (
               <div key={kot.id}>
                  <div className="bg-[#616161] text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between items-center">
                     <span>KOT - {kot.id} Time - {kot.time}</span>
@@ -620,7 +651,7 @@ export default function PosOrderPage() {
             )}
 
             {/* Empty State */}
-            {(!orders[tableId]?.kots?.length && cart.length === 0) && (
+            {(!(isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.length && cart.length === 0) && (
               <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 p-8">
                 <p className="font-bold text-sm text-gray-400">No Item Selected</p>
                 <p className="text-[10px] text-gray-300">Please Select Item from Left Menu Item</p>
@@ -826,8 +857,9 @@ export default function PosOrderPage() {
 
             {/* Always Visible Action Buttons (Row 4) - hidden in pickup mode */}
             {!isPickupMode && (
-              <div className="grid grid-cols-1 p-2 border-t border-white/5">
+              <div className="grid grid-cols-2 gap-2 p-2 border-t border-white/5">
                 <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" />
+                <ActionButton onClick={handleReprint} label="REPRINT" color="bg-[#555555]" textColor="text-white" />
               </div>
             )}
             {/* Download Bill + KOT - only shown in pickup mode */}

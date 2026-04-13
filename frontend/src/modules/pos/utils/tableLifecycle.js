@@ -92,15 +92,15 @@ export const resetTableLifecycle = (entity = {}) => ({
 export const getTableColor = (table = {}) => {
   const normalized = normalizeTableLifecycle(table);
 
-  if (normalized.orderPlaced && !normalized.kotPrinted) {
-    return TABLE_STATUS_COLORS['running-kot'];
+  if (normalized.billPrinted) {
+    return TABLE_STATUS_COLORS['kot-printed']; // Green (for Bill Printed / Settlement Ready)
   }
 
   if (normalized.kotPrinted) {
-    return TABLE_STATUS_COLORS['kot-printed'];
+    return TABLE_STATUS_COLORS['running-kot']; // Yellow (for KOT Printed)
   }
 
-  return TABLE_STATUS_COLORS.blank;
+  return TABLE_STATUS_COLORS.blank; // Grey (for Available or KOT Pending)
 };
 
 export const getTableStatusText = (table = {}) => {
@@ -108,6 +108,6 @@ export const getTableStatusText = (table = {}) => {
 
   if (normalized.billPrinted) return 'Settlement Ready';
   if (normalized.kotPrinted) return 'KOT Printed';
-  if (normalized.orderPlaced) return 'KOT Pending';
+  // Removed 'KOT Pending' as per user request
   return 'Available';
 };

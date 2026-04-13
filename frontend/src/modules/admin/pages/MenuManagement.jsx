@@ -452,7 +452,7 @@ export default function MenuManagement() {
                       
                       {variantGroups.length === 0 ? (
                          <div className="text-[10px] font-bold text-stone-400 italic bg-stone-50 p-3 rounded-lg border border-stone-100">
-                            No variant groups defined. Create them in System Settings > Variant Master.
+                            No variant groups defined. Create them in System Settings &gt; Variant Master.
                          </div>
                       ) : (
                          <div className="space-y-3">

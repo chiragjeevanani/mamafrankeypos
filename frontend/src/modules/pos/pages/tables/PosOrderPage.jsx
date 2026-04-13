@@ -346,6 +346,13 @@ export default function PosOrderPage() {
     };
   }, [cart, orders, tableId, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
 
+  const cartTotal = useMemo(() => {
+    const sTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const taxesArr = calculateTaxes(sTotal);
+    const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
+    return Math.round(sTotal + taxVal);
+  }, [cart, calculateTaxes]);
+
   // Sync manual return amount with calculated change
   useMemo(() => {
     setManualReturnAmount(Number(changeToReturn.toFixed(2)));
@@ -368,17 +375,18 @@ export default function PosOrderPage() {
   // --- ACTIONS ---
   const handleKOT = (isPrint = false) => {
     playClickSound();
-    if (cart.length === 0 || total <= 0) {
+    if (cart.length === 0 || cartTotal <= 0) {
        alert("No items in cart to place KOT!");
        return;
     }
-    placeKOT(tableId, cart, total, selectedWaiter, { isCarOrder: orderType === 'car-service' });
+    placeKOT(tableId, cart, cartTotal, selectedWaiter, { isCarOrder: orderType === 'car-service' });
     if (isPrint) {
       printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
       markKOTPrinted(tableId, { isCarOrder: orderType === 'car-service' });
     }
+
+    setCart([]); // Clear immediately to avoid visual duplicity
     setTimeout(() => {
-      setCart([]);
       navigate('/pos/tables'); 
     }, 1500);
   };

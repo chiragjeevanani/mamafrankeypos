@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check, Wallet } from 'lucide-react';
+import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check, Wallet, Smartphone, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PosTopNavbar from '../../components/PosTopNavbar';
 import { usePos } from '../../context/PosContext';
@@ -33,6 +33,12 @@ export default function TableView() {
   const [newTableNumber, setNewTableNumber] = useState('');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementTarget, setSettlementTarget] = useState(null);
+  const [showUpiQR, setShowUpiQR] = useState(false);
+  const [showCashlessOptions, setShowCashlessOptions] = useState(false);
+  const [cashlessType, setCashlessType] = useState('Card');
+  const [txnRef, setTxnRef] = useState('');
+  const [showCashCalculator, setShowCashCalculator] = useState(false);
+  const [cashTendered, setCashTendered] = useState('');
 
   const handleTableClick = (table) => {
     const existingOrder = (table.type === 'CAR' || table.sectionId === 'car-service') 
@@ -95,19 +101,54 @@ export default function TableView() {
 
   const handleOpenSettlement = (e, table, options = {}) => {
     e.stopPropagation();
+    const isCarOrder = !!options.isCarOrder;
+    const order = isCarOrder ? carOrders[table.id] : orders[table.id];
+    const subTotal = order?.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+    const taxesArr = calculateTaxes ? calculateTaxes(subTotal) : [];
+    const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
+    const total = Math.round(subTotal + tax);
+
     setSettlementTarget({
       id: table.id,
       name: table.name,
-      isCarOrder: !!options.isCarOrder,
+      isCarOrder,
+      total,
     });
+    setShowUpiQR(false);
+    setShowCashlessOptions(false);
+    setShowCashCalculator(false);
+    setCashTendered('');
+    setCashlessType('Card');
+    setTxnRef('');
     setShowSettlementModal(true);
   };
 
-  const handleSettlement = (mode) => {
+  const handleSettlement = (mode, subType = null) => {
     if (!settlementTarget) return;
 
-    const paymentMethod =
-      mode === 'cash' ? 'Cash' : mode === 'upi' ? 'UPI' : 'Cashless';
+    if (mode === 'upi' && !showUpiQR) {
+      setShowUpiQR(true);
+      return;
+    }
+
+    if (mode === 'cashless' && !showCashlessOptions) {
+      setShowCashlessOptions(true);
+      return;
+    }
+
+    if (mode === 'cash' && !showCashCalculator) {
+      setShowCashCalculator(true);
+      setCashTendered(settlementTarget.total.toString());
+      return;
+    }
+
+    let paymentMethod = 'Cash';
+    if (mode === 'upi') paymentMethod = 'UPI';
+    else if (mode === 'cashless') {
+      paymentMethod = `Cashless (${subType || cashlessType}${txnRef ? ` - Ref: ${txnRef}` : ''})`;
+    } else if (mode === 'cash' && cashTendered) {
+      paymentMethod = `Cash (Tendered: ₹${cashTendered})`;
+    }
 
     settleOrder(settlementTarget.id, paymentMethod, {
       isCarOrder: settlementTarget.isCarOrder,
@@ -117,6 +158,9 @@ export default function TableView() {
     });
     setShowSettlementModal(false);
     setSettlementTarget(null);
+    setShowUpiQR(false);
+    setShowCashlessOptions(false);
+    setShowCashCalculator(false);
   };
 
   const handleClearTable = (e, tableId) => {
@@ -663,22 +707,193 @@ export default function TableView() {
               </div>
 
               <div className="p-5 space-y-3">
-                {[
-                  { id: 'cash', label: 'Cash' },
-                  { id: 'upi', label: 'UPI' },
-                  { id: 'cashless', label: 'Cashless' },
-                ].map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => handleSettlement(option.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-[#E1261C] hover:bg-red-50 transition-all"
-                  >
-                    <span className="text-sm font-black text-gray-700 uppercase tracking-wide">
-                      {option.label}
-                    </span>
-                    <Check size={15} className="text-[#E1261C]" />
-                  </button>
-                ))}
+                {!showUpiQR && !showCashlessOptions && !showCashCalculator && (
+                  <>
+                    {[
+                      { id: 'cash', label: 'Cash', icon: Wallet },
+                      { id: 'upi', label: 'UPI', icon: Smartphone },
+                      { id: 'cashless', label: 'Cashless', icon: CreditCard },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => handleSettlement(option.id)}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-[#E1261C] hover:bg-red-50 transition-all group"
+                      >
+                        <div className="flex items-center gap-3">
+                           <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-white transition-colors">
+                              <option.icon size={16} className="text-gray-400 group-hover:text-[#E1261C]" />
+                           </div>
+                           <span className="text-sm font-black text-gray-700 uppercase tracking-wide">
+                             {option.label}
+                           </span>
+                        </div>
+                        <Check size={15} className="text-[#E1261C]" />
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {showUpiQR && (
+                  <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="w-full bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100 flex flex-col items-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Amount to Pay</p>
+                      <h4 className="text-2xl font-black text-slate-900 tracking-tighter">₹{settlementTarget.total}</h4>
+                    </div>
+                    
+                    <div className="bg-white p-3 rounded-2xl border-2 border-slate-100 mb-4 shadow-sm">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=porutkal@upi%26pn=Porutkal%26am=${settlementTarget.total}%26cu=INR`} 
+                        alt="UPI QR Code"
+                        className="w-44 h-44"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-6">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Waiting for payment...</span>
+                    </div>
+
+                    <div className="flex gap-2 w-full">
+                      <button 
+                        onClick={() => setShowUpiQR(false)}
+                        className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-black text-slate-500 uppercase tracking-wide hover:bg-slate-50"
+                      >
+                        Back
+                      </button>
+                      <button 
+                        onClick={() => handleSettlement('upi')}
+                        className="flex-2 py-3 bg-[#E1261C] text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:brightness-110 shadow-lg shadow-red-200"
+                      >
+                        Verify & Settle
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {showCashlessOptions && (
+                  <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="w-full bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100 flex flex-col items-center">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Amount</p>
+                      <h4 className="text-2xl font-black text-slate-900 tracking-tighter">₹{settlementTarget.total}</h4>
+                    </div>
+
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Select Method</p>
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {[
+                        { id: 'Card', icon: CreditCard },
+                        { id: 'Wallet', icon: Smartphone },
+                        { id: 'G-Pay', icon: Smartphone },
+                        { id: 'Other', icon: Info }
+                      ].map(method => (
+                        <button
+                          key={method.id}
+                          onClick={() => setCashlessType(method.id)}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${cashlessType === method.id ? 'bg-[#E1261C] border-[#E1261C] text-white shadow-md' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
+                        >
+                          <method.icon size={14} />
+                          <span className="text-[11px] font-black uppercase">{method.id}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Reference ID / Machine ID</label>
+                      <input 
+                        type="text"
+                        placeholder="E.G. LAST 4 DIGITS"
+                        value={txnRef}
+                        onChange={(e) => setTxnRef(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/20"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 w-full">
+                      <button 
+                        onClick={() => setShowCashlessOptions(false)}
+                        className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-black text-slate-500 uppercase tracking-wide hover:bg-slate-50"
+                      >
+                        Back
+                      </button>
+                      <button 
+                        onClick={() => handleSettlement('cashless')}
+                        className="flex-2 py-3 bg-[#E1261C] text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:brightness-110 shadow-lg shadow-red-200 flex items-center justify-center gap-2"
+                      >
+                        <Check size={16} strokeWidth={3} />
+                        Confirm & Settle
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {showCashCalculator && (
+                   <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="flex gap-3 mb-4">
+                         <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col items-center">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Bill Amount</p>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tighter">₹{settlementTarget.total}</h4>
+                         </div>
+                         <div className="flex-1 bg-emerald-50 rounded-xl p-3 border border-emerald-100 flex flex-col items-center">
+                            <p className="text-[8px] font-black text-emerald-600/60 uppercase tracking-widest mb-1">Return Balance</p>
+                            <h4 className={`text-lg font-black tracking-tighter ${Number(cashTendered) - settlementTarget.total >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                               ₹{Math.max(0, Number(cashTendered) - settlementTarget.total)}
+                            </h4>
+                         </div>
+                      </div>
+
+                      <div className="mb-4">
+                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Cash Tendered (Received)</label>
+                         <div className="relative">
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</div>
+                            <input 
+                               type="number"
+                               placeholder="Enter amount"
+                               value={cashTendered}
+                               autoFocus
+                               onChange={(e) => setCashTendered(e.target.value)}
+                               className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-4 text-xl font-black tracking-tighter outline-none focus:ring-2 focus:ring-[#E1261C]/20"
+                            />
+                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-2 mb-6">
+                         {[100, 200, 500].map(amt => (
+                            <button 
+                               key={amt}
+                               onClick={() => setCashTendered(prev => (Number(prev || 0) + amt).toString())}
+                               className="py-2.5 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-black hover:bg-slate-100 transition-colors"
+                            >
+                               +{amt}
+                            </button>
+                         ))}
+                         <button 
+                            onClick={() => setCashTendered(settlementTarget.total.toString())}
+                            className="py-2.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black hover:bg-emerald-100 transition-colors"
+                         >
+                            EXACT
+                         </button>
+                      </div>
+
+                      <div className="flex gap-2 w-full">
+                         <button 
+                            onClick={() => setShowCashCalculator(false)}
+                            className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-black text-slate-500 uppercase tracking-wide hover:bg-slate-50"
+                         >
+                            Back
+                         </button>
+                         <button 
+                            disabled={Number(cashTendered) < settlementTarget.total}
+                            onClick={() => handleSettlement('cash')}
+                            className={`flex-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${
+                               Number(cashTendered) < settlementTarget.total 
+                               ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                               : 'bg-[#E1261C] text-white hover:brightness-110 shadow-lg shadow-red-200'
+                            }`}
+                         >
+                            Confirm & Settle
+                         </button>
+                      </div>
+                   </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

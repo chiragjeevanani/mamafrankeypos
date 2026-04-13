@@ -265,7 +265,7 @@ export default function TableView() {
 
                         {/* Bottom Actions */}
                          <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[30px]">
-                            {!showSettlement && (
+                            {!showSettlement && order.kotPrinted && (
                               <button 
                                 onClick={(e) => handlePrintBill(e, order, table)}
                                 className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
@@ -399,7 +399,7 @@ export default function TableView() {
                       </div>
 
                       <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
-                        {!showSettlement && (
+                        {!showSettlement && order.kotPrinted && (
                           <button
                             onClick={(e) => handlePrintBill(e, order, car, 'car-service', { isCarOrder: true })}
                             className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
@@ -497,7 +497,7 @@ export default function TableView() {
 
                       {/* Action buttons */}
                       <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
-                        {!showSettlement && (
+                        {!showSettlement && car.kotPrinted && (
                           <button
                             onClick={(e) => handlePrintBill(e, car, { id: car.carNumber, name: car.carNumber }, 'car-service', { isCarOrder: true })}
                             className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"

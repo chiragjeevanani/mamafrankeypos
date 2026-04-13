@@ -6,21 +6,20 @@ import {
   X, Save, AlertCircle, Leaf, Flame, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { POS_CATEGORIES, POS_MENU_ITEMS as INITIAL_ITEMS } from '../../pos/data/posMenu';
 import { playClickSound } from '../../pos/utils/sounds';
 
 import { usePos } from '../../pos/context/PosContext';
 
 export default function MenuManagement() {
   const { 
-    variantGroups, dishVariants, assignVariantsToDish 
+    variantGroups, dishVariants, assignVariantsToDish,
+    menuItems: items, setMenuItems: setItems,
+    categories, setCategories
   } = usePos();
 
   const [viewMode, setViewMode] = useState('grid');
   const [activeTab, setActiveTab] = useState('items'); // 'items' or 'categories'
   const [searchQuery, setSearchQuery] = useState('');
-  const [items, setItems] = useState(INITIAL_ITEMS);
-  const [categories, setCategories] = useState(POS_CATEGORIES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -359,7 +358,7 @@ export default function MenuManagement() {
                            value={formData.catId}
                            onChange={(e) => setFormData({...formData, catId: parseInt(e.target.value)})}
                         >
-                           {POS_CATEGORIES.map(cat => (
+                           {categories.map(cat => (
                               <option key={cat.id} value={cat.id}>{cat.name}</option>
                            ))}
                         </select>

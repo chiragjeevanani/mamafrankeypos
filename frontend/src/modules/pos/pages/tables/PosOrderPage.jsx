@@ -27,92 +27,19 @@ export default function PosOrderPage() {
   const { 
     placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable,
     orders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
-    variantGroups, dishVariants
+    variantGroups, dishVariants, categories, menuItems
   } = usePos();
   
-  const [categories, setCategories] = useState(POS_CATEGORIES);
-  const [menuItems, setMenuItems] = useState(POS_MENU_ITEMS);
   const [selectedCategory, setSelectedCategory] = useState('fav');
   const [searchQuery, setSearchQuery] = useState('');
   const [shortCode, setShortCode] = useState('');
 
-  // Fetch and parse CSV data
+  // Set initial selected category
   useEffect(() => {
-    const fetchCSV = async () => {
-      try {
-        const response = await fetch('/data/mama franky menu.csv');
-        const text = await response.text();
-        const lines = text.split('\n');
-        
-        if (lines.length < 2) return;
-
-        const parseRow = (row) => {
-          const result = [];
-          let current = '';
-          let inQuotes = false;
-          for (let i = 0; i < row.length; i++) {
-            const char = row[i];
-            if (char === '"') {
-              inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-              result.push(current.trim());
-              current = '';
-            } else {
-              current += char;
-            }
-          }
-          result.push(current.trim());
-          return result;
-        };
-
-        const csvItems = [];
-        const csvCategories = new Set();
-        
-        // Skip header row
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const row = parseRow(line);
-          if (row.length < 11) continue;
-
-          const name = row[0].replace(/^"|"$/g, '');
-          const category = row[8].replace(/^"|"$/g, '') || 'General';
-          const price = parseFloat(row[10]) || 0;
-          const code = row[3].replace(/^"|"$/g, '') || '';
-
-          csvCategories.add(category);
-          csvItems.push({
-            id: `csv-${i}`,
-            catId: category,
-            name: name,
-            price: price,
-            code: code,
-            shortcut: code,
-            image: ''
-          });
-        }
-
-        const newCategories = Array.from(csvCategories).map((cat, index) => ({
-          id: cat,
-          name: cat,
-          icon: 'Utensils',
-          color: index % 2 === 0 ? '#E1261C' : '#00BCD4'
-        }));
-
-        // Add Favorites at top
-        newCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
-        
-        setCategories(newCategories);
-        setMenuItems(csvItems);
-        setSelectedCategory(newCategories[0].id);
-      } catch (error) {
-        console.error("Error fetching CSV:", error);
-      }
-    };
-
-    fetchCSV();
-  }, []);
+    if (categories.length > 0 && selectedCategory === 'fav') {
+      setSelectedCategory(categories[0].id);
+    }
+  }, [categories]);
   
   // Initialize cart from existing order if any
   const [cart, setCart] = useState(() => orders[tableId]?.items || []);

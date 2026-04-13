@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, Plus, Minus, ShoppingCart, Trash2, Send, X } from 'lucide-react';
 import { usePos } from '../../../modules/pos/context/PosContext';
-import { POS_MENU_ITEMS as MENU_ITEMS, POS_CATEGORIES as CATEGORIES } from '../../../modules/pos/data/posMenu';
 import { useEffect } from 'react';
 
 export default function TableOrderScreen() {
@@ -20,7 +19,7 @@ export default function TableOrderScreen() {
   const [selectedItemForVariants, setSelectedItemForVariants] = useState(null);
   const [isOrderViewOpen, setIsOrderViewOpen] = useState(false);
   const [showCustomerInfoModal, setShowCustomerInfoModal] = useState(false);
-  const { placeKOT } = usePos();
+  const { placeKOT, menuItems: MENU_ITEMS, categories: CATEGORIES } = usePos();
 
   useEffect(() => {
     const savedStaff = localStorage.getItem('staff_access');

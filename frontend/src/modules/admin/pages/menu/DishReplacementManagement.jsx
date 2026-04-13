@@ -6,9 +6,10 @@ import {
   ChevronRight, RefreshCw, Filter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { POS_MENU_ITEMS } from '../../../pos/data/posMenu';
+import { usePos } from '../../../pos/context/PosContext';
 
 export default function DishReplacementManagement() {
+  const { menuItems } = usePos();
   const [rules, setRules] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
@@ -20,7 +21,7 @@ export default function DishReplacementManagement() {
   });
 
   const getDishName = (id) => {
-    return POS_MENU_ITEMS.find(item => item.id === id)?.name || 'Unknown Dish';
+    return menuItems.find(item => item.id === id)?.name || 'Unknown Dish';
   };
 
   const getStatus = (startDate, endDate) => {
@@ -245,7 +246,7 @@ export default function DishReplacementManagement() {
                           onChange={(e) => setFormData({...formData, originalDishId: e.target.value})}
                        >
                           <option value="">Select Original</option>
-                          {POS_MENU_ITEMS.map(item => (
+                          {menuItems.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                        </select>
@@ -259,7 +260,7 @@ export default function DishReplacementManagement() {
                           onChange={(e) => setFormData({...formData, replacementDishId: e.target.value})}
                        >
                           <option value="">Select Replacement</option>
-                          {POS_MENU_ITEMS.map(item => (
+                          {menuItems.map(item => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                        </select>
@@ -272,6 +273,7 @@ export default function DishReplacementManagement() {
                        <input 
                           type="date"
                           required
+                          min={new Date().toISOString().split('T')[0]}
                           className="w-full bg-slate-50 border border-slate-100 p-2 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
                           value={formData.startDate}
                           onChange={(e) => setFormData({...formData, startDate: e.target.value})}
@@ -282,6 +284,7 @@ export default function DishReplacementManagement() {
                        <input 
                           type="date"
                           required
+                          min={formData.startDate || new Date().toISOString().split('T')[0]}
                           className="w-full bg-slate-50 border border-slate-100 p-2 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
                           value={formData.endDate}
                           onChange={(e) => setFormData({...formData, endDate: e.target.value})}

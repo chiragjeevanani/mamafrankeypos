@@ -5,6 +5,7 @@ import {
   normalizeTableLifecycle,
   resetTableLifecycle,
 } from '../utils/tableLifecycle';
+import { POS_CATEGORIES, POS_MENU_ITEMS } from '../data/posMenu';
 
 const PosContext = createContext();
 
@@ -13,6 +14,82 @@ const normalizeStoredTables = (items = []) => items.map((table) => normalizeTabl
 
 export function PosProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [categories, setCategories] = useState(POS_CATEGORIES);
+  const [menuItems, setMenuItems] = useState(POS_MENU_ITEMS);
+
+  useEffect(() => {
+    const fetchCSV = async () => {
+      try {
+        const response = await fetch('/data/mama franky menu.csv');
+        const text = await response.text();
+        const lines = text.split('\n');
+        
+        if (lines.length < 2) return;
+
+        const parseRow = (row) => {
+          const result = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < row.length; i++) {
+            const char = row[i];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim());
+          return result;
+        };
+
+        const csvItems = [];
+        const csvCategories = new Set();
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseRow(line);
+          if (row.length < 11) continue;
+
+          const name = row[0].replace(/^"|"$/g, '');
+          const category = row[8].replace(/^"|"$/g, '') || 'General';
+          const price = parseFloat(row[10]) || 0;
+          const code = row[3].replace(/^"|"$/g, '') || '';
+
+          csvCategories.add(category);
+          csvItems.push({
+            id: `csv-${i}`,
+            catId: category,
+            name: name,
+            price: price,
+            code: code,
+            shortcut: code,
+            image: ''
+          });
+        }
+
+        const newCategories = Array.from(csvCategories).map((cat, index) => ({
+          id: cat,
+          name: cat,
+          icon: 'Utensils',
+          color: index % 2 === 0 ? '#E1261C' : '#00BCD4'
+        }));
+
+        newCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
+        
+        setCategories(newCategories);
+        setMenuItems(csvItems);
+      } catch (error) {
+        console.error("Error fetching CSV in Context:", error);
+      }
+    };
+
+    fetchCSV();
+  }, []);
   const [orders, setOrders] = useState(() => {
     try {
       const saved = localStorage.getItem('rms_pos_orders');
@@ -468,6 +545,7 @@ export function PosProvider({ children }) {
       appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup,
       dishVariants, assignVariantsToDish,
+      categories, setCategories, menuItems, setMenuItems,
       user, setUser
     }}>
       {children}

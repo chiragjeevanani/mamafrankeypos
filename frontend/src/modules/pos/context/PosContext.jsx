@@ -193,8 +193,8 @@ export function PosProvider({ children }) {
     try {
       const saved = localStorage.getItem('rms_pos_taxes');
       if (saved) return JSON.parse(saved);
-      // Default fallback (backward compatibility with hardcoded 5%)
-      return [{ id: 'tax-default', name: 'GST', rate: 5, enabled: true }];
+      // No default fallback
+      return [];
     } catch { return []; }
   });
 

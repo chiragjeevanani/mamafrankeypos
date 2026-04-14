@@ -327,13 +327,13 @@ export default function TableView() {
                                 Settlement
                               </button>
                             )}
-                           {order.billPrinted && (
+                           {(order.kotPrinted || order.billPrinted) && (
                              <button 
-                               onClick={(e) => handleClearTable(e, table.id)}
-                               className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                               title="Clear Table"
+                                onClick={(e) => handleClearTable(e, table.id)}
+                                className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
+                                title="Cancel Order / Clear Table"
                              >
-                                <Trash2 size={12} strokeWidth={2.5} />
+                                 <Trash2 size={12} strokeWidth={2.5} />
                              </button>
                            )}
                         </div>
@@ -462,11 +462,11 @@ export default function TableView() {
                           </button>
                         )}
 
-                        {order.billPrinted && (
+                        {(order.kotPrinted || order.billPrinted) && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); if (window.confirm(`Clear car ${car.name}?`)) clearCarOrder(car.id); }}
+                            onClick={(e) => { e.stopPropagation(); if (window.confirm(`Cancel order for car ${car.name}?`)) clearCarOrder(car.id); }}
                             className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                            title="Clear Car Order"
+                            title="Cancel Order / Clear Car"
                           >
                             <Trash2 size={12} strokeWidth={2.5} />
                           </button>
@@ -562,14 +562,14 @@ export default function TableView() {
                               </button>
                             )}
 
-                            {car.billPrinted && (
+                            {(car.kotPrinted || car.billPrinted) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (window.confirm(`Clear car ${car.carNumber}?`)) clearCarOrder(car.carNumber);
+                                  if (window.confirm(`Cancel order for car ${car.carNumber}?`)) clearCarOrder(car.carNumber);
                                 }}
                                 className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                                title="Clear Car Order"
+                                title="Cancel Order / Clear Car"
                               >
                                 <Trash2 size={12} strokeWidth={2.5} />
                               </button>

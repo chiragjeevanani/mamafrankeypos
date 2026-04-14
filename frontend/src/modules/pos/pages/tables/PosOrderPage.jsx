@@ -25,7 +25,7 @@ export default function PosOrderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { 
-    placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable,
+    placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable, cancelKOTItem,
     orders, carOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
     variantGroups, dishVariants, categories, menuItems
   } = usePos();
@@ -357,8 +357,8 @@ export default function PosOrderPage() {
 
   const handleClearTable = () => {
     playClickSound();
-    if (window.confirm("Are you sure you want to mark this table as empty?")) {
-      clearTable(tableId);
+    if (window.confirm(`Are you sure you want to cancel the order for ${tableInfo.name}?`)) {
+      clearTable(tableId, { isCarOrder: isCarServiceMode });
       navigate('/pos/tables');
     }
   };
@@ -626,9 +626,18 @@ export default function PosOrderPage() {
                  <div className="bg-[#616161] text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between items-center">
                     <span>KOT - {kot.id} Time - {kot.time}</span>
                  </div>
-                 {kot.items.map(item => (
-                   <CartItem key={`${kot.id}-${item.id}`} item={item} isPlaced={true} />
-                 ))}
+                  {kot.items.map(item => (
+                    <CartItem 
+                      key={`${kot.id}-${item.id}`} 
+                      item={item} 
+                      isPlaced={true} 
+                      onCancel={() => {
+                        if (window.confirm(`Are you sure you want to cancel ${item.name} from this KOT?`)) {
+                          cancelKOTItem(tableId, kot.id, item.id, { isCarOrder: isCarServiceMode });
+                        }
+                      }}
+                    />
+                  ))}
               </div>
             ))}
 
@@ -1170,14 +1179,22 @@ export default function PosOrderPage() {
 }
 
 // Support Components
-function CartItem({ item, isPlaced, onRemove, onUpdateQty }) {
+function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
   return (
     <div className={`px-3 py-2 border-b border-gray-100 flex items-center text-[11px] font-bold animate-in fade-in slide-in-from-right-2 duration-200 group ${isPlaced ? 'bg-gray-50/50' : 'bg-white'}`}>
       <div className="w-5 mr-2 shrink-0">
-        {!isPlaced && (
+        {!isPlaced ? (
           <button 
             onClick={onRemove}
             className="w-5 h-5 rounded-full bg-[#E1261C] text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
+          >
+            <Plus size={12} className="rotate-45" strokeWidth={4} />
+          </button>
+        ) : (
+          <button 
+            onClick={onCancel}
+            className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"
+            title="Cancel Item"
           >
             <Plus size={12} className="rotate-45" strokeWidth={4} />
           </button>

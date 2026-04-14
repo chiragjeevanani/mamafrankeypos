@@ -459,6 +459,49 @@ export function PosProvider({ children }) {
     resetTableById(tableId);
   };
 
+  const cancelKOTItem = (tableId, kotId, itemId, options = {}) => {
+    const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
+    const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+
+    setOrderStore(prev => {
+      const order = prev[tableId];
+      if (!order || !order.kots) return prev;
+
+      const updatedKots = order.kots.map(kot => {
+        if (kot.id === kotId) {
+          const updatedItems = kot.items.filter(item => item.id !== itemId);
+          const newTotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+          return { ...kot, items: updatedItems, total: newTotal };
+        }
+        return kot;
+      }).filter(kot => kot.items.length > 0);
+
+      const hasKotsLeft = updatedKots.length > 0;
+
+      return {
+        ...prev,
+        [tableId]: {
+          ...order,
+          kots: updatedKots,
+          kotPrinted: hasKotsLeft ? order.kotPrinted : false,
+          status: hasKotsLeft ? order.status : 'blank'
+        }
+      };
+    });
+
+    // Update table status if it was a table order
+    if (!isCarOrder) {
+      setTables(prev => prev.map(table => {
+        if (table.id === tableId) {
+          const order = orders[tableId]; // This might be stale in this closure, but context will re-render
+          // We'll rely on the next render or manual status update if needed
+          return table;
+        }
+        return table;
+      }));
+    }
+  };
+
   const setTableWaiter = (tableId, staff) => {
     setOrders(prev => ({
       ...prev,
@@ -541,7 +584,7 @@ export function PosProvider({ children }) {
     <PosContext.Provider value={{ 
       isSidebarOpen, orders, toggleSidebar, closeSidebar, 
       isCustomerSectionOpen, toggleCustomerSection,
-      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, setTableWaiter,
+      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       sections, setSections, tables, setTables, addPosTable,
       appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,

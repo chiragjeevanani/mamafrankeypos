@@ -123,6 +123,23 @@ export function PosProvider({ children }) {
     }
   });
 
+  // --- Pick Up Orders (keyed by unique PU ID) ---
+  const [pickupOrders, setPickupOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rms_pos_pickup_orders');
+      if (!saved) return {};
+
+      return Object.fromEntries(
+        Object.entries(JSON.parse(saved)).map(([tableId, order]) => [
+          tableId,
+          normalizeStoredSession(order),
+        ])
+      );
+    } catch {
+      return {};
+    }
+  });
+
   // --- Dynamic Sections & Tables (Admin Managed) ---
   const [sections, setSections] = useState(() => {
     try {
@@ -167,6 +184,12 @@ export function PosProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('rms_pos_car_orders', JSON.stringify(carOrders));
   }, [carOrders]);
+
+  // Persist pickup orders
+  useEffect(() => {
+    localStorage.setItem('rms_pos_pickup_orders', JSON.stringify(pickupOrders));
+  }, [pickupOrders]);
+
 
   // One-time cleanup: reset stale table statuses (Blue/Orange etc. from previous mock runs)
   // Ensures ALL tables without active orders are set to 'blank' (Grey)
@@ -297,8 +320,8 @@ export function PosProvider({ children }) {
   };
 
   const placeKOT = (tableId, cart, total, staff = null, options = {}) => {
-    const { kotPrinted = false, isCarOrder = false } = options;
-    const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+    const { kotPrinted = false, isCarOrder = false, isPickupOrder = false } = options;
+    const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
 
     setOrderStore(prev => {
       const existingOrder = normalizeStoredSession(prev[tableId] || { 
@@ -343,7 +366,8 @@ export function PosProvider({ children }) {
 
   const markKOTPrinted = (tableId, options = {}) => {
     const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-    const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+    const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
+    const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
 
     setOrderStore(prev => {
       if (!prev[tableId]) return prev;
@@ -369,7 +393,8 @@ export function PosProvider({ children }) {
 
   const saveOrder = (tableId, options = {}) => {
      const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-     const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+     const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
+     const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
 
      setOrderStore(prev => {
        if (!prev[tableId]) return prev;
@@ -407,7 +432,8 @@ export function PosProvider({ children }) {
 
   const settleOrder = (tableId, paymentMethod, options = {}) => {
      const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-     const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+     const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
+     const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
      const paymentMode = normalizePaymentMode(paymentMethod);
 
      setOrderStore(prev => {
@@ -456,12 +482,22 @@ export function PosProvider({ children }) {
       });
     }
 
+    if (options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId])) {
+      setPickupOrders(prev => {
+        if (!prev[tableId]) return prev;
+        const newOrders = { ...prev };
+        delete newOrders[tableId];
+        return newOrders;
+      });
+    }
+
     resetTableById(tableId);
   };
 
   const cancelKOTItem = (tableId, kotId, itemId, options = {}) => {
     const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-    const setOrderStore = isCarOrder ? setCarOrders : setOrders;
+    const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
+    const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
 
     setOrderStore(prev => {
       const order = prev[tableId];
@@ -586,6 +622,7 @@ export function PosProvider({ children }) {
       isCustomerSectionOpen, toggleCustomerSection,
       placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
+      pickupOrders, setPickupOrders,
       sections, setSections, tables, setTables, addPosTable,
       appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup,

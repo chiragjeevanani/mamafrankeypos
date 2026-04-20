@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check, Wallet, Smartphone, CreditCard } from 'lucide-react';
+import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check, Wallet, Smartphone, CreditCard, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PosTopNavbar from '../../components/PosTopNavbar';
 import { usePos } from '../../context/PosContext';
@@ -13,7 +13,7 @@ import { getTableColor, getTableStatusText } from '../../utils/tableLifecycle';
 export default function TableView() {
   const navigate = useNavigate();
   const { 
-    orders, saveOrder, settleOrder, clearTable, carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
+    orders, saveOrder, settleOrder, clearTable, carOrders, pickupOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
     sections, tables, setTableWaiter, addPosTable, user, calculateTaxes
   } = usePos();
 
@@ -41,13 +41,19 @@ export default function TableView() {
   const [cashTendered, setCashTendered] = useState('');
 
   const handleTableClick = (table) => {
-    const existingOrder = (table.type === 'CAR' || table.sectionId === 'car-service') 
-      ? carOrders[table.id] 
-      : orders[table.id];
+    const isPickupOrder = table.isPickupOrder || table.sectionId === 'pickup';
+    const isCarOrder = (table.type === 'CAR' || table.sectionId === 'car-service');
+    
+    const existingOrder = isPickupOrder ? pickupOrders[table.id] : isCarOrder ? carOrders[table.id] : orders[table.id];
 
     if (existingOrder?.waiter) {
-      const isCarOrder = (table.type === 'CAR' || table.sectionId === 'car-service');
-      navigate(`/pos/order/${table.id}`, { state: { waiter: existingOrder.waiter, fromCarService: isCarOrder } });
+      navigate(`/pos/order/${table.id}`, { 
+        state: { 
+          waiter: existingOrder.waiter, 
+          fromCarService: isCarOrder,
+          fromPickup: isPickupOrder
+        } 
+      });
       return;
     }
 
@@ -96,13 +102,17 @@ export default function TableView() {
       { total, subTotal, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal })) }
     );
 
-    saveOrder(table.id, { isCarOrder: options.isCarOrder });
+    saveOrder(table.id, { 
+      isCarOrder: options.isCarOrder,
+      isPickupOrder: options.isPickupOrder
+    });
   };
 
   const handleOpenSettlement = (e, table, options = {}) => {
     e.stopPropagation();
     const isCarOrder = !!options.isCarOrder;
-    const order = isCarOrder ? carOrders[table.id] : orders[table.id];
+    const isPickupOrder = !!options.isPickupOrder;
+    const order = isPickupOrder ? pickupOrders[table.id] : (isCarOrder ? carOrders[table.id] : orders[table.id]);
     const subTotal = order?.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
     const taxesArr = calculateTaxes ? calculateTaxes(subTotal) : [];
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
@@ -112,6 +122,7 @@ export default function TableView() {
       id: table.id,
       name: table.name,
       isCarOrder,
+      isPickupOrder,
       total,
     });
     setShowUpiQR(false);
@@ -152,9 +163,11 @@ export default function TableView() {
 
     settleOrder(settlementTarget.id, paymentMethod, {
       isCarOrder: settlementTarget.isCarOrder,
+      isPickupOrder: settlementTarget.isPickupOrder,
     });
     clearTable(settlementTarget.id, {
       isCarOrder: settlementTarget.isCarOrder,
+      isPickupOrder: settlementTarget.isPickupOrder,
     });
     setShowSettlementModal(false);
     setSettlementTarget(null);
@@ -196,7 +209,10 @@ export default function TableView() {
             <Car size={14} /> Car Service
           </button>
           <button
-            onClick={() => navigate('/pos/order/pickup', { state: { fromPickup: true } })}
+            onClick={() => {
+              const puId = `PU-${Date.now().toString().slice(-6)}`;
+              navigate(`/pos/order/${puId}`, { state: { fromPickup: true } });
+            }}
             className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95"
           >
             Pick Up
@@ -572,6 +588,125 @@ export default function TableView() {
           </div>
         </div>
         {/* ===== END CAR SERVICE SECTION ===== */}
+        
+        {/* ===== PICK UP SECTION ===== */}
+        <div className="bg-white border-t border-gray-200">
+          <div className="p-3 bg-gray-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-[#E1261C] rounded-xl flex items-center justify-center shadow-lg shadow-red-900/20">
+                <ShoppingBag size={16} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-[12px] font-black text-gray-800 uppercase tracking-tight">Pick Up Orders</h2>
+                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest leading-none mt-0.5">Active Pickups</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-px bg-gray-200 mx-1" />
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-[#FFD600] rounded-lg border border-yellow-400 shadow-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#E1261C] animate-pulse" />
+                <span className="text-[9px] font-black text-gray-800 uppercase tracking-wider">
+                  {Object.keys(pickupOrders).length} Active
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
+            <AnimatePresence mode="popLayout">
+              {Object.entries(pickupOrders).map(([puId, order]) => {
+                const statusConfig = getTableColor(order);
+                const statusLabel = getTableStatusText(order);
+                const totalAmount = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+                const showSettlement = order.billPrinted;
+                const isActive = !!(order.kotPrinted || order.billPrinted);
+
+                return (
+                  <motion.div
+                    key={puId}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.7 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleTableClick({ id: puId, name: puId, sectionId: 'pickup', isPickupOrder: true })}
+                    className="aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 pb-1 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
+                    style={{
+                      borderStyle: statusConfig.borderStyle,
+                      borderColor: statusConfig.borderColor,
+                      borderWidth: '1.5px',
+                      backgroundColor: statusConfig.color
+                    }}
+                  >
+                    {isActive ? (
+                      <>
+                        <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
+                          <span
+                            className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full"
+                            style={{ color: statusConfig.textColor }}
+                          >
+                            🛍️ {puId.split('-')[1] || puId}
+                          </span>
+                          {order.waiter && (
+                            <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
+                              {order.waiter.name}
+                            </span>
+                          )}
+                          <span className="mt-0.5 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                            {statusLabel}
+                          </span>
+                          <div className="mt-0 px-2 py-0.5 bg-black/5 rounded-md">
+                            <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                              ₹{totalAmount.toFixed(0)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[22px]">
+                          {!showSettlement && order.kotPrinted && (
+                            <button
+                              onClick={(e) => handlePrintBill(e, order, { id: puId, name: puId }, 'pickup', { isPickupOrder: true })}
+                              className="px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                            >
+                              <Printer size={10} strokeWidth={2.5} />
+                              Bill
+                            </button>
+                          )}
+                          {showSettlement && (
+                            <button
+                              onClick={(e) => handleOpenSettlement(e, { id: puId, name: puId }, { isPickupOrder: true })}
+                              className="px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                            >
+                              <Wallet size={10} strokeWidth={2.5} />
+                              Settle
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
+                        <span className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full" style={{ color: statusConfig.textColor }}>
+                           🛍️ {puId.split('-')[1] || puId}
+                        </span>
+                        <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+
+            {Object.keys(pickupOrders).length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-6 opacity-30">
+                <ShoppingBag size={28} strokeWidth={1.5} className="text-gray-400 mb-1" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">No Active Pickups</span>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* ===== END PICK UP SECTION ===== */}
       </div>
 
       {/* Add Car Modal */}

@@ -26,7 +26,7 @@ export default function PosOrderPage() {
   const location = useLocation();
   const { 
     placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable, cancelKOTItem,
-    orders, carOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
+    orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
     variantGroups, dishVariants, categories, menuItems
   } = usePos();
   
@@ -41,14 +41,14 @@ export default function PosOrderPage() {
     }
   }, [categories]);
   
-  const isPickupMode = location.state?.fromPickup === true;
+  const isPickupMode = location.state?.fromPickup === true || tableId?.startsWith('PU-');
   const isCarServiceMode = location.state?.fromCarService === true;
   const [orderType, setOrderType] = useState(
     isPickupMode ? 'pickup' : isCarServiceMode ? 'car-service' : 'dine-in'
   );
 
   // Initialize cart from existing order if any
-  const currentOrderStore = isCarServiceMode ? carOrders : orders;
+  const currentOrderStore = isPickupMode ? pickupOrders : (isCarServiceMode ? carOrders : orders);
   const [cart, setCart] = useState(() => currentOrderStore[tableId]?.items || []);
   
   // States for interactive checkboxes/radios
@@ -92,7 +92,7 @@ export default function PosOrderPage() {
 
   // Sync waiter and order data from shared context
   useEffect(() => {
-    const existingOrder = isCarServiceMode ? carOrders[tableId] : orders[tableId];
+    const existingOrder = isPickupMode ? pickupOrders[tableId] : isCarServiceMode ? carOrders[tableId] : orders[tableId];
     if (existingOrder) {
        if (existingOrder.waiter) {
           const matched = MOCK_WAITERS.find(w => w.id === existingOrder.waiter.id || w.name === existingOrder.waiter.name);
@@ -102,7 +102,15 @@ export default function PosOrderPage() {
           setCustomer(existingOrder.customer);
        }
     }
-  }, [tableId, orders, carOrders, isCarServiceMode]);
+  }, [tableId, pickupOrders, carOrders, orders, isPickupMode, isCarServiceMode]);
+
+  // Reset cart/states when ID changes (important for next-customer flow)
+  useEffect(() => {
+    const existingOrder = currentOrderStore[tableId]?.items || [];
+    setCart(existingOrder);
+    setSearchQuery('');
+    setShortCode('');
+  }, [tableId, currentOrderStore]);
 
   // Customer Section States
   const [customer, setCustomer] = useState({
@@ -123,20 +131,22 @@ export default function PosOrderPage() {
   }, [tableId]);
 
   const filteredItems = useMemo(() => {
-    return menuItems.filter(item => {
+    return (menuItems || []).filter(item => {
       const query = searchQuery.toLowerCase();
       const codeQuery = shortCode.toLowerCase();
       
-      const matchesSearch = item.name.toLowerCase().includes(query) || 
-                           item.code.toLowerCase().includes(query);
+      const matchesSearch = (item.name || '').toLowerCase().includes(query) || 
+                           (item.code || '').toLowerCase().includes(query);
       
       const matchesShortCode = shortCode === '' || 
-                              item.code.toLowerCase() === codeQuery ||
-                              item.shortcut.toLowerCase() === codeQuery;
+                              (item.code || '').toLowerCase() === codeQuery ||
+                              (item.shortcut || '').toLowerCase() === codeQuery;
       
       const matchesCategory = (shortCode !== '' || searchQuery !== '') 
         ? true 
-        : (selectedCategory === 'fav' ? true : item.catId === selectedCategory);
+        : (String(selectedCategory).toLowerCase() === 'fav' 
+            ? true 
+            : String(item.catId).toLowerCase() === String(selectedCategory).toLowerCase());
 
       return matchesCategory && matchesSearch && matchesShortCode;
     });
@@ -234,7 +244,8 @@ export default function PosOrderPage() {
 
   const { total, subTotal, totalItemCount, tax, appliedTaxes, roundOff, changeToReturn, bogoDiscount } = useMemo(() => {
     const cartItems = cart || [];
-    const kotItems = (isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.flatMap(kot => kot.items) || [];
+    const currentOrderData = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
+    const kotItems = currentOrderData?.kots?.flatMap(kot => kot.items) || [];
     const allItems = [...cartItems, ...kotItems];
     
     const count = allItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -308,10 +319,16 @@ export default function PosOrderPage() {
        alert("No items in cart to place KOT!");
        return;
     }
-    placeKOT(tableId, cart, cartTotal, selectedWaiter, { isCarOrder: orderType === 'car-service' });
+    placeKOT(tableId, cart, cartTotal, selectedWaiter, { 
+      isCarOrder: orderType === 'car-service',
+      isPickupOrder: orderType === 'pickup'
+    });
     if (isPrint) {
       printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
-      markKOTPrinted(tableId, { isCarOrder: orderType === 'car-service' });
+      markKOTPrinted(tableId, { 
+        isCarOrder: orderType === 'car-service',
+        isPickupOrder: orderType === 'pickup'
+      });
     }
 
     setCart([]); // Clear immediately to avoid visual duplicity
@@ -322,7 +339,7 @@ export default function PosOrderPage() {
 
   const handleReprint = () => {
     playClickSound();
-    const orderData = isCarServiceMode ? carOrders[tableId] : orders[tableId];
+    const orderData = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
     if (!orderData || !orderData.kots || orderData.kots.length === 0) {
       alert("No active order to reprint!");
       return;
@@ -358,23 +375,45 @@ export default function PosOrderPage() {
   const handleClearTable = () => {
     playClickSound();
     if (window.confirm(`Are you sure you want to cancel the order for ${tableInfo.name}?`)) {
-      clearTable(tableId, { isCarOrder: isCarServiceMode });
+      clearTable(tableId, { 
+        isCarOrder: isCarServiceMode,
+        isPickupOrder: isPickupMode
+      });
       navigate('/pos/tables');
     }
   };
   
   const handleDownloadBillAndKOT = () => {
     playClickSound();
-    const orderData = isCarServiceMode ? carOrders[tableId] : orders[tableId];
+    const orderData = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
     if (!orderData && cart.length === 0) {
       alert("No active order data to download!");
       return;
     }
+
+    // SAVE THE ORDER FOR PICKUP (to ensure it shows in TableView/Context)
+    if (isPickupMode && cart.length > 0) {
+      placeKOT(tableId, cart, total, selectedWaiter, { 
+        kotPrinted: true, 
+        isPickupOrder: true 
+      });
+      saveOrder(tableId, { isPickupOrder: true });
+    }
+
     downloadBillAndKOT(
       { ...orderData, cart }, 
       { name: tableInfo.name }, 
       { total, subTotal, tax, discount, orderType, billerName: user?.name }
     );
+
+    // Refresh for next pickup customer (NEW ID for fresh session)
+    if (isPickupMode) {
+       setTimeout(() => {
+          const nextPuId = `PU-${Date.now().toString().slice(-6)}`;
+          // Use navigate for smoothness, the useEffect above will handle the state reset
+          navigate(`/pos/order/${nextPuId}`, { state: { fromPickup: true } });
+       }, 500);
+    }
   };
 
   return (
@@ -864,7 +903,7 @@ export default function PosOrderPage() {
               )}
             </div>
 
-            {/* Always Visible Action Buttons (Row 4) - hidden in pickup mode */}
+            {/* Always Visible Action Buttons (Row 4) */}
             {!isPickupMode && (
               <div className="grid grid-cols-2 gap-2 p-2 border-t border-white/5">
                 <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" />

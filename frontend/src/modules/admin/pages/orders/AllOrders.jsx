@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Search, Filter, Clock, CheckCircle, XCircle, ChevronRight, Eye, Edit2, Trash2, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { maskQuantity, maskCurrency } from '../../utils/dataMask';
 import AdminModal from '../../components/ui/AdminModal';
 
 export default function AllOrders() {
@@ -102,10 +103,10 @@ export default function AllOrders() {
                   </div>
                 </td>
                 <td className="px-6 py-4 underline decoration-transparent">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tracking-tighter underline decoration-transparent">{order.type} ({order.items} Items)</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tracking-tighter underline decoration-transparent">{order.type} ({maskQuantity(order.items)} Items)</span>
                 </td>
                 <td className="px-6 py-4 text-right underline decoration-transparent">
-                  <span className="text-xs font-black text-slate-900 tracking-tighter underline decoration-transparent">₹{order.total}</span>
+                  <span className="text-xs font-black text-slate-900 tracking-tighter underline decoration-transparent">₹{maskCurrency(order.total)}</span>
                 </td>
                 <td className="px-6 py-4 underline decoration-transparent">
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusColor(order.status)} underline decoration-transparent`}>

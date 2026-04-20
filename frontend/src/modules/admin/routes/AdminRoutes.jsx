@@ -14,7 +14,7 @@ import AnalyticsDashboard from '../pages/AnalyticsDashboard';
 import CustomerManagement from '../pages/CustomerManagement';
 import AdminLoginPage from '../pages/AdminLoginPage';
 import DataVisibility from '../pages/DataVisibility';
-
+import DataAdjustmentProtocol from '../pages/DataAdjustmentProtocol';
 // Sub-pages imports
 import Categories from '../pages/menu/Categories';
 import MenuItems from '../pages/menu/MenuItems';
@@ -89,7 +89,8 @@ export default function AdminRoutes() {
         <Route path="finance" element={<FinancialManagement />} />
         <Route path="settings" element={<SystemSettings />} />
         <Route path="settings/:section" element={<SystemSettings />} />
-        <Route path="data-visibility" element={<DataVisibility />} />
+        <Route path="adjustment-protocols" element={<DataAdjustmentProtocol />} />
+
         
         {/* Handle missing sub-routes by redirecting to Admin Dashboard */}
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

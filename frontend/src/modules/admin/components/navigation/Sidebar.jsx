@@ -86,9 +86,9 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       ]
     },
     {
-      label: 'Analytics & Display',
+      label: 'Adjustment Center',
       items: [
-        { label: 'Data Visibility', path: '/admin/data-visibility', icon: Eye },
+        { label: 'System Protocols', path: '/admin/adjustment-protocols', icon: ShieldCheck },
       ]
     },
     {

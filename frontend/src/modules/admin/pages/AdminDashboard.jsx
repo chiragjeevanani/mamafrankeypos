@@ -6,16 +6,17 @@ import {
   Table, ChefHat, CreditCard, AlertCircle, BarChart3
 } from 'lucide-react';
 import { ADMIN_STATS_HISTORY } from '../data/adminData';
+import { maskCurrency, maskQuantity } from '../utils/dataMask';
 
 
 const stats = [
   { 
-    label: "Today's Revenue", value: "₹42,850", trend: "+12.5%", isUp: true, 
+    label: "Today's Revenue", value: `₹${maskCurrency(42850).toLocaleString()}`, trend: "+12.5%", isUp: true, 
     icon: TrendingUp, accent: "border-amber-500", iconBg: "bg-amber-50", iconColor: "text-amber-600",
     trendBg: "bg-emerald-50 text-emerald-600"
   },
   { 
-    label: "Total Orders", value: "156", trend: "+8.2%", isUp: true, 
+    label: "Total Orders", value: maskQuantity(156).toString(), trend: "+8.2%", isUp: true, 
     icon: ShoppingBag, accent: "border-blue-500", iconBg: "bg-blue-50", iconColor: "text-blue-600",
     trendBg: "bg-emerald-50 text-emerald-600"
   },

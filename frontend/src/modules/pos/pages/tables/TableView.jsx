@@ -327,15 +327,7 @@ export default function TableView() {
                                 Settlement
                               </button>
                             )}
-                           {(order.kotPrinted || order.billPrinted) && (
-                             <button 
-                                onClick={(e) => handleClearTable(e, table.id)}
-                                className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                                title="Cancel Order / Clear Table"
-                             >
-                                 <Trash2 size={12} strokeWidth={2.5} />
-                             </button>
-                           )}
+
                         </div>
                       </>
                     ) : (
@@ -409,7 +401,7 @@ export default function TableView() {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleTableClick({ id: car.id, name: car.name, sectionId: 'car-service' })}
-                  className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 pb-1.5 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
+                  className="aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 pb-1 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                   style={{
                     borderStyle: statusConfig.borderStyle,
                     borderColor: statusConfig.borderColor,
@@ -422,31 +414,31 @@ export default function TableView() {
 
                       <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
                         <span
-                          className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
+                          className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full"
                           style={{ color: statusConfig.textColor }}
                         >
                           🚗 {car.name.replace(/\s/g, '').slice(-4)}
                         </span>
                         {order.waiter && (
-                          <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
+                          <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
                             {order.waiter.name}
                           </span>
                         )}
-                        <span className="mt-1 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                        <span className="mt-0.5 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
                           {statusLabel}
                         </span>
-                        <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
+                        <div className="mt-0 px-2 py-0.5 bg-black/5 rounded-md">
                           <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
                             ₹{carTotal.toFixed(0)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
+                      <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[22px]">
                         {!showSettlement && order.kotPrinted && (
                           <button
                             onClick={(e) => handlePrintBill(e, order, car, 'car-service', { isCarOrder: true })}
-                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                            className="px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
                           >
                             <Printer size={10} strokeWidth={2.5} />
                             Print Bill
@@ -455,27 +447,19 @@ export default function TableView() {
                         {showSettlement && (
                           <button
                             onClick={(e) => handleOpenSettlement(e, car, { isCarOrder: true })}
-                            className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                            className="px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
                           >
                             <Wallet size={10} strokeWidth={2.5} />
                             Settlement
                           </button>
                         )}
 
-                        {(order.kotPrinted || order.billPrinted) && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); if (window.confirm(`Cancel order for car ${car.name}?`)) clearCarOrder(car.id); }}
-                            className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                            title="Cancel Order / Clear Car"
-                          >
-                            <Trash2 size={12} strokeWidth={2.5} />
-                          </button>
-                        )}
+
                       </div>
                     </>
                   ) : (
                     <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
-                      <span className="font-black text-[11px] tracking-widest text-center leading-tight w-full px-1" style={{ color: statusConfig.textColor }}>
+                      <span className="font-black text-[13px] tracking-tight text-center leading-tight w-full px-1" style={{ color: statusConfig.textColor }}>
                         🚗 {car.name.replace(/\s/g, '').slice(-4)}
                       </span>
                       <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
@@ -508,7 +492,7 @@ export default function TableView() {
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleTableClick({ id: car.carNumber, sectionId: 'car-service' })}
-                      className="aspect-square rounded-xl flex flex-col items-center justify-between p-2 pb-1.5 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
+                      className="aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 pb-1 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                       style={{
                         borderStyle: statusConfig.borderStyle,
                         borderColor: statusConfig.borderColor,
@@ -521,20 +505,20 @@ export default function TableView() {
                           {/* Car number + total */}
                           <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
                             <span
-                              className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full"
+                              className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full"
                               style={{ color: statusConfig.textColor }}
                             >
                               🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
                             </span>
                             {car.waiter && (
-                              <span className="text-[8px] font-bold uppercase tracking-widest mt-1 opacity-70" style={{ color: statusConfig.textColor }}>
+                              <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
                                 {car.waiter.name}
                               </span>
                             )}
-                            <span className="mt-1 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
+                            <span className="mt-0.5 text-[7px] font-black uppercase tracking-[0.2em] opacity-80" style={{ color: statusConfig.textColor }}>
                               {statusLabel}
                             </span>
-                            <div className="mt-0.5 px-2 py-0.5 bg-black/5 rounded-md">
+                            <div className="mt-0 px-2 py-0.5 bg-black/5 rounded-md">
                               <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
                                 ₹{carTotal.toFixed(0)}
                               </span>
@@ -542,11 +526,11 @@ export default function TableView() {
                           </div>
 
                           {/* Action buttons */}
-                          <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[26px]">
+                          <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[22px]">
                             {!showSettlement && car.kotPrinted && (
                               <button
                                 onClick={(e) => handlePrintBill(e, car, { id: car.carNumber, name: car.carNumber }, 'car-service', { isCarOrder: true })}
-                                className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                                className="px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
                               >
                                 <Printer size={10} strokeWidth={2.5} />
                                 Print Bill
@@ -555,30 +539,19 @@ export default function TableView() {
                             {showSettlement && (
                               <button
                                 onClick={(e) => handleOpenSettlement(e, { id: car.carNumber, name: car.carNumber }, { isCarOrder: true })}
-                                className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
+                                className="px-2 py-0.5 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
                               >
                                 <Wallet size={10} strokeWidth={2.5} />
                                 Settlement
                               </button>
                             )}
 
-                            {(car.kotPrinted || car.billPrinted) && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm(`Cancel order for car ${car.carNumber}?`)) clearCarOrder(car.carNumber);
-                                }}
-                                className="p-1.5 bg-[#BE123C] border border-rose-900/10 rounded-lg shadow-sm text-white hover:brightness-110 transition-all active:scale-90"
-                                title="Cancel Order / Clear Car"
-                              >
-                                <Trash2 size={12} strokeWidth={2.5} />
-                              </button>
-                            )}
+
                           </div>
                         </>
                       ) : (
                         <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
-                          <span className="font-black text-[11px] tracking-widest text-center leading-tight truncate w-full" style={{ color: statusConfig.textColor }}>
+                          <span className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full" style={{ color: statusConfig.textColor }}>
                              🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
                           </span>
                           <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />

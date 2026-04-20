@@ -644,13 +644,13 @@ export default function TableView() {
                       <>
                         <div className="flex-1 flex flex-col items-center justify-center min-h-0 w-full px-1">
                           <span
-                            className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full"
+                            className="font-black text-[11px] tracking-tight text-center leading-tight truncate w-full"
                             style={{ color: statusConfig.textColor }}
                           >
                             🛍️ {puId.split('-')[1] || puId}
                           </span>
                           {order.waiter && (
-                            <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
+                            <span className="text-[7.5px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
                               {order.waiter.name}
                             </span>
                           )}
@@ -658,7 +658,7 @@ export default function TableView() {
                             {statusLabel}
                           </span>
                           <div className="mt-0 px-2 py-0.5 bg-black/5 rounded-md">
-                            <span className="font-black text-[10px] tracking-tight" style={{ color: statusConfig.textColor }}>
+                            <span className="font-black text-[9px] tracking-tight" style={{ color: statusConfig.textColor }}>
                               ₹{totalAmount.toFixed(0)}
                             </span>
                           </div>

@@ -10,6 +10,7 @@ import { maskQuantity, maskCurrency } from '../utils/dataMask';
 
 export default function DataAdjustmentProtocol() {
   const { menuItems } = usePos();
+  const today = new Date().toISOString().split('T')[0];
   
   // --- States ---
   const [decreasePct, setDecreasePct] = useState(() => {
@@ -17,20 +18,24 @@ export default function DataAdjustmentProtocol() {
   });
   const [isDecreaseQty, setIsDecreaseQty] = useState(false);
   const [selectedBills, setSelectedBills] = useState([]);
+  const [searchItem, setSearchItem] = useState('');
+  const [isReplaceEnabled, setIsReplaceEnabled] = useState(false);
+  const [replaceWithItem, setReplaceWithItem] = useState('');
   
   // Mock Data for the table (Bill Details)
   const [bills, setBills] = useState([
-    { id: '7581', date: '20-04-2026', amount: 680.00, mode: 'CASH', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '10', items: 5, year: '2026-2027' },
-    { id: '7582', date: '20-04-2026', amount: 20.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027' },
-    { id: '7584', date: '20-04-2026', amount: 170.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 2, year: '2026-2027' },
-    { id: '7585', date: '20-04-2026', amount: 198.00, mode: 'CASH', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '13', items: 1, year: '2026-2027' },
-    { id: '7587', date: '20-04-2026', amount: 90.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027' },
-    { id: '7589', date: '20-04-2026', amount: 99.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027' },
-    { id: '7590', date: '20-04-2026', amount: 0.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 0, year: '2026-2027' },
-    { id: '7591', date: '20-04-2026', amount: 420.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027' },
-    { id: '7592', date: '20-04-2026', amount: 510.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 2, year: '2026-2027' },
-    { id: '7594', date: '20-04-2026', amount: 290.00, mode: 'CASH', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '17', items: 3, year: '2026-2027' },
+    { id: '7581', date: '20-04-2026', amount: 135.00, mode: 'CASH', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '10', items: 1, year: '2026-2027', items_list: ['EGG CHICKEN ROLL'] },
+    { id: '7582', date: '20-04-2026', amount: 120.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027', items_list: ['PLAIN CHICKEN ROLL'] },
+    { id: '7583', date: '20-04-2026', amount: 230.00, mode: 'UPI', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '5', items: 1, year: '2026-2027', items_list: ['CHILLY PANEER'] },
+    { id: '7584', date: '20-04-2026', amount: 150.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027', items_list: ['DOUBLE EGG CHICKEN ROLL'] },
+    { id: '7585', date: '20-04-2026', amount: 180.00, mode: 'CARD', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '12', items: 1, year: '2026-2027', items_list: ['BUTTER CHICKEN FULL'] },
+    { id: '7586', date: '25-04-2026', amount: 160.00, mode: 'UPI', type: 'TABLE BILL', discount: 0.00, cashier: 'admin', table: '8', items: 1, year: '2026-2027', items_list: ['EGG PANEER ROLL'] },
+    { id: '7587', date: '25-04-2026', amount: 160.00, mode: 'CASH', type: 'TAKE WAY', discount: 0.00, cashier: 'admin', table: 'N/A', items: 1, year: '2026-2027', items_list: ['EGG PANEER ROLL'] },
   ]);
+
+  const filteredBills = searchItem && searchItem !== '--Replace this item--'
+    ? bills.filter(bill => bill.items_list?.some(item => item.toLowerCase() === searchItem.toLowerCase()))
+    : bills;
 
   const handleApplyModify = () => {
     localStorage.setItem('rms_visibility_decrement', decreasePct);
@@ -43,48 +48,85 @@ export default function DataAdjustmentProtocol() {
     );
   };
 
+  const handleExportSnapshot = () => {
+    const headers = ["Bill ID", "Date", "Amount", "Mode", "Type", "Table", "Items"];
+    const rows = filteredBills.map(bill => [
+      bill.id,
+      bill.date,
+      bill.amount,
+      bill.mode,
+      bill.type,
+      bill.table,
+      bill.items_list.join(' | ')
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `adjustment_protocol_snapshot_${new Date().toLocaleDateString()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    alert("Snapshot exported successfully!");
+  };
+
   return (
     <div className="h-full w-full bg-[#F4F4F7] text-slate-800 font-sans flex flex-col overflow-hidden border-2 border-slate-200 selection:bg-[#E1261C]/10">
       
-      {/* Top Protocol Controls */}
-      <div className="bg-white p-4 border-b border-slate-200">
-         <div className="grid grid-cols-12 gap-x-6 gap-y-3 items-center">
+      <div className="bg-white p-6 border-b border-slate-200 shadow-sm">
+         <div className="grid grid-cols-4 gap-x-8 gap-y-6">
             
-            {/* Step 1 & 2 */}
-            <div className="col-span-4 space-y-2">
-               <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider min-w-[120px]">Search Item</span>
-                  <select className="flex-1 bg-slate-50 border border-slate-200 h-8 text-[11px] font-bold uppercase rounded-md outline-none px-2 focus:ring-1 focus:ring-[#E1261C]/20">
+            {/* Column 1: Item Management */}
+            <div className="space-y-4">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Search Item</label>
+                  <select 
+                     value={searchItem}
+                     onChange={(e) => setSearchItem(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 transition-all"
+                  >
                      <option>--Replace this item--</option>
-                     {menuItems.map(item => <option key={item.id}>{item.name}</option>)}
+                     {menuItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                </div>
-               <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 min-w-[120px]">
-                     <input type="checkbox" className="w-3.5 h-3.5 accent-[#E1261C]" />
-                     <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider">Replace With</span>
+               <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                     <input 
+                        type="checkbox" 
+                        checked={isReplaceEnabled}
+                        onChange={(e) => setIsReplaceEnabled(e.target.checked)}
+                        className="w-4 h-4 accent-[#E1261C] cursor-pointer" 
+                     />
+                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider cursor-pointer">Replace With</label>
                   </div>
-                  <select className="flex-1 bg-slate-50 border border-slate-200 h-8 text-[11px] font-bold uppercase rounded-md outline-none px-2 focus:ring-1 focus:ring-[#E1261C]/20">
+                  <select 
+                     value={replaceWithItem}
+                     onChange={(e) => setReplaceWithItem(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                     disabled={!isReplaceEnabled}
+                  >
                      <option>--Update this item--</option>
-                     {menuItems.map(item => <option key={item.id}>{item.name}</option>)}
+                     {menuItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                </div>
             </div>
 
-            {/* Payment & Bill Type */}
-            <div className="col-span-3 space-y-2">
-               <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider min-w-[90px]">Payment:</span>
-                  <select className="flex-1 bg-slate-50 border border-slate-200 h-8 text-[11px] font-bold uppercase rounded-md outline-none px-2">
+            {/* Column 2: Order Categorization */}
+            <div className="space-y-4">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Payment Mode</label>
+                  <select className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3">
                      <option>--All Modes--</option>
                      <option>CASH</option>
                      <option>CARD</option>
                      <option>UPI</option>
                   </select>
                </div>
-               <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider min-w-[90px]">Bill Type:</span>
-                  <select className="flex-1 bg-slate-50 border border-slate-200 h-8 text-[11px] font-bold uppercase rounded-md outline-none px-2">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bill Type</label>
+                  <select className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3">
                      <option>--All Types--</option>
                      <option>TABLE BILL</option>
                      <option>TAKE WAY</option>
@@ -92,48 +134,46 @@ export default function DataAdjustmentProtocol() {
                </div>
             </div>
 
-            {/* Price Range */}
-            <div className="col-span-3 space-y-2">
-               <select className="w-full bg-slate-50 border border-slate-200 h-8 text-[11px] font-bold uppercase rounded-md outline-none px-2">
-                  <option>Main Outlet (Sadar)</option>
-               </select>
-               <select className="w-full bg-emerald-50 text-emerald-700 border border-emerald-100 h-8 text-[11px] font-black uppercase tracking-widest rounded-md outline-none px-2">
-                  <option>Price Range: Standard</option>
-               </select>
-            </div>
-
-            {/* Search/Close Buttons */}
-            <div className="col-span-2 flex flex-col gap-2">
-               <button className="bg-[#E1261C] text-white py-2 px-4 text-xs font-black uppercase tracking-widest rounded-lg shadow-lg shadow-red-900/20 active:scale-95 transition-all">Search</button>
-               <button className="bg-slate-800 text-white py-2 px-4 text-xs font-black uppercase tracking-widest rounded-lg shadow-lg active:scale-95 transition-all">Close</button>
-            </div>
-
-            {/* Dates & Bill Search */}
-            <div className="col-span-12 grid grid-cols-12 gap-4 items-center">
-               <div className="col-span-4 flex items-center gap-4">
-                  <div className="flex items-center gap-2 flex-1">
-                     <span className="text-[10px] font-black uppercase text-slate-400">From</span>
-                     <input type="date" defaultValue="2026-04-20" className="flex-1 bg-white border border-slate-200 h-8 text-center text-[10px] font-bold uppercase rounded-md" />
-                  </div>
-                  <div className="flex items-center gap-2 flex-1">
-                     <span className="text-[10px] font-black uppercase text-slate-400">To</span>
-                     <input type="date" defaultValue="2026-04-20" className="flex-1 bg-white border border-slate-200 h-8 text-center text-[10px] font-bold uppercase rounded-md" />
-                  </div>
-               </div>
-               
-               <div className="col-span-3 flex items-center gap-3">
-                  <span className="text-[10px] font-black uppercase text-slate-400">Bill No:</span>
-                  <input type="text" placeholder="####" className="flex-1 bg-slate-50 border border-slate-200 h-8 rounded-md px-3 text-xs font-black" />
-               </div>
-
-               <div className="col-span-5 flex items-center gap-4 bg-slate-50 p-2 rounded-lg border border-dashed border-slate-200">
-                  <div className="flex items-center gap-2">
-                     <input type="checkbox" className="w-3.5 h-3.5 accent-[#E1261C]" />
-                     <span className="text-[10px] font-black uppercase text-slate-600">Delete Scan</span>
-                  </div>
-                  <select className="flex-1 bg-white border border-slate-200 h-8 text-[10px] font-bold uppercase rounded-md outline-none px-2 italic text-slate-400">
-                     <option>--Protocol Action--</option>
+            {/* Column 3: Source & Pricing */}
+            <div className="space-y-4">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Target Outlet</label>
+                  <select className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3">
+                     <option>Main Outlet (Sadar)</option>
+                     <option>Station Branch</option>
+                     <option>City Center</option>
                   </select>
+               </div>
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Protocol Price Range</label>
+                  <select className="w-full bg-emerald-50 text-emerald-700 border border-emerald-100 h-9 text-[11px] font-black uppercase tracking-widest rounded-md outline-none px-3">
+                     <option>Price Range: Standard</option>
+                     <option>Price Range: Premium</option>
+                     <option>Price Range: Economy</option>
+                  </select>
+               </div>
+            </div>
+
+            {/* Column 4: Temporal & Actions */}
+            <div className="space-y-4 flex flex-col pl-8 border-l border-slate-100">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date Duration</label>
+                  <div className="flex gap-2">
+                     <input type="date" defaultValue={today} min={today} className="flex-1 bg-white border border-slate-200 h-9 px-5 text-[10px] font-bold uppercase rounded-md outline-none focus:border-[#E1261C]/50" />
+                     <input type="date" defaultValue={today} min={today} className="flex-1 bg-white border border-slate-200 h-9 px-5 text-[10px] font-bold uppercase rounded-md outline-none focus:border-[#E1261C]/50" />
+                  </div>
+               </div>
+               <div className="flex-1 flex flex-col justify-end">
+                  <div className="flex items-center gap-3">
+                     <div className="flex-1 space-y-1.5">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bill No</label>
+                        <input type="text" placeholder="####" className="w-full bg-slate-50 border border-slate-200 h-9 rounded-md px-3 text-[11px] font-black" />
+                     </div>
+                     <div className="flex gap-2 pt-5">
+                        <button className="h-9 px-4 bg-gradient-to-br from-[#E1261C] to-[#C11F17] text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all">SEARCH</button>
+                        <button className="h-9 px-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all">CLOSE</button>
+                     </div>
+                  </div>
                </div>
             </div>
 
@@ -142,31 +182,6 @@ export default function DataAdjustmentProtocol() {
 
       <div className="flex-1 flex overflow-hidden">
          
-         {/* Left Side Menu (Admin Dark Style) */}
-         <div className="w-28 bg-[#1A1A1A] flex flex-col gap-1.5 p-2 shrink-0">
-            <div className="p-2 border-b border-white/5 mb-2">
-               <h3 className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] leading-tight text-center">Protocol</h3>
-            </div>
-            
-            <button className="w-full bg-[#E1261C] text-white rounded-xl py-3 flex flex-col items-center gap-2 shadow-lg shadow-red-900/40">
-               <div className="w-8 h-8 bg-white/20 rounded-md flex items-center justify-center">
-                  <FileSpreadsheet size={18} />
-               </div>
-               <span className="text-[9px] font-black uppercase tracking-widest">Reports</span>
-            </button>
-
-            <button className="w-full bg-white/5 text-white/70 hover:bg-white/10 rounded-xl py-3 flex flex-col items-center gap-2 transition-all">
-               <HardDrive size={18} className="opacity-50" />
-               <span className="text-[9px] font-black uppercase tracking-widest">Archive</span>
-            </button>
-
-            <div className="mt-auto">
-               <button className="w-full bg-white/5 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl py-3 flex flex-col items-center gap-2 transition-all">
-                  <LogOut size={18} />
-                  <span className="text-[9px] font-black uppercase tracking-widest text-center">Exit Panel</span>
-               </button>
-            </div>
-         </div>
 
          {/* Main Table Area */}
          <div className="flex-1 overflow-hidden flex flex-col bg-white">
@@ -184,6 +199,7 @@ export default function DataAdjustmentProtocol() {
                      <tr>
                         <th className="px-3 py-4 w-10 text-center"><input type="checkbox" className="accent-[#E1261C]" /></th>
                         <th className="px-3 py-4">Bill No</th>
+                        <th className="px-3 py-4">Item Name</th>
                         <th className="px-3 py-4">Bill Date</th>
                         <th className="px-3 py-4 text-right">Bill Amount</th>
                         <th className="px-3 py-4">Payment</th>
@@ -196,7 +212,7 @@ export default function DataAdjustmentProtocol() {
                      </tr>
                   </thead>
                   <tbody className="text-[11px]">
-                     {bills.map((bill, idx) => (
+                     {filteredBills.map((bill, idx) => (
                         <tr 
                           key={bill.id} 
                           onClick={() => toggleBillSelection(bill.id)}
@@ -204,6 +220,9 @@ export default function DataAdjustmentProtocol() {
                         >
                            <td className="px-3 py-3 text-center"><input type="checkbox" checked={selectedBills.includes(bill.id)} readOnly className="accent-[#E1261C]" /></td>
                            <td className="px-3 py-3 font-black text-[#E1261C] tabular-nums">{bill.id}</td>
+                           <td className="px-3 py-3 font-bold text-emerald-600 uppercase italic">
+                              {isReplaceEnabled && replaceWithItem && searchItem ? replaceWithItem : (bill.items_list?.join(', ') || 'N/A')}
+                           </td>
                            <td className="px-3 py-3 font-bold text-slate-500">{bill.date}</td>
                            <td className="px-3 py-3 text-right font-black text-slate-900">₹{maskCurrency(bill.amount).toFixed(2)}</td>
                            <td className="px-3 py-3 font-bold uppercase text-slate-500">{bill.mode}</td>
@@ -223,7 +242,7 @@ export default function DataAdjustmentProtocol() {
             <div className="bg-slate-900 grid grid-cols-4 border-t border-white/10 p-1.5 gap-2">
                <div className="flex flex-col bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
                   <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Registry Count</span>
-                  <span className="text-sm font-black text-white tabular-nums">{bills.length}</span>
+                  <span className="text-sm font-black text-white tabular-nums">{filteredBills.length}</span>
                </div>
                <div className="flex flex-col bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
                   <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Selection Audit</span>
@@ -232,7 +251,7 @@ export default function DataAdjustmentProtocol() {
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50 relative overflow-hidden">
                   <div className="absolute right-0 top-0 bottom-0 w-1 bg-[#E1261C]" />
                   <span className="text-[8px] font-black text-[#E1261C] uppercase tracking-[0.15em]">Aggregate Fiscal</span>
-                  <span className="text-sm font-black text-white tabular-nums">₹{maskCurrency(bills.reduce((s,b)=>s+b.amount, 0)).toLocaleString()} .00</span>
+                  <span className="text-sm font-black text-white tabular-nums">₹{maskCurrency(filteredBills.reduce((s,b)=>s+b.amount, 0)).toLocaleString()} .00</span>
                </div>
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50">
                   <span className="text-[8px] font-black text-[#E1261C] uppercase tracking-[0.15em]">Selection Total</span>
@@ -242,7 +261,7 @@ export default function DataAdjustmentProtocol() {
          </div>
 
          {/* Right Control Side Panel (Admin Theme) */}
-         <div className="w-40 bg-white border-l border-slate-200 flex flex-col p-4 gap-6 shrink-0 relative">
+         <div className="w-36 bg-white border-l border-slate-200 flex flex-col p-3 gap-5 shrink-0 relative">
             <div className="absolute right-0 top-0 bottom-0 w-1 bg-[#E1261C]" />
             
             <div className="flex flex-col items-center">
@@ -261,51 +280,45 @@ export default function DataAdjustmentProtocol() {
                   type="text" 
                   value={decreasePct}
                   onChange={(e) => setDecreasePct(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 h-10 rounded-lg text-center text-sm font-black text-slate-800 focus:border-[#E1261C] transition-all outline-none" 
+                  className="w-24 mx-auto bg-slate-50 border border-slate-200 h-10 rounded-lg text-center text-sm font-black text-slate-800 focus:border-[#E1261C] transition-all outline-none" 
                />
-               <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#E1261C]" style={{ width: `${decreasePct}%` }} />
-               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer hover:border-[#E1261C] transition-all" onClick={() => setIsDecreaseQty(!isDecreaseQty)}>
+            <div 
+               className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-[#E1261C] hover:bg-white hover:shadow-md transition-all duration-300 cursor-pointer group" 
+               onClick={() => setIsDecreaseQty(!isDecreaseQty)}
+            >
                <input 
                  type="checkbox" 
                  checked={isDecreaseQty}
                  onChange={() => {}}
-                 className="w-4 h-4 accent-[#E1261C] cursor-pointer" 
+                 className="w-5 h-5 accent-[#E1261C] cursor-pointer" 
                />
-               <span className="text-[9px] font-black uppercase text-slate-600 tracking-wider">Mask Quantity</span>
+               <span className="text-[10px] font-black uppercase text-slate-600 tracking-wider group-hover:text-slate-900 transition-colors">Mask Quantity</span>
             </div>
 
             <button 
               onClick={handleApplyModify}
-              className="w-full bg-[#E1261C] text-white py-4 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-red-900/30 hover:bg-[#C11F17] transition-all active:scale-95 flex items-center justify-center gap-2"
+              className="w-[85%] mx-auto bg-gradient-to-br from-[#E1261C] to-[#A11912] text-white py-1.5 px-6 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] shadow-[0_4px_10px_rgba(225,38,28,0.2)] hover:shadow-[0_8px_16px_rgba(225,38,28,0.3)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 border-b border-black/30 flex items-center justify-center gap-2 group relative overflow-hidden"
             >
-               <Save size={16} />
-               Apply Protocol
+               <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10" />
+               <Save size={14} className="group-hover:rotate-12 transition-transform" />
+               <span className="relative z-10">Apply Protocol</span>
+               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
             </button>
 
             <div className="mt-auto flex flex-col items-center gap-2 pt-4 border-t border-slate-100">
-               <button className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                  <FileSpreadsheet size={24} />
-               </button>
-               <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest text-center">Export Snapshot</span>
+                <button 
+                   onClick={handleExportSnapshot}
+                   className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:rotate-1 scale-100 hover:scale-110 transition-all duration-500 shadow-[0_4px_12px_rgba(16,185,129,0.1)] hover:shadow-[0_8px_20px_rgba(16,185,129,0.3)] group"
+                >
+                   <FileSpreadsheet size={26} className="group-hover:scale-110 transition-transform" />
+                </button>
+               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest text-center">Export Snapshot</span>
             </div>
          </div>
       </div>
 
-      {/* Main Footer (Admin Status Bar) */}
-      <div className="bg-white border-t border-slate-200 flex items-center h-8 px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest divide-x divide-slate-100 italic">
-         <div className="pr-4 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E1261C]" />
-            Session: <span className="text-slate-800 font-black not-italic">Admin_Auth_042</span>
-         </div>
-         <div className="px-4">Node: <span className="text-[#E1261C] font-black not-italic">Cluster_Sadar</span></div>
-         <div className="px-4 flex-1 flex justify-end gap-2 pr-2 opacity-60">
-            {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} — System Pulse Active
-         </div>
-      </div>
     </div>
   );
 }

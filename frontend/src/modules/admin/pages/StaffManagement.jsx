@@ -1,72 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, UserPlus, Shield, ShieldCheck, 
   Search, Filter, MoreHorizontal, Edit3, 
   Trash2, Mail, Phone, MapPin, X, Save,
-  AlertTriangle, Lock, Unlock, BadgeCheck
+  AlertTriangle, Lock, Unlock, BadgeCheck, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { STAFF_USERS } from '../../staff/data/staffMockData';
 import { playClickSound } from '../../pos/utils/sounds';
-
-const INITIAL_STAFF = STAFF_USERS.map(u => ({
-  id: u.id,
-  name: u.name,
-  role: u.role.charAt(0).toUpperCase() + u.role.slice(1),
-  email: u.email,
-  status: u.status === 'online' ? 'On Duty' : 'Off Duty',
-  phone: '98765' + Math.floor(Math.random() * 90000 + 10000)
-}));
-
-const MOCK_STAFF = [
-  ...INITIAL_STAFF,
-  { id: 101, name: 'Rahul Sharma', role: 'Kitchen Staff', email: 'rahul@rms.com', status: 'On Duty', phone: '9876543210' },
-  { id: 102, name: 'Anita Verma', role: 'Manager', email: 'anita@rms.com', status: 'On Duty', phone: '9876543211' },
-  { id: 103, name: 'Vikram Das', role: 'Chef', email: 'vikram@rms.com', status: 'On Duty', phone: '9876543214' },
-];
+import api from '../../../utils/api';
 
 export default function StaffManagement() {
-  const [staff, setStaff] = useState(MOCK_STAFF);
+  const [staff, setStaff] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    role: 'Waiter',
+    role: 'Biller',
     email: '',
     phone: '',
-    status: 'On Duty'
+    status: 'Active',
+    password: '',
+    pin: ''
   });
+
+  useEffect(() => {
+    fetchStaff();
+    fetchRoles();
+  }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const { data } = await api.get('/roles');
+      setRoles(data);
+    } catch (err) {
+      console.error('Failed to fetch roles');
+    }
+  };
+
+  const fetchStaff = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.get('/staff');
+      setStaff(data);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch staff data');
+      setLoading(false);
+    }
+  };
 
   const handleOpenModal = (member = null) => {
     if (member) {
       setEditingMember(member);
-      setFormData(member);
+      setFormData({
+        ...member,
+        password: '', // Don't show hashed password
+        pin: ''       // Don't show hashed PIN
+      });
     } else {
       setEditingMember(null);
       setFormData({
         name: '',
-        role: 'Waiter',
+        role: 'Biller',
         email: '',
         phone: '',
-        status: 'On Duty'
+        status: 'Active',
+        password: '',
+        pin: ''
       });
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (editingMember) {
-      setStaff(staff.map(s => s.id === editingMember.id ? { ...formData, id: s.id } : s));
-    } else {
-      setStaff([...staff, { ...formData, id: Date.now() }]);
+    try {
+      if (editingMember) {
+        await api.put(`/staff/${editingMember._id}`, formData);
+      } else {
+        await api.post('/staff', formData);
+      }
+      fetchStaff();
+      setIsModalOpen(false);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save staff');
     }
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Delete this staff member record?')) {
-      setStaff(staff.filter(s => s.id !== id));
+      try {
+        await api.delete(`/staff/${id}`);
+        fetchStaff();
+      } catch (err) {
+        setError('Failed to delete staff member');
+      }
     }
   };
 
@@ -115,7 +146,7 @@ export default function StaffManagement() {
             <div className="flex items-center gap-2 mt-1">
                <h3 className="text-2xl font-black text-stone-800">{staff.length}</h3>
                <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                 {staff.filter(s => s.status === 'On Duty').length} ACTIVE
+                 {staff.filter(s => s.status === 'Active').length} ACTIVE
                </span>
             </div>
          </div>
@@ -131,8 +162,17 @@ export default function StaffManagement() {
 
       {/* Staff Directory */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+         {loading && (
+           <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4">
+             <div className="w-10 h-10 border-4 border-stone-100 border-t-[#E1261C] rounded-full animate-spin" />
+             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">Loading Team Registry...</p>
+           </div>
+         )}
+         {!loading && staff.length === 0 && (
+           <div className="col-span-full py-20 text-center text-stone-400 font-bold uppercase tracking-widest text-[10px]">No staff members found in registry</div>
+         )}
          {staff.map(member => (
-            <div key={member.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm hover:border-[#E1261C]/30 transition-all group relative">
+            <div key={member._id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm hover:border-[#E1261C]/30 transition-all group relative">
                <div className="flex items-start justify-between mb-5">
                    <div className="flex items-center gap-4">
                        <div className="w-12 h-12 bg-stone-100 rounded-xl flex items-center justify-center text-[#E1261C] font-black group-hover:bg-[#E1261C] group-hover:text-white transition-all shadow-inner border border-stone-200 group-hover:border-transparent">
@@ -142,7 +182,7 @@ export default function StaffManagement() {
                           <h4 className="text-sm font-black text-stone-800 uppercase tracking-tight leading-none mb-1.5">{member.name}</h4>
                           <div className="flex items-center gap-2">
                              <span className="text-[10px] font-bold text-[#E1261C] uppercase tracking-wider bg-stone-50 border border-stone-100 px-2 py-0.5 rounded-lg">{member.role}</span>
-                             <div className={`w-1.5 h-1.5 rounded-full ${member.status === 'On Duty' ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'}`} />
+                             <div className={`w-1.5 h-1.5 rounded-full ${member.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'}`} />
                           </div>
                        </div>
                    </div>
@@ -169,7 +209,7 @@ export default function StaffManagement() {
                       Edit Profile
                    </button>
                    <button 
-                     onClick={() => { playClickSound(); handleDelete(member.id); }}
+                     onClick={() => { playClickSound(); handleDelete(member._id); }}
                      className="py-2.5 bg-white text-stone-400 text-[10px] font-bold uppercase tracking-wider rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-stone-200 hover:border-rose-100 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
                    >
                       <Trash2 size={12} />
@@ -213,6 +253,16 @@ export default function StaffManagement() {
                 </div>
 
                <form onSubmit={handleSave} className="p-6 space-y-5">
+                  {error && (
+                    <motion.div 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3"
+                    >
+                      <AlertCircle size={16} className="text-rose-500" />
+                      <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{error}</p>
+                    </motion.div>
+                  )}
                   <div className="grid grid-cols-2 gap-5">
                      <div className="space-y-1.5 col-span-2">
                         <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Full Name</label>
@@ -233,11 +283,18 @@ export default function StaffManagement() {
                            value={formData.role}
                            onChange={(e) => setFormData({...formData, role: e.target.value})}
                         >
-                           <option>Manager</option>
-                           <option>Chef</option>
-                           <option>Cashier</option>
-                           <option>Kitchen Staff</option>
-                           <option>Waiter</option>
+                           <option value="">Select Role</option>
+                           {roles.map(r => (
+                             <option key={r._id} value={r.name}>{r.name}</option>
+                           ))}
+                           {roles.length === 0 && (
+                             <>
+                               <option value="Admin">Admin</option>
+                               <option value="Biller">POS Biller</option>
+                               <option value="Waiter">Waiter</option>
+                               <option value="Chef">Chef</option>
+                             </>
+                           )}
                         </select>
                      </div>
 
@@ -248,8 +305,8 @@ export default function StaffManagement() {
                            value={formData.status}
                            onChange={(e) => setFormData({...formData, status: e.target.value})}
                         >
-                           <option value="On Duty">Active Service</option>
-                           <option value="Off Duty">On Leave / Off Duty</option>
+                           <option value="Active">Active Service</option>
+                           <option value="Inactive">Terminated / Off Duty</option>
                         </select>
                      </div>
 
@@ -274,6 +331,31 @@ export default function StaffManagement() {
                            value={formData.phone}
                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
                            placeholder="98765 00000"
+                        />
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Security Key (Password)</label>
+                        <input 
+                           type="password" 
+                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
+                           value={formData.password}
+                           onChange={(e) => setFormData({...formData, password: e.target.value})}
+                           placeholder="••••••••"
+                           required={!editingMember && formData.role === 'Admin'}
+                        />
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Access PIN (4 Digits)</label>
+                        <input 
+                           type="text" 
+                           maxLength="4"
+                           className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
+                           value={formData.pin}
+                           onChange={(e) => setFormData({...formData, pin: e.target.value})}
+                           placeholder="1234"
+                           required={!editingMember && formData.role === 'Biller'}
                         />
                      </div>
                   </div>

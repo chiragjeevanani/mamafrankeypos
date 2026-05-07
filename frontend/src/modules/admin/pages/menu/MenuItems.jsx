@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, LayoutGrid, List, Leaf, Flame, MoreVertical, Edit2, Trash2, Tag, Save, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, Plus, Filter, LayoutGrid, List, Leaf, Flame, MoreVertical, Edit2, Trash2, Tag, Save, Image as ImageIcon, AlertCircle, Upload, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminModal from '../../components/ui/AdminModal';
 import { usePos } from '../../../pos/context/PosContext';
@@ -10,135 +10,161 @@ export default function MenuItems() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const { variantGroups, dishVariants, assignVariantsToDish } = usePos();
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [selectedItems, setSelectedItems] = useState([]);
+  const fileInputRef = useRef(null);
 
-  const [items, setItems] = useState([]);
-
-  // Fetch and parse CSV data
-  useEffect(() => {
-    const fetchCSV = async () => {
-      try {
-        const response = await fetch('/data/mama franky menu.csv');
-        const text = await response.text();
-        const lines = text.split('\n');
-        
-        if (lines.length < 2) return;
-
-        const parseRow = (row) => {
-          const result = [];
-          let current = '';
-          let inQuotes = false;
-          for (let i = 0; i < row.length; i++) {
-            const char = row[i];
-            if (char === '"') {
-              inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-              result.push(current.trim());
-              current = '';
-            } else {
-              current += char;
-            }
-          }
-          result.push(current.trim());
-          return result;
-        };
-
-        const csvItems = [];
-        // Skip header row
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const row = parseRow(line);
-          if (row.length < 11) continue;
-
-          const name = row[0].replace(/^"|"$/g, '');
-          const category = row[8].replace(/^"|"$/g, '') || 'General';
-          const price = parseFloat(row[10]) || 0;
-          const code = row[3].replace(/^"|"$/g, '') || '';
-          const isVeg = (row[11] || '').toLowerCase().includes('veg') && !(row[11] || '').toLowerCase().includes('non-veg');
-
-          csvItems.push({
-            id: `csv-${i}`,
-            name: name,
-            price: price,
-            category: category,
-            code: code,
-            isVeg: isVeg,
-            spiceLevel: 0,
-            image: ''
-          });
-        }
-        setItems(csvItems);
-      } catch (error) {
-        console.error('Error loading menu CSV:', error);
-      }
-    };
-    fetchCSV();
-  }, []);
+  const { 
+    menuItems, categories, addMenuItem, updateMenuItem, deleteMenuItem, 
+    bulkUpdateMenuItems, variantGroups, bulkUploadMenu 
+  } = usePos();
 
   const [formData, setFormData] = useState({
     name: '',
     price: '',
-    category: 'Main Course',
-    code: '',
-    isVeg: true,
-    spiceLevel: 0,
-    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
-    variants: []
+    category: '',
+    shortCode: '',
+    type: 'veg',
+    image: '',
+    status: 'Available',
+    variantGroups: []
   });
 
   const handleOpenModal = (item = null) => {
     if (item) {
       setEditingItem(item);
-      setFormData(item);
+      setFormData({
+        name: item.name,
+        price: item.price,
+        category: item.catId,
+        shortCode: item.code,
+        type: item.type || 'veg',
+        image: item.image || '',
+        status: item.status || 'Available',
+        variantGroups: item.variantGroups || []
+      });
     } else {
       setEditingItem(null);
       setFormData({
         name: '',
         price: '',
-        category: 'Main Course',
-        code: `ITEM-${items.length + 101}`,
-        isVeg: true,
-        spiceLevel: 0,
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200',
-        variants: []
+        category: categories[1]?.id || '', // Skip 'fav'
+        shortCode: `ITEM-${menuItems.length + 101}`,
+        type: 'veg',
+        image: '',
+        status: 'Available',
+        variantGroups: []
       });
     }
-
-    if (item) {
-       setFormData(prev => ({ ...prev, variants: dishVariants[item.id] || [] }));
-    }
-    
     setIsModalOpen(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    const dishId = editingItem ? editingItem.id : Date.now();
-
-    if (editingItem) {
-      setItems(items.map(i => i.id === dishId ? { ...formData, id: dishId } : i));
-    } else {
-      setItems([...items, { ...formData, id: dishId }]);
+    try {
+      setIsSaving(true);
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('price', formData.price);
+      data.append('category', formData.category);
+      data.append('shortCode', formData.shortCode);
+      data.append('type', formData.type);
+      data.append('status', formData.status);
+      data.append('variantGroups', JSON.stringify(formData.variantGroups));
+      
+      // If we have variant groups assigned, we need to pass them
+      // For now, simplicity: we just pass the names/ids if needed
+      // But the model expects variantGroups: [variantGroupSchema]
+      // Let's just pass the data as is for now
+      
+      if (editingItem) {
+        await updateMenuItem(editingItem.id, data);
+      } else {
+        await addMenuItem(data);
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error saving menu item:', error);
+      alert('Error saving menu item.');
+    } finally {
+      setIsSaving(false);
     }
-
-    // Save variant mappings to Context
-    assignVariantsToDish(dishId, formData.variants || []);
-
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('PROTOCOL: Proceed with record termination?')) {
-      setItems(items.filter(i => i.id !== id));
+      try {
+        await deleteMenuItem(id);
+      } catch (error) {
+        console.error('Error deleting item:', error);
+        alert('Error deleting item.');
+      }
     }
   };
 
-  const filteredItems = items.filter(i => 
-    i.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    i.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setIsSaving(true);
+      await bulkUploadMenu(file);
+      alert('Bulk upload successful.');
+    } catch (error) {
+      console.error('Bulk upload error:', error);
+      alert('Bulk upload failed.');
+    } finally {
+      setIsSaving(false);
+      e.target.value = null;
+    }
+  };
+  
+  const handleToggleVariantGroup = (group) => {
+    setFormData(prev => {
+      const isSelected = prev.variantGroups.some(g => (g.id || g._id) === (group.id || group._id));
+      if (isSelected) {
+        return {
+          ...prev,
+          variantGroups: prev.variantGroups.filter(g => (g.id || g._id) !== (group.id || group._id))
+        };
+      } else {
+        return {
+          ...prev,
+          variantGroups: [...prev.variantGroups, group]
+        };
+      }
+    });
+  };
+
+  const handleToggleSelectItem = (id) => {
+    setSelectedItems(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkStatusUpdate = async (status) => {
+    try {
+      setIsSaving(true);
+      await bulkUpdateMenuItems(selectedItems, { status });
+      setSelectedItems([]);
+    } catch (error) {
+      alert('Bulk update failed');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const filteredItems = menuItems.filter(i => {
+    const matchesSearch = i.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         i.code.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategoryFilter === 'all' || i.catId === selectedCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  const getCategoryName = (catId) => {
+    return categories.find(c => c.id === catId)?.name || 'General';
+  };
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500">
@@ -147,22 +173,38 @@ export default function MenuItems() {
           <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Menu Items</h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Catalog Inventory & Pricing</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="h-10 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95 transition-all outline-none"
-        >
-          <Plus size={14} />
-          Append New Item
-        </button>
+        <div className="flex items-center gap-2">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleBulkUpload} 
+            accept=".csv" 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current.click()}
+            className="h-10 px-6 bg-white border border-slate-200 text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-all outline-none"
+          >
+            <Upload size={14} />
+            Bulk Import CSV
+          </button>
+          <button 
+            onClick={() => handleOpenModal()}
+            className="h-10 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95 transition-all outline-none"
+          >
+            <Plus size={14} />
+            Append New Item
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-100 rounded-sm p-4 flex flex-col lg:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full lg:w-auto overflow-hidden underline decoration-transparent">
+        <div className="relative flex-1 w-full lg:w-auto overflow-hidden">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
             type="text" 
             placeholder="SEARCH CATALOGED ITEMS..."
-            className="w-full bg-slate-50 border-none rounded-sm py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none underline decoration-transparent"
+            className="w-full bg-slate-50 border-none rounded-sm py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -182,10 +224,16 @@ export default function MenuItems() {
               <List size={14} />
             </button>
           </div>
-          <button className="flex-1 lg:flex-none h-10 px-4 bg-white border border-slate-100 text-slate-500 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover/bg-slate-50 outline-none">
-            <Filter size={14} />
-            Category
-          </button>
+          <select 
+            value={selectedCategoryFilter}
+            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+            className="flex-1 lg:flex-none h-10 px-4 bg-white border border-slate-100 text-slate-500 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center justify-center outline-none cursor-pointer"
+          >
+            <option value="all">ALL CATEGORIES</option>
+            {categories.filter(c => c.id !== 'fav').map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -201,9 +249,20 @@ export default function MenuItems() {
                 <div className="px-2 py-0.5 bg-white rounded-sm border border-slate-200 text-[8px] font-black uppercase tracking-widest text-slate-400">
                   #{item.code}
                 </div>
-                {item.isVeg && (
+                <input 
+                  type="checkbox" 
+                  checked={selectedItems.includes(item.id)}
+                  onChange={() => handleToggleSelectItem(item.id)}
+                  className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                />
+                {item.type === 'veg' && (
                   <div className="p-1.5 bg-white rounded-full border border-slate-100 shadow-sm flex items-center justify-center">
                     <Leaf size={10} className="text-emerald-500" />
+                  </div>
+                )}
+                {item.type === 'non-veg' && (
+                  <div className="p-1.5 bg-white rounded-full border border-slate-100 shadow-sm flex items-center justify-center">
+                    <Flame size={10} className="text-rose-500" />
                   </div>
                 )}
               </div>
@@ -212,38 +271,51 @@ export default function MenuItems() {
                   <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight line-clamp-1">{item.name}</h4>
                   <span className="text-[10px] font-black text-blue-600">₹{item.price}</span>
                 </div>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">{item.category}</p>
-                <div className="flex items-center gap-2 transition-all duration-300">
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">{getCategoryName(item.catId)}</p>
+                <div className="flex items-center gap-2">
                   <button 
                     onClick={() => handleOpenModal(item)}
-                    className="flex-1 py-1.5 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded-sm hover/bg-slate-800 outline-none"
-                  >Edit Item</button>
+                    className="flex-1 py-1.5 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded-sm hover:bg-slate-800 outline-none"
+                  >Edit</button>
+                  <button 
+                    onClick={async () => {
+                      const newStatus = item.status === 'Available' ? 'Out of Stock' : 'Available';
+                      const data = new FormData();
+                      data.append('status', newStatus);
+                      await updateMenuItem(item.id, data);
+                    }}
+                    className={`flex-1 py-1.5 text-[8px] font-black uppercase tracking-widest rounded-sm border outline-none transition-colors ${
+                      item.status === 'Available' ? 'border-slate-200 text-slate-600 hover:bg-slate-50' : 'border-red-100 bg-red-50 text-red-600'
+                    }`}
+                  >
+                    {item.status === 'Available' ? 'Available' : 'Sold Out'}
+                  </button>
                   <button 
                     onClick={() => handleDelete(item.id)}
-                    className="p-1.5 border border-slate-100 rounded-sm hover/text-red-500 group-hover:border-slate-200 transition-colors outline-none"
+                    className="p-1.5 border border-slate-100 rounded-sm hover:text-red-500 group-hover:border-slate-200 transition-colors outline-none"
                   ><Trash2 size={12} /></button>
                 </div>
               </div>
             </motion.div>
           ) : (
-            <div key={item.id} className="bg-white border border-slate-100 p-3 rounded-sm flex items-center justify-between hover:shadow-md transition-all group underline decoration-transparent">
-              <div className="flex items-center gap-4 underline decoration-transparent">
-                <div className="w-10 h-10 rounded-sm bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
-                   <ImageIcon size={16} />
+            <div key={item.id} className="bg-white border border-slate-100 p-3 rounded-sm flex items-center justify-between hover:shadow-md transition-all group">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-sm bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 overflow-hidden">
+                   {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <ImageIcon size={16} />}
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">{item.name}</h4>
-                  <div className="flex items-center gap-2 mt-0.5 underline decoration-transparent">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest tracking-tighter">CODE: {item.code}</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CODE: {item.code}</span>
                     <span className="w-1 h-1 rounded-full bg-slate-200" />
-                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{item.category}</span>
+                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{getCategoryName(item.catId)}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-6 underline decoration-transparent">
-                <div className="text-right underline decoration-transparent">
+              <div className="flex items-center gap-6">
+                <div className="text-right">
                   <div className="text-[10px] font-black text-blue-600">₹{item.price}</div>
-                  <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest tracking-tighter underline decoration-transparent">Gross Price</div>
+                  <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Gross Price</div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button 
@@ -267,8 +339,9 @@ export default function MenuItems() {
         title={editingItem ? 'Update Item Protocol' : 'Initialize New Item'}
         subtitle="Catalog Inventory & Pricing Management"
         onSubmit={handleSave}
+        isSaving={isSaving}
       >
-        <div className="space-y-6 underline decoration-transparent">
+        <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Designation</label>
             <input 
@@ -288,8 +361,8 @@ export default function MenuItems() {
                 type="number" 
                 required
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                value={formData.price === 0 ? '' : formData.price}
-                onChange={(e) => setFormData({...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})}
+                value={formData.price}
+                onChange={(e) => setFormData({...formData, price: e.target.value})}
                 placeholder="0.00"
               />
             </div>
@@ -300,10 +373,9 @@ export default function MenuItems() {
                 value={formData.category}
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
               >
-                <option value="Main Course">Main Course</option>
-                <option value="Starters">Starters</option>
-                <option value="Salads">Salads</option>
-                <option value="Desserts">Desserts</option>
+                {categories.filter(c => c.id !== 'fav').map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -313,44 +385,42 @@ export default function MenuItems() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registry Code</label>
               <input 
                 type="text" 
-                className="w-full bg-slate-100 border border-slate-200 p-3 text-[11px] font-bold uppercase outline-none rounded-sm cursor-not-allowed"
-                value={formData.code}
-                readOnly
+                className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                value={formData.shortCode}
+                onChange={(e) => setFormData({...formData, shortCode: e.target.value})}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Spice Metric</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Status</label>
               <select 
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                value={formData.spiceLevel}
-                onChange={(e) => setFormData({...formData, spiceLevel: parseInt(e.target.value)})}
+                value={formData.status}
+                onChange={(e) => setFormData({...formData, status: e.target.value})}
               >
-                <option value={0}>0 - NONE</option>
-                <option value={1}>1 - MILD</option>
-                <option value={2}>2 - MEDIUM</option>
-                <option value={3}>3 - HIGH</option>
+                <option value="Available">Available</option>
+                <option value="Out of Stock">Out of Stock</option>
               </select>
             </div>
           </div>
 
-          <div className="flex items-center justify-between bg-slate-50 p-4 border border-slate-100 rounded-sm">
-            <div className="flex items-center gap-3">
-              <Leaf size={16} className={formData.isVeg ? "text-emerald-500" : "text-slate-300"} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Vegetarian Protocol</span>
-            </div>
-            <button 
-              type="button"
-              onClick={() => setFormData({...formData, isVeg: !formData.isVeg})}
-              className={`w-10 h-5 rounded-full transition-all relative ${formData.isVeg ? 'bg-emerald-500' : 'bg-slate-300'}`}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dietary Type</label>
+            <select 
+              className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+              value={formData.type}
+              onChange={(e) => setFormData({...formData, type: e.target.value})}
             >
-              <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${formData.isVeg ? 'right-1' : 'left-1'}`} />
-            </button>
+              <option value="veg">VEGETARIAN</option>
+              <option value="non-veg">NON-VEGETARIAN</option>
+              <option value="egg">EGG-BASED</option>
+            </select>
           </div>
 
+          {/* Variant Groups Assignment */}
           <div className="pt-4 border-t border-slate-100 space-y-4">
              <div className="flex items-center justify-between px-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                   <Tag size={12} /> Assign Variant Groups
+                   <Tag size={12} /> Linked Variant Groups
                 </label>
              </div>
              
@@ -359,56 +429,71 @@ export default function MenuItems() {
                    No variant groups defined. Create them in System Settings &gt; Variant Master.
                 </div>
              ) : (
-                <div className="space-y-3">
-                   {variantGroups.map(group => {
-                      const assignment = formData.variants?.find(v => v.groupId === group.id);
-                      const isAssigned = !!assignment;
-                      
-                      return (
-                         <div key={group.id} className={`p-3 border rounded-sm transition-all ${isAssigned ? 'border-slate-900 bg-slate-50' : 'border-slate-100 bg-slate-50/50'}`}>
-                            <div className="flex items-center justify-between">
-                               <div className="flex items-center gap-3">
-                                  <input 
-                                     type="checkbox" 
-                                     checked={isAssigned}
-                                     onChange={(e) => {
-                                        if (e.target.checked) {
-                                           setFormData({ ...formData, variants: [...(formData.variants || []), { groupId: group.id, required: false }] });
-                                        } else {
-                                           setFormData({ ...formData, variants: formData.variants.filter(v => v.groupId !== group.id) });
-                                        }
-                                     }}
-                                     className="w-4 h-4 rounded-sm border-slate-300 text-slate-900 focus:ring-slate-900"
-                                  />
-                                  <span className={`text-[11px] font-black uppercase ${isAssigned ? 'text-slate-900' : 'text-slate-400'}`}>{group.name}</span>
-                               </div>
-                               
-                               {isAssigned && (
-                                  <div className="flex items-center gap-2">
-                                     <span className="text-[9px] font-bold text-slate-400 uppercase">Required?</span>
-                                     <button 
-                                        type="button"
-                                        onClick={() => {
-                                           setFormData({
-                                              ...formData,
-                                              variants: formData.variants.map(v => v.groupId === group.id ? { ...v, required: !v.required } : v)
-                                           });
-                                        }}
-                                        className={`w-8 h-4 rounded-full transition-all relative ${assignment.required ? 'bg-slate-900' : 'bg-slate-300'}`}
-                                     >
-                                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${assignment.required ? 'right-0.5' : 'left-0.5'}`} />
-                                     </button>
-                                  </div>
-                               )}
+                <div className="space-y-2">
+                   <p className="text-[9px] text-slate-400 font-bold uppercase mb-2">Select variant groups to enable for this item</p>
+                  {variantGroups.map(group => {
+                    const isSelected = formData.variantGroups.some(g => (g.id || g._id) === (group.id || group._id));
+                    return (
+                      <button 
+                        key={group.id} 
+                        type="button"
+                        onClick={() => handleToggleVariantGroup(group)}
+                        className={`w-full p-3 border rounded-sm transition-all flex items-center justify-between group/v ${
+                          isSelected 
+                            ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
+                            : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                         <div className="flex items-center gap-2">
+                            <Tag size={12} className={isSelected ? 'text-white' : 'text-slate-400'} />
+                            <div className="text-left">
+                               <p className="text-[10px] font-black uppercase leading-tight">{group.name}</p>
+                               <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{group.options.length} Options</p>
                             </div>
                          </div>
-                      );
-                   })}
+                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+                            isSelected ? 'bg-white border-white' : 'bg-white border-slate-200'
+                         }`}>
+                            {isSelected && <Check size={10} className="text-slate-900" strokeWidth={4} />}
+                         </div>
+                      </button>
+                    );
+                  })}
                 </div>
              )}
           </div>
         </div>
       </AdminModal>
+
+      {/* Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedItems.length > 0 && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-sm shadow-2xl z-50 flex items-center gap-8 border border-white/10"
+          >
+             <div className="flex items-center gap-2 pr-8 border-r border-white/10">
+                <span className="text-[10px] font-black uppercase tracking-widest">{selectedItems.length} Items Selected</span>
+                <button 
+                 onClick={() => setSelectedItems([])}
+                 className="text-[10px] font-bold text-slate-400 hover:text-white"
+                >Clear</button>
+             </div>
+             <div className="flex items-center gap-4">
+                <button 
+                 onClick={() => handleBulkStatusUpdate('Available')}
+                 className="text-[10px] font-black uppercase tracking-widest hover:text-emerald-400 transition-colors"
+                >Mark Available</button>
+                <button 
+                 onClick={() => handleBulkStatusUpdate('Out of Stock')}
+                 className="text-[10px] font-black uppercase tracking-widest hover:text-orange-400 transition-colors"
+                >Mark Sold Out</button>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

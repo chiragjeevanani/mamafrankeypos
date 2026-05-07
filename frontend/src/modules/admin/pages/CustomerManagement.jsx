@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Users, Search, Filter, Mail, 
@@ -7,40 +6,49 @@ import {
   Plus, X, Save, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const MOCK_CUSTOMERS = [
-  { id: 1, name: 'Vikram Sethi', phone: '9876540001', visits: 12, rating: 4.8, type: 'VIP', lastVisit: '2 days ago' },
-  { id: 2, name: 'Ananya Roy', phone: '9876540002', visits: 5, rating: 4.2, type: 'Regular', lastVisit: '1 week ago' },
-  { id: 3, name: 'Kushal Taneja', phone: '9876540003', visits: 24, rating: 5.0, type: 'Platinum', lastVisit: 'Yesterday' },
-  { id: 4, name: 'Sonal Mittal', phone: '9876540004', visits: 2, rating: 3.8, type: 'Guest', lastVisit: '1 month ago' },
-];
+import api from '../../../utils/api';
 
 export default function CustomerManagement() {
-  const [customers, setCustomers] = useState(MOCK_CUSTOMERS);
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    type: 'Regular'
+    email: '',
+    address: ''
   });
+
+  React.useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const { data } = await api.get('/customers');
+        setCustomers(data);
+      } catch (error) {
+        console.error("Error fetching customers:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustomers();
+  }, []);
 
   const filteredCustomers = customers.filter(cust => 
     cust.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     cust.phone.includes(searchQuery)
   );
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    const newCustomer = {
-      ...formData,
-      id: Date.now(),
-      visits: 0,
-      rating: 0.0,
-      lastVisit: 'Just joined'
-    };
-    setCustomers([newCustomer, ...customers]);
-    setIsModalOpen(false);
+    try {
+      const { data } = await api.post('/customers', formData);
+      setCustomers([data, ...customers]);
+      setIsModalOpen(false);
+      setFormData({ name: '', phone: '', email: '', address: '' });
+    } catch (error) {
+      console.error('Error saving customer:', error);
+    }
   };
 
   return (
@@ -128,7 +136,7 @@ export default function CustomerManagement() {
                </thead>
                <tbody className="divide-y divide-slate-50">
                   {filteredCustomers.map(cust => (
-                     <tr key={cust.id} className="hover:bg-slate-50/50 transition-colors group">
+                     <tr key={cust._id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[11px] font-black text-slate-400 uppercase">
@@ -142,26 +150,28 @@ export default function CustomerManagement() {
                         </td>
                         <td className="px-6 py-4 text-center md:text-left">
                            <span className={`px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest ${
-                              cust.type === 'VIP' ? 'bg-amber-50 text-amber-600' :
-                              cust.type === 'Platinum' ? 'bg-blue-50 text-blue-600' :
-                              cust.type === 'Regular' ? 'bg-slate-100 text-slate-500' : 'bg-slate-50 text-slate-300'
+                              cust.loyaltyPoints > 500 ? 'bg-amber-50 text-amber-600' :
+                              cust.loyaltyPoints > 200 ? 'bg-blue-50 text-blue-600' :
+                              'bg-slate-100 text-slate-500'
                            }`}>
-                              {cust.type}
+                              {cust.loyaltyPoints > 500 ? 'VIP' : cust.loyaltyPoints > 200 ? 'PLATINUM' : 'REGULAR'}
                            </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                           <span className="text-[11px] font-black text-slate-900">{cust.visits} Orders</span>
+                           <span className="text-[11px] font-black text-slate-900">{cust.totalVisits} Orders</span>
                         </td>
                         <td className="px-6 py-4">
                            <div className="flex items-center justify-center gap-1">
-                              <span className="text-[10px] font-black text-slate-900">{cust.rating}</span>
-                              <Star size={10} className="text-amber-400 fill-amber-400" />
+                              <span className="text-[10px] font-black text-slate-900">{cust.loyaltyPoints}</span>
+                              <Award size={10} className="text-emerald-500" />
                            </div>
                         </td>
                         <td className="px-6 py-4 text-right whitespace-nowrap">
                            <div className="flex items-center justify-end gap-2">
                               <Activity size={10} className="text-slate-300" />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{cust.lastVisit}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {cust.lastVisit ? new Date(cust.lastVisit).toLocaleDateString() : 'Never'}
+                              </span>
                            </div>
                         </td>
                         <td className="px-6 py-4">
@@ -233,18 +243,27 @@ export default function CustomerManagement() {
                         />
                      </div>
 
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loyalty Tier Designation</label>
-                        <select 
-                           className="w-full bg-slate-50 border border-slate-100 p-2 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                           value={formData.type}
-                           onChange={(e) => setFormData({...formData, type: e.target.value})}
-                        >
-                           <option>Regular</option>
-                           <option>VIP</option>
-                           <option>Platinum</option>
-                           <option>Guest</option>
-                        </select>
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-2">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                           <input 
+                               type="email" 
+                               className="w-full bg-slate-50 border border-slate-100 p-2 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                               value={formData.email}
+                               onChange={(e) => setFormData({...formData, email: e.target.value})}
+                               placeholder="name@example.com"
+                           />
+                       </div>
+                       <div className="space-y-2">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address/Location</label>
+                           <input 
+                               type="text" 
+                               className="w-full bg-slate-50 border border-slate-100 p-2 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                               value={formData.address}
+                               onChange={(e) => setFormData({...formData, address: e.target.value})}
+                               placeholder="CITY, SECTOR"
+                           />
+                       </div>
                      </div>
                   </div>
 

@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePos } from '../../pos/context/PosContext';
+import api from '../../../utils/api';
 
 
 // ─────────────────────────────────────────────────
@@ -252,7 +253,8 @@ export default function SystemSettings() {
   const { section = 'general' } = useParams();
   const navigate = useNavigate();
   const { 
-    sections, setSections, tables, setTables, 
+    sections, addSection, updateSection, deleteSection,
+    tables, addTable, updateTable, deleteTable,
     appliedTaxes, addTax, updateTax, deleteTax,
     variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup 
   } = usePos();
@@ -260,9 +262,15 @@ export default function SystemSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [autoCommit, setAutoCommit] = useState(true);
   const [config, setConfig] = useState({
-    currency: 'INR (₹) - Indian Rupee',
-    timezone: '(UTC+05:30) IST'
+    storeName: 'Mama Frankey POS',
+    currency: 'INR',
+    currencySymbol: '₹',
+    timezone: 'Asia/Kolkata',
+    address: '',
+    phone: '',
+    gstNumber: ''
   });
+
   const [newTax, setNewTax] = useState({ name: '', rate: '' });
 
   // Variant Master State
@@ -304,39 +312,99 @@ export default function SystemSettings() {
   };
 
   const [tablesSaved, setTablesSaved] = useState(false);
-  const [activeTableSection, setActiveTableSection] = useState(sections[0]?.id || '');
+  const [activeTableSection, setActiveTableSection] = useState(sections[0]?._id || '');
 
   // Update active section if sections change or on first load
   React.useEffect(() => {
     if (!activeTableSection && sections.length > 0) {
-      setActiveTableSection(sections[0].id);
+      setActiveTableSection(sections[0]._id);
     }
   }, [sections, activeTableSection]);
 
   // ── Counter Billing Series state ──
-  const [counters, setCounters] = useState([
-    { id: 1, name: 'Counter 1',    prefix: 'C1', startNum: 1   },
-    { id: 2, name: 'Counter 2',    prefix: 'C2', startNum: 1   },
-    { id: 3, name: 'Billing Desk', prefix: 'BD', startNum: 100 },
-  ]);
-  const [counterSaved,  setCounterSaved]  = useState(false);
+  const [counters, setCounters] = useState([]);
+  const [counterSaved, setCounterSaved] = useState(false);
+
+  React.useEffect(() => {
+    const fetchStoreSettings = async () => {
+      try {
+        const { data } = await api.get('/settings/store');
+        setConfig(data);
+      } catch (error) {
+        console.error("Error fetching store settings:", error);
+      }
+    };
+    fetchStoreSettings();
+  }, []);
+
+  React.useEffect(() => {
+    const fetchCounters = async () => {
+      try {
+        const { data } = await api.get('/settings/counters');
+        setCounters(data.map(c => ({
+          id: c._id,
+          name: c.name,
+          prefix: c.prefix,
+          startNum: c.startNum,
+          currentNum: c.currentNum
+        })));
+      } catch (error) {
+        console.error("Error fetching counters:", error);
+      }
+    };
+    fetchCounters();
+  }, []);
 
   const updateCounter = (id, field, value) =>
     setCounters(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
 
-  const counterIndexRef = React.useRef(4); // next index for new counters
-
-  const addCounter = () => {
-    const idx = counterIndexRef.current++;
-    setCounters(prev => [...prev, { id: Date.now(), name: `Counter ${idx}`, prefix: `C${idx}`, startNum: 1 }]);
+  const addCounter = async () => {
+    try {
+      const idx = counters.length + 1;
+      const { data } = await api.post('/settings/counters', {
+        name: `Counter ${idx}`,
+        prefix: `C${idx}`,
+        startNum: 1
+      });
+      setCounters(prev => [...prev, {
+        id: data._id,
+        name: data.name,
+        prefix: data.prefix,
+        startNum: data.startNum,
+        currentNum: data.currentNum
+      }]);
+    } catch (error) {
+      console.error('Error adding counter:', error);
+    }
   };
 
-  const deleteCounter = (id) =>
-    setCounters(prev => prev.filter(c => c.id !== id));
+  const deleteCounter = async (id) => {
+    if (!window.confirm('Delete this counter?')) return;
+    try {
+      await api.delete(`/settings/counters/${id}`);
+      setCounters(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting counter:', error);
+    }
+  };
 
-  const saveCounters = () => {
-    setCounterSaved(true);
-    setTimeout(() => setCounterSaved(false), 2500);
+  const saveCounters = async () => {
+    try {
+      setIsSaving(true);
+      await Promise.all(counters.map(c => 
+        api.put(`/settings/counters/${c.id}`, {
+          name: c.name,
+          prefix: c.prefix,
+          startNum: c.startNum
+        })
+      ));
+      setCounterSaved(true);
+      setTimeout(() => setCounterSaved(false), 2500);
+    } catch (error) {
+      console.error('Error saving counters:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Helper: build preview string
@@ -357,34 +425,38 @@ export default function SystemSettings() {
     { id: 'reports',       label: 'Reports & Reset',      icon: BarChart3  },
   ];
 
-  const handleCommit = () => {
-    setIsSaving(true);
-    setTimeout(() => {
-       setIsSaving(false);
-       window.alert('CONFIGURATION SUCCESS: Global protocols synchronized across all terminal nodes.');
-    }, 1500);
+  const handleCommit = async () => {
+    try {
+      setIsSaving(true);
+      await api.put('/settings/store', config);
+      setIsSaving(false);
+      window.alert('CONFIGURATION SUCCESS: Store settings updated successfully.');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500 overflow-y-auto no-scrollbar max-h-full">
-       <div className="flex items-center justify-between underline decoration-transparent">
+       <div className="flex items-center justify-between">
         <div>
-           <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900 underline decoration-transparent">System Core Configuration</h1>
-           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 underline decoration-transparent">Configure global protocols, security frameworks, and hardware routing</p>
+           <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">System Core Configuration</h1>
+           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Configure global protocols, security frameworks, and hardware routing</p>
         </div>
         <button 
           onClick={handleCommit}
           disabled={isSaving}
-          className={`h-9 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10 active:scale-95 transition-all flex items-center gap-2 ${isSaving ? 'opacity-50 cursor-wait' : ''} outline-none underline decoration-transparent`}
+          className={`h-9 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10 active:scale-95 transition-all flex items-center gap-2 ${isSaving ? 'opacity-50 cursor-wait' : ''} outline-none`}
         >
            {isSaving ? <Zap size={14} className="animate-spin" /> : <Save size={14} />}
            {isSaving ? 'Synchronizing...' : 'Commit Changes'}
         </button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 underline decoration-transparent">
+      <div className="flex flex-col lg:flex-row gap-8">
         {/* Lateral Navigation */}
-        <div className="w-full lg:w-64 space-y-1 underline decoration-transparent">
+        <div className="w-full lg:w-64 space-y-1">
           {settingsGroups.map((group) => (
             <button
               key={group.id}
@@ -393,7 +465,7 @@ export default function SystemSettings() {
                 section === group.id 
                   ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10' 
                   : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100 hover:border-slate-300'
-              } outline-none underline decoration-transparent`}
+              } outline-none`}
             >
               <group.icon size={14} />
               {group.label}
@@ -403,68 +475,92 @@ export default function SystemSettings() {
         </div>
 
          {/* Content Area */}
-         <div className="flex-1 space-y-8 underline decoration-transparent">
-            <div className="bg-white border border-slate-100 rounded-sm p-8 shadow-sm space-y-8 min-h-[400px] underline decoration-transparent">
-               <AnimatePresence mode="wait underline decoration-transparent">
+         <div className="flex-1 space-y-8">
+            <div className="bg-white border border-slate-100 rounded-sm p-8 shadow-sm space-y-8 min-h-[400px]">
+               <AnimatePresence mode="wait">
                   {section === 'general' && (
                      <motion.div 
                         key="general"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 underline decoration-transparent"
+                        className="space-y-6"
                      >
-                        <div className="flex items-center gap-4 mb-8 underline decoration-transparent">
-                           <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900 underline decoration-transparent">
+                        <div className="flex items-center gap-4 mb-8">
+                           <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
                               <Globe size={24} />
                            </div>
-                           <div className="underline decoration-transparent">
-                              <h3 className="text-sm font-black uppercase tracking-tight underline decoration-transparent">Regional Protocol</h3>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest underline decoration-transparent">Global system behavior and formatting</p>
+                           <div>
+                              <h3 className="text-sm font-black uppercase tracking-tight">Regional Protocol</h3>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global system behavior and formatting</p>
                            </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 underline decoration-transparent">
-                           <div className="space-y-2 underline decoration-transparent">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest underline decoration-transparent">Base Currency Unit</label>
-                              <select 
-                                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                                 value={config.currency}
-                                 onChange={(e) => setConfig({...config, currency: e.target.value})}
-                              >
-                                 <option>INR (₹) - Indian Rupee</option>
-                                 <option>USD ($) - US Dollar</option>
-                              </select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                           <div className="space-y-2 col-span-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Store Name</label>
+                               <input 
+                                  type="text"
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.storeName}
+                                  onChange={(e) => setConfig({...config, storeName: e.target.value})}
+                               />
                            </div>
-                           <div className="space-y-2 underline decoration-transparent">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest underline decoration-transparent">Temporal Zone</label>
-                              <select 
-                                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                                 value={config.timezone}
-                                 onChange={(e) => setConfig({...config, timezone: e.target.value})}
-                              >
-                                 <option>(UTC+05:30) IST</option>
-                                 <option>(UTC+00:00) GMT</option>
-                              </select>
+                           <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Currency</label>
+                               <select 
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.currency}
+                                  onChange={(e) => setConfig({...config, currency: e.target.value})}
+                               >
+                                  <option value="INR">INR (₹) - Indian Rupee</option>
+                                  <option value="USD">USD ($) - US Dollar</option>
+                               </select>
                            </div>
-                           <div className="space-y-2 underline decoration-transparent">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest underline decoration-transparent">Order Auto-Commit</label>
-                              <div className="flex items-center gap-3 mt-2 underline decoration-transparent">
-                                 <div 
-                                    onClick={() => setAutoCommit(!autoCommit)}
-                                    className={`w-10 h-5 rounded-full relative p-1 cursor-pointer transition-colors ${autoCommit ? 'bg-slate-900' : 'bg-slate-200'} underline decoration-transparent`}
-                                 >
-                                    <div className={`w-3 h-3 bg-white rounded-full absolute shadow-sm transition-all ${autoCommit ? 'right-1' : 'left-1'} underline decoration-transparent`} />
-                                 </div>
-                                 <span className="text-[10px] font-bold text-slate-900 uppercase underline decoration-transparent">{autoCommit ? 'ENABLED' : 'DISABLED'}</span>
-                              </div>
+                           <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Temporal Zone</label>
+                               <select 
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.timezone}
+                                  onChange={(e) => setConfig({...config, timezone: e.target.value})}
+                               >
+                                  <option value="Asia/Kolkata">(UTC+05:30) IST</option>
+                                  <option value="UTC">(UTC+00:00) GMT</option>
+                               </select>
+                           </div>
+                           <div className="space-y-2 col-span-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Store Address</label>
+                               <textarea 
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.address}
+                                  onChange={(e) => setConfig({...config, address: e.target.value})}
+                                  rows={3}
+                               />
+                           </div>
+                           <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Phone</label>
+                               <input 
+                                  type="text"
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.phone}
+                                  onChange={(e) => setConfig({...config, phone: e.target.value})}
+                               />
+                           </div>
+                           <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GST / Tax Number</label>
+                               <input 
+                                  type="text"
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.gstNumber}
+                                  onChange={(e) => setConfig({...config, gstNumber: e.target.value})}
+                               />
                            </div>
                         </div>
 
-                        <div className="pt-8 border-t border-slate-50 flex items-center gap-4 underline decoration-transparent">
+                        <div className="pt-8 border-t border-slate-50 flex items-center gap-4">
                            <Zap size={16} className="text-amber-500" />
-                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose max-w-lg underline decoration-transparent">
-                              Caution: Modifying regional protocols may affect historical data indexing and billing reconciliation logic.
+                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose max-w-lg">
+                               Caution: Modifying regional protocols may affect historical data indexing and billing reconciliation logic.
                            </p>
                         </div>
                      </motion.div>
@@ -476,44 +572,44 @@ export default function SystemSettings() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 underline decoration-transparent"
+                        className="space-y-6"
                      >
-                        <div className="flex items-center gap-4 mb-8 underline decoration-transparent">
-                           <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900 underline decoration-transparent">
+                        <div className="flex items-center gap-4 mb-8">
+                           <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
                               <Lock size={24} />
                            </div>
-                           <div className="underline decoration-transparent">
-                              <h3 className="text-sm font-black uppercase tracking-tight underline decoration-transparent">Access Control Protocol</h3>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest underline decoration-transparent">Authentication and permission layers</p>
+                           <div>
+                              <h3 className="text-sm font-black uppercase tracking-tight">Access Control Protocol</h3>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Authentication and permission layers</p>
                            </div>
                         </div>
 
-                        <div className="space-y-6 underline decoration-transparent">
-                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between underline decoration-transparent">
-                              <div className="flex items-center gap-4 underline decoration-transparent">
+                        <div className="space-y-6">
+                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
+                              <div className="flex items-center gap-4">
                                  <Shield size={20} className="text-slate-900" />
-                                 <div className="underline decoration-transparent">
-                                    <h4 className="text-[11px] font-black uppercase tracking-tight underline decoration-transparent">Two-Factor Auth (2FA)</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight underline decoration-transparent">Secondary verification for all admin logins</p>
+                                 <div>
+                                    <h4 className="text-[11px] font-black uppercase tracking-tight">Two-Factor Auth (2FA)</h4>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight">Secondary verification for all admin logins</p>
                                  </div>
                               </div>
                               <button 
                                 onClick={() => window.alert('SECURITY: Connecting to multi-factor authentication gateway...')}
-                                className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all underline decoration-transparent"
+                                className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all"
                               >CONFIGURE</button>
                            </div>
 
-                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between underline decoration-transparent">
-                              <div className="flex items-center gap-4 underline decoration-transparent">
+                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
+                              <div className="flex items-center gap-4">
                                  <Key size={20} className="text-slate-900" />
-                                 <div className="underline decoration-transparent">
-                                    <h4 className="text-[11px] font-black uppercase tracking-tight underline decoration-transparent">Protocol API Access</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight underline decoration-transparent">Management of secure communication tokens</p>
+                                 <div>
+                                    <h4 className="text-[11px] font-black uppercase tracking-tight">Protocol API Access</h4>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight">Management of secure communication tokens</p>
                                  </div>
                               </div>
                               <button 
                                 onClick={() => window.alert('SECURITY: Regenerating secure terminal handshaking keys...')}
-                                className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all underline decoration-transparent"
+                                className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all"
                               >MANAGE KEYS</button>
                            </div>
                         </div>
@@ -691,12 +787,12 @@ export default function SystemSettings() {
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Define your physical dining areas</p>
                            </div>
                            <button 
-                             onClick={() => {
+                             onClick={async () => {
                                const label = window.prompt('Enter new section name:');
                                if (label) {
-                                 const newId = label.toLowerCase().replace(/\s/g, '-');
-                                 setSections([...sections, { id: newId, label }]);
-                                 setActiveTableSection(newId);
+                                 const name = label.toLowerCase().replace(/\s/g, '-');
+                                 const res = await addSection({ name, label });
+                                 if (res && res._id) setActiveTableSection(res._id);
                                }
                              }}
                              className="bg-slate-900 text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10"
@@ -709,9 +805,9 @@ export default function SystemSettings() {
                           {sections.map(sec => (
                             <button 
                               key={sec.id} 
-                              onClick={() => setActiveTableSection(sec.id)}
+                              onClick={() => setActiveTableSection(sec._id)}
                               className={`px-4 py-2.5 rounded-sm border transition-all flex items-center gap-3 ${
-                                activeTableSection === sec.id 
+                                activeTableSection === sec._id 
                                   ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
                                   : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                               }`}
@@ -719,21 +815,24 @@ export default function SystemSettings() {
                                <span className="text-[10px] font-black uppercase tracking-widest">{sec.label}</span>
                                <div className="flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
                                   <div 
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.stopPropagation();
                                       const label = window.prompt('Edit section name:', sec.label);
-                                      if (label) setSections(sections.map(s => s.id === sec.id ? { ...s, label } : s));
+                                      if (label) {
+                                        const name = label.toLowerCase().replace(/\s/g, '-');
+                                        await updateSection(sec._id, { name, label });
+                                      }
                                     }}
                                     className="p-1 hover:bg-white/10 rounded-sm"
                                   >
                                     <Edit size={10} />
                                   </div>
                                   <div 
-                                    onClick={(e) => {
+                                    onClick={async (e) => {
                                       e.stopPropagation();
                                       if (window.confirm(`Delete ${sec.label} and all its tables?`)) {
-                                         setSections(sections.filter(s => s.id !== sec.id));
-                                         if (activeTableSection === sec.id) setActiveTableSection(sections.find(s => s.id !== sec.id)?.id || '');
+                                         await deleteSection(sec._id);
+                                         if (activeTableSection === sec._id) setActiveTableSection(sections.find(s => s._id !== sec._id)?._id || '');
                                       }
                                     }}
                                     className="p-1 hover:bg-rose-500 rounded-sm"
@@ -750,13 +849,15 @@ export default function SystemSettings() {
                       <div className="pt-8 border-t border-slate-50 space-y-6">
                         <div className="flex items-center justify-between">
                            <div>
-                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry — {sections.find(s => s.id === activeTableSection)?.label}</h4>
+                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry — {sections.find(s => s._id === activeTableSection)?.label}</h4>
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Configure individual table identifiers and statuses</p>
                            </div>
                            <button 
-                             onClick={() => {
-                               const name = window.prompt(`Add new table to ${sections.find(s => s.id === activeTableSection)?.label}:`);
-                               if (name) setTables([...tables, { id: Date.now(), name, sectionId: activeTableSection, status: 'Active' }]);
+                             onClick={async () => {
+                               const name = window.prompt(`Add new table to ${sections.find(s => s._id === activeTableSection)?.label}:`);
+                               if (name) {
+                                 await addTable({ name, section: activeTableSection, capacity: 4 });
+                               }
                              }}
                              className="bg-[#E1261C] text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-rose-900/10"
                            >
@@ -773,7 +874,7 @@ export default function SystemSettings() {
 
                           <div className="divide-y divide-slate-50">
                             <AnimatePresence mode="popLayout" initial={false}>
-                              {tables.filter(t => t.sectionId === activeTableSection).length === 0 ? (
+                              {tables.filter(t => t.sectionId === sections.find(s => s._id === activeTableSection)?.id).length === 0 ? (
                                  <motion.div 
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -782,7 +883,7 @@ export default function SystemSettings() {
                                     <Table size={32} />
                                     <span className="text-[10px] font-black uppercase tracking-widest">No tables assigned to this section</span>
                                  </motion.div>
-                              ) : tables.filter(t => t.sectionId === activeTableSection).map((table, idx) => (
+                              ) : tables.filter(t => t.sectionId === sections.find(s => s._id === activeTableSection)?.id).map((table, idx) => (
                                 <motion.div
                                   key={table.id}
                                   initial={{ opacity: 0, x: -10 }}
@@ -804,18 +905,18 @@ export default function SystemSettings() {
                                   </div>
                                   <div className="flex items-center gap-2 opacity-20 group-hover:opacity-100 transition-all">
                                     <button 
-                                      onClick={() => {
+                                      onClick={async () => {
                                         const name = window.prompt('Table Name:', table.name);
-                                        if (name) setTables(tables.map(t => t.id === table.id ? { ...t, name } : t));
+                                        if (name) await updateTable(table._id, { name });
                                       }}
                                       className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-slate-900 hover:border-slate-300"
                                     >
                                       <Edit size={12} />
                                     </button>
                                     <button 
-                                      onClick={() => {
+                                      onClick={async () => {
                                          if (window.confirm(`Delete table ${table.name}?`)) {
-                                            setTables(tables.filter(t => t.id !== table.id));
+                                            await deleteTable(table._id);
                                          }
                                       }}
                                       className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-rose-600 hover:border-rose-100"
@@ -830,26 +931,12 @@ export default function SystemSettings() {
                         </div>
                       </div>
 
-                      {/* --- Save Changes Button --- */}
                       <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
-                        {tablesSaved && (
-                          <motion.span 
-                            initial={{ opacity: 0, x: 5 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="text-[10px] font-bold text-emerald-600"
-                          >
-                            Configuration Synchronized!
-                          </motion.span>
-                        )}
-                        <button
-                          onClick={() => {
-                            setTablesSaved(true);
-                            setTimeout(() => setTablesSaved(false), 2000);
-                          }}
-                          className="h-9 px-8 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10 active:scale-95 transition-all flex items-center gap-2"
+                        <motion.span 
+                          className="text-[10px] font-bold text-slate-400"
                         >
-                          <Save size={14} /> Save Configuration
-                        </button>
+                          All changes are synchronized instantly with the registry.
+                        </motion.span>
                       </div>
                     </motion.div>
                   )}
@@ -1189,19 +1276,19 @@ export default function SystemSettings() {
                         key="others"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="py-20 text-center space-y-4 underline decoration-transparent"
+                        className="py-20 text-center space-y-4"
                      >
                         <Database size={48} className="mx-auto text-slate-100" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300 underline decoration-transparent">Module Synchronizing</h3>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest underline decoration-transparent">Establishing hardware handshakes and registry links</p>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300">Module Synchronizing</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Establishing hardware handshakes and registry links</p>
                      </motion.div>
                   )}
                </AnimatePresence>
             </div>
             
-            <div className="flex items-center gap-3 p-4 bg-blue-50/50 border border-blue-100 rounded-sm underline decoration-transparent">
+            <div className="flex items-center gap-3 p-4 bg-blue-50/50 border border-blue-100 rounded-sm">
                <CheckCircle2 size={16} className="text-blue-500 shrink-0" />
-               <p className="text-[9px] font-bold text-blue-700 uppercase tracking-widest leading-loose underline decoration-transparent">
+               <p className="text-[9px] font-bold text-blue-700 uppercase tracking-widest leading-loose">
                   All system configurations are currently operating under the latest protocol version (v2.4.0). Commit changes to synchronize with secondary terminals.
                </p>
             </div>

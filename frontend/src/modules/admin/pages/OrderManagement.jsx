@@ -6,21 +6,23 @@ import {
   X, Receipt, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useOrders } from '../../../context/OrderContext';
-import { useTheme } from '../../user/context/ThemeContext';
+import { usePos } from '../../pos/context/PosContext';
 
 export default function OrderManagement() {
-  const { orders, updateOrderStatus, cancelOrder } = useOrders();
-  const { isDarkMode } = useTheme();
+  const { orders } = usePos();
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const filteredOrders = orders.filter(order => {
+  const orderList = Object.values(orders || {});
+
+  const filteredOrders = orderList.filter(order => {
+    const orderId = order._id || order.id || '';
+    const tableName = order.table?.name || order.table || '';
     const matchesStatus = filterStatus === 'all' || 
-                         order.source?.toLowerCase().includes(filterStatus.toLowerCase());
-    const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         (order.table && `Table ${order.table}`.toLowerCase().includes(searchQuery.toLowerCase()));
+                         (order.source || '').toLowerCase().includes(filterStatus.toLowerCase());
+    const matchesSearch = orderId.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         tableName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -90,37 +92,36 @@ export default function OrderManagement() {
                      <tr key={order.id} className="hover:bg-amber-50/40 transition-colors group cursor-pointer relative border-b border-stone-50 last:border-0" onClick={() => setSelectedOrder(order)}>
                         <td className="px-5 py-3.5">
                            <div className="flex flex-col">
-                              <span className="text-[12px] font-black text-stone-900">#{order.orderNum}</span>
-                              <span className="text-[9px] font-semibold text-stone-400 mt-0.5">{new Date(order.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-[12px] font-black text-stone-900">#{order.orderNumber || (order._id || order.id).slice(-4)}</span>
+                              <span className="text-[9px] font-semibold text-stone-400 mt-0.5">{new Date(order.createdAt || order.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                            </div>
                         </td>
                         <td className="px-5 py-3.5">
                            <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full ${order.source === 'Staff App' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                              <span className="text-[11px] font-semibold text-stone-600">{order.source}</span>
+                              <span className="text-[11px] font-semibold text-stone-600">{order.source || 'POS Terminal'}</span>
                            </div>
                         </td>
                         <td className="px-5 py-3.5">
-                           <span className="text-[12px] font-bold text-stone-800">{order.table ? `Table ${order.table}` : 'Takeaway'}</span>
+                           <span className="text-[12px] font-bold text-stone-800">{order.table?.name || order.table || 'Takeaway'}</span>
                         </td>
                         <td className="px-5 py-3.5">
                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${
-                              order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                              order.status === 'cancelled' ? 'bg-rose-100 text-rose-700' :
-                              order.status === 'preparing' ? 'bg-blue-100 text-blue-700' :
-                              order.status === 'ready' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-500'
+                              order.orderStatus === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                              order.orderStatus === 'CANCELLED' ? 'bg-rose-100 text-rose-700' :
+                              order.orderStatus === 'RUNNING' ? 'bg-blue-100 text-blue-700' :
+                              order.orderStatus === 'BILLED' ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-500'
                            }`}>
-                              {order.status === 'completed' && <CheckCircle2 size={10} />}
-                              {order.status === 'cancelled' && <XCircle size={10} />}
-                              {order.status === 'preparing' && <Clock size={10} className="animate-spin" />}
-                              {order.status === 'new' && <AlertCircle size={10} />}
-                              {order.status}
+                              {order.orderStatus === 'COMPLETED' && <CheckCircle2 size={10} />}
+                              {order.orderStatus === 'CANCELLED' && <XCircle size={10} />}
+                              {order.orderStatus === 'RUNNING' && <Clock size={10} className="animate-spin" />}
+                              {order.orderStatus}
                            </span>
                         </td>
                         <td className="px-5 py-3.5 text-right">
                            <div className="flex flex-col">
-                              <span className="text-[12px] font-black text-stone-900">₹{order.total.toLocaleString()}</span>
-                              <span className="text-[9px] font-semibold text-stone-400 mt-0.5">{order.items.length} items</span>
+                              <span className="text-[12px] font-black text-stone-900">₹{(order.totalAmount || order.total || 0).toLocaleString()}</span>
+                              <span className="text-[9px] font-semibold text-stone-400 mt-0.5">{(order.kots?.length || 0)} KOTs</span>
                            </div>
                         </td>
                         <td className="px-5 py-3.5">
@@ -129,7 +130,9 @@ export default function OrderManagement() {
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.alert(`Print receipt for Order #${order.orderNum}`);
+                                  api.post(`/orders/${order._id || order.id}/bill`).then(() => {
+                                    window.alert(`PROTOCOL: Thermal receipt queued for Order #${order.orderNumber || order.orderNum}`);
+                                  });
                                 }}
                                 className="p-1.5 text-stone-400 hover:text-blue-600 bg-white border border-stone-200 rounded-lg shadow-sm transition-all"
                               ><Printer size={12} /></button>
@@ -174,8 +177,7 @@ export default function OrderManagement() {
                         <ShoppingBag size={16} />
                      </div>
                      <div>
-                        <h3 className="text-[13px] font-black uppercase tracking-tight text-white">Order #{selectedOrder.orderNum}</h3>
-                        <p className="text-[9px] font-semibold text-stone-400 mt-0.5">{selectedOrder.source}</p>
+                        <h3 className="text-[13px] font-black uppercase tracking-tight text-white">Order #{selectedOrder.orderNumber || (selectedOrder._id || selectedOrder.id).slice(-4)}</h3>
                      </div>
                   </div>
                   <button onClick={() => setSelectedOrder(null)} className="p-2 text-stone-400 hover:text-white transition-colors"><X size={18} /></button>
@@ -193,50 +195,62 @@ export default function OrderManagement() {
                      </div>
                      <div className="bg-stone-50 border border-stone-100 rounded-xl p-3">
                         <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">Total</p>
-                        <p className="text-sm font-black text-[#E1261C]">₹{selectedOrder.total.toLocaleString()}</p>
+                        <p className="text-sm font-black text-[#E1261C]">₹{(selectedOrder.totalAmount || selectedOrder.total || 0).toLocaleString()}</p>
                      </div>
                   </div>
                   <div className="flex items-center justify-between px-1">
-                     <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Update Status</p>
-                     <select 
-                        value={selectedOrder.status}
-                        onChange={(e) => updateOrderStatus(selectedOrder.id, e.target.value)}
-                        className="text-[11px] font-bold bg-stone-100 border border-stone-200 outline-none px-3 py-1.5 rounded-lg text-stone-700 focus:ring-2 focus:ring-[#E1261C]/20"
-                     >
-                        <option value="new">New</option>
-                        <option value="preparing">Preparing</option>
-                        <option value="ready">Ready</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                     </select>
+                     <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Order Status</p>
+                     <span className="text-[11px] font-bold text-stone-700">{selectedOrder.orderStatus}</span>
                   </div>
 
                   <div className="bg-stone-50 p-4 border border-stone-100 rounded-xl">
                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-3">Order Items</h4>
                      <div className="space-y-2 max-h-[180px] overflow-y-auto no-scrollbar">
-                        {selectedOrder.items.map((item, idx) => (
-                           <div key={idx} className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-stone-700">{item.name}</span>
-                              <span className="text-sm font-bold text-stone-500">x{item.quantity}</span>
-                           </div>
+                        {(selectedOrder.kots || []).map((kot, kIdx) => (
+                          <div key={kIdx} className="space-y-1">
+                            <p className="text-[9px] font-bold text-stone-400">KOT #{kot.kotNumber}</p>
+                            {kot.items.map((item, iIdx) => (
+                              <div key={iIdx} className="flex items-center justify-between pl-2">
+                                <span className="text-sm font-semibold text-stone-700">{item.name}</span>
+                                <span className="text-sm font-bold text-stone-500">x{item.quantity}</span>
+                              </div>
+                            ))}
+                          </div>
                         ))}
                         <div className="border-t border-stone-200 pt-2.5 mt-2 flex items-center justify-between">
                            <span className="text-sm font-black text-stone-800">Grand Total</span>
-                           <span className="text-sm font-black text-[#E1261C]">₹{selectedOrder.total}</span>
+                           <span className="text-sm font-black text-[#E1261C]">₹{selectedOrder.totalAmount || selectedOrder.total}</span>
                         </div>
                      </div>
                   </div>
 
                   <div className="flex items-center gap-2.5">
                      <button 
-                        onClick={() => cancelOrder(selectedOrder.id)}
+                        onClick={async () => {
+                          const reason = window.prompt('ENTER CANCELLATION PROTOCOL REASON:');
+                          if (reason) {
+                            try {
+                              await api.post(`/orders/${selectedOrder._id || selectedOrder.id}/cancel`, { reason });
+                              window.alert('PROTOCOL SUCCESS: Order record terminated.');
+                              setSelectedOrder(null);
+                              // Refresh orders (ideally via context or direct fetch)
+                              window.location.reload(); 
+                            } catch (err) {
+                              window.alert(`PROTOCOL FAILURE: ${err.response?.data?.message || 'Unauthorized access'}`);
+                            }
+                          }
+                        }}
                         className="flex-1 py-3 bg-white border border-rose-200 text-rose-500 text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-rose-50"
                      >
                         <Trash2 size={14} />
                         Cancel Order
                      </button>
                      <button 
-                        onClick={() => window.alert('Print receipt...')}
+                        onClick={() => {
+                          api.post(`/orders/${selectedOrder._id || selectedOrder.id}/bill`).then(() => {
+                            window.alert('PROTOCOL: Sales terminal receipt generated.');
+                          });
+                        }}
                         className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-stone-900/15 hover:bg-[#4E342E]"
                      >
                         <Receipt size={14} />

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -6,13 +5,15 @@ import {
   CreditCard, ChevronRight, ChevronLeft, LogOut,
   Clock, CheckCircle2, XCircle, Map, List, 
   Calendar, UserPlus, Star, Receipt, History, 
-  Banknote, Monitor
+  Banknote, Monitor, UserCircle, RefreshCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePos } from '../../context/PosContext';
 
 export default function PosSidebar({ isOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = usePos();
 
   const navGroups = [
     {
@@ -102,6 +103,32 @@ export default function PosSidebar({ isOpen }) {
         </div>
       </div>
 
+      {/* Staff Identity Section */}
+      <div className="px-4 py-6 border-b border-white/5 bg-white/[0.02]">
+         <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-blue-400 shadow-inner">
+               <UserCircle size={22} />
+            </div>
+            <div className="flex flex-col overflow-hidden">
+               <span className="text-[12px] font-black text-white uppercase truncate">{user?.name || 'Unauthorized'}</span>
+               <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{user?.role || 'Guest'}</span>
+               </div>
+            </div>
+         </div>
+         <button 
+           onClick={() => {
+              logout();
+              navigate('/pos/login');
+           }}
+           className="w-full mt-4 py-2.5 bg-white/5 hover:bg-blue-600 hover:text-white border border-white/8 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 group"
+         >
+            <RefreshCcw size={12} className="group-hover:rotate-180 transition-all duration-500" />
+            Switch User
+         </button>
+      </div>
+
       {/* Navigation Groups */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 no-scrollbar space-y-5">
         {navGroups.map((group, idx) => (
@@ -183,13 +210,13 @@ export default function PosSidebar({ isOpen }) {
       <div className="p-2 border-t border-white/8 bg-[#0F1012]">
         <button 
           onClick={() => {
-            localStorage.removeItem('pos_access');
+            logout();
             navigate('/pos/login');
           }}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/8 transition-all"
         >
           <LogOut size={16} />
-          <span className="font-black text-[10px] uppercase tracking-widest">Log Out</span>
+          <span className="font-black text-[10px] uppercase tracking-widest">Sign Out Terminal</span>
         </button>
       </div>
     </aside>

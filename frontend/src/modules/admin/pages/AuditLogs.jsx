@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   History, Shield, Search, Filter, 
@@ -7,30 +6,95 @@ import {
   Clock, Activity, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const MOCK_AUDIT_LOGS = [
-  { id: 'LOG-4401', event: 'Menu Update', user: 'Anita Verma', role: 'Admin', module: 'Catalog', time: '10:15 AM', status: 'success', ip: '192.168.1.45' },
-  { id: 'LOG-4402', event: 'Staff Suspension', user: 'Rahul Sharma', role: 'Admin', module: 'People', time: '11:20 AM', status: 'critical', ip: '192.168.1.12' },
-  { id: 'LOG-4403', event: 'Login Attempt', user: 'Suresh Kumar', role: 'Cashier', module: 'Auth', time: '12:05 PM', status: 'success', ip: '192.168.1.33' },
-  { id: 'LOG-4404', event: 'Price Modification', user: 'Anita Verma', role: 'Admin', module: 'Catalog', time: '01:30 PM', status: 'warning', ip: '192.168.1.45' },
-  { id: 'LOG-4405', event: 'Fiscal Reset', user: 'System Protocol', role: 'Kernel', module: 'Finance', time: '02:00 PM', status: 'success', ip: '::1' },
-];
+import api from '../../../utils/api';
+import { playClickSound } from '../../pos/utils/sounds';
 
 export default function AuditLogs() {
+  const today = new Date().toISOString().split('T')[0];
   const [searchQuery, setSearchQuery] = useState('');
-  const [logs, setLogs] = useState(MOCK_AUDIT_LOGS);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({ totalEvents: 0, criticalExceptions: 0 });
+  
+  // Advanced Filters
+  const [filters, setFilters] = useState({
+    startDate: today,
+    endDate: today,
+    moduleName: 'ALL'
+  });
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.append('startDate', filters.startDate);
+      params.append('endDate', filters.endDate);
+      if (filters.moduleName !== 'ALL') {
+        params.append('moduleName', filters.moduleName);
+      }
+
+      const [logsRes, summaryRes] = await Promise.all([
+        api.get(`/audit?${params.toString()}`),
+        api.get('/audit/summary')
+      ]);
+      
+      setLogs(logsRes.data);
+      setSummary(summaryRes.data);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchLogs();
+  }, [filters]);
 
   const filteredLogs = logs.filter(log => 
-    log.event.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    log.ip.toLowerCase().includes(searchQuery.toLowerCase())
+    log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.staff?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.ipAddress || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (log.details || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleExport = () => {
-    window.alert('SECURITY PROTOCOL: Validating admin credentials for immutable log export...');
-    setTimeout(() => {
-       window.alert('PROTOCOL SUCCESS: AUDIT_LOG_EXPORT_v2.csv generated and encrypted.');
-    }, 1000);
+    if (logs.length === 0) {
+      alert("No logs available to export.");
+      return;
+    }
+
+    // Define CSV Headers
+    const headers = ["Timestamp", "Actor", "Role", "Action", "Module", "Details", "IP Address"];
+    
+    // Map logs to CSV rows
+    const csvRows = filteredLogs.map(log => [
+      new Date(log.createdAt).toLocaleString(),
+      log.staff?.name || 'SYSTEM',
+      log.staff?.role || 'KERNEL',
+      log.action,
+      log.module,
+      `"${(log.details || '').replace(/"/g, '""')}"`, // Escape quotes
+      log.ipAddress || '::1'
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [headers, ...csvRows]
+      .map(row => row.join(","))
+      .join("\n");
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `MamaFrankey_AuditLog_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    playClickSound();
   };
 
   return (
@@ -59,11 +123,11 @@ export default function AuditLogs() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Events recorded</p>
-            <h3 className="text-2xl font-black text-slate-900">12,482</h3>
+            <h3 className="text-2xl font-black text-slate-900">{summary.totalEvents}</h3>
          </div>
-         <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm border-l-orange-500 border-l-2">
-            <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">Critical Exceptions</p>
-            <h3 className="text-2xl font-black text-slate-900">03 Events</h3>
+         <div className={`bg-white p-6 border border-slate-100 rounded-sm shadow-sm border-l-2 ${summary.criticalExceptions > 0 ? 'border-l-rose-500 bg-rose-50/10' : 'border-l-orange-500'}`}>
+            <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${summary.criticalExceptions > 0 ? 'text-rose-600' : 'text-orange-500'}`}>Critical Exceptions</p>
+            <h3 className={`text-2xl font-black ${summary.criticalExceptions > 0 ? 'text-rose-700' : 'text-slate-900'}`}>{String(summary.criticalExceptions).padStart(2, '0')} Events</h3>
          </div>
          <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Indexing Status</p>
@@ -80,22 +144,53 @@ export default function AuditLogs() {
 
       {/* Protocol List */}
       <div className="bg-white border border-slate-100 rounded-sm shadow-sm overflow-hidden min-h-[400px]">
-         <div className="p-4 border-b border-slate-50 flex items-center justify-between">
+         <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex items-center gap-4 flex-1">
                <div className="max-w-xs w-full relative text-slate-400">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" />
                   <input 
                     type="text" 
-                    placeholder="Search event, user or IP..." 
+                    placeholder="Search action or user..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-100 py-2 pl-10 pr-4 text-[11px] font-bold uppercase tracking-widest outline-none focus:ring-1 focus:ring-slate-900/10 placeholder:text-slate-300 rounded-sm" 
                   />
                </div>
+               
+               <div className="flex items-center gap-2">
+                  <select 
+                     value={filters.moduleName}
+                     onChange={(e) => setFilters({...filters, moduleName: e.target.value})}
+                     className="bg-slate-50 border border-slate-100 h-9 px-3 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                  >
+                     <option value="ALL">All Modules</option>
+                     <option value="AUTH">Authentication</option>
+                     <option value="ORDERS">Orders</option>
+                     <option value="MENU">Menu Management</option>
+                     <option value="SYSTEM_SETTINGS">System Settings</option>
+                     <option value="ATTENDANCE">Attendance</option>
+                  </select>
+               </div>
+
+               <div className="flex items-center gap-2">
+                  <input 
+                     type="date" 
+                     value={filters.startDate}
+                     onChange={(e) => setFilters({...filters, startDate: e.target.value})}
+                     className="bg-slate-50 border border-slate-100 h-9 px-3 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                  />
+                  <span className="text-[10px] font-black text-slate-400">TO</span>
+                  <input 
+                     type="date" 
+                     value={filters.endDate}
+                     onChange={(e) => setFilters({...filters, endDate: e.target.value})}
+                     className="bg-slate-50 border border-slate-100 h-9 px-3 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                  />
+               </div>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-sm">
-               <Calendar size={12} className="text-slate-400" />
-               <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Live View</span>
+               {loading ? <Activity size={12} className="text-blue-500 animate-spin" /> : <Calendar size={12} className="text-slate-400" />}
+               <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">{loading ? 'Syncing...' : 'Live View'}</span>
             </div>
          </div>
 
@@ -113,21 +208,23 @@ export default function AuditLogs() {
                </thead>
                <tbody className="divide-y divide-slate-50">
                   {filteredLogs.map(log => (
-                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors group">
+                     <tr key={log._id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-2">
                               <Clock size={12} className="text-slate-300" />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{log.time}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {new Date(log.createdAt).toLocaleTimeString()}
+                              </span>
                            </div>
                         </td>
                         <td className="px-6 py-4">
                            <div className="flex flex-col">
-                              <span className="text-[11px] font-black uppercase text-slate-900 tracking-tight">{log.user}</span>
-                              <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em]">{log.role}</span>
+                              <span className="text-[11px] font-black uppercase text-slate-900 tracking-tight">{log.staff?.name || 'SYSTEM'}</span>
+                              <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em]">{log.staff?.role || 'KERNEL'}</span>
                            </div>
                         </td>
                         <td className="px-6 py-4">
-                           <span className="text-[11px] font-bold uppercase text-slate-500">{log.event}</span>
+                           <span className="text-[11px] font-bold uppercase text-slate-500">{log.action}</span>
                         </td>
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-2">
@@ -136,18 +233,14 @@ export default function AuditLogs() {
                            </div>
                         </td>
                         <td className="px-6 py-4">
-                           <span className={`px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 ${
-                              log.status === 'success' ? 'bg-emerald-50 text-emerald-600' :
-                              log.status === 'critical' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
-                           }`}>
-                              {log.status === 'critical' && <AlertTriangle size={10} />}
-                              {log.status}
+                           <span className="px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600">
+                              SUCCESS
                            </span>
                         </td>
                         <td className="px-6 py-4 text-right">
                            <div className="flex items-center justify-end gap-2">
                                <Globe size={10} className="text-slate-300" />
-                               <span className="text-[10px] font-bold text-slate-400">{log.ip}</span>
+                               <span className="text-[10px] font-bold text-slate-400">{log.ipAddress || '::1'}</span>
                            </div>
                         </td>
                      </tr>

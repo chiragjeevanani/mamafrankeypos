@@ -7,42 +7,93 @@ import {
 } from 'lucide-react';
 import { ADMIN_STATS_HISTORY } from '../data/adminData';
 import { maskCurrency, maskQuantity } from '../utils/dataMask';
+import api from '../../../utils/api';
 
-
-const stats = [
-  { 
-    label: "Today's Revenue", value: `₹${maskCurrency(42850).toLocaleString()}`, trend: "+12.5%", isUp: true, 
-    icon: TrendingUp, accent: "border-amber-500", iconBg: "bg-amber-50", iconColor: "text-amber-600",
-    trendBg: "bg-emerald-50 text-emerald-600"
-  },
-  { 
-    label: "Total Orders", value: maskQuantity(156).toString(), trend: "+8.2%", isUp: true, 
-    icon: ShoppingBag, accent: "border-blue-500", iconBg: "bg-blue-50", iconColor: "text-blue-600",
-    trendBg: "bg-emerald-50 text-emerald-600"
-  },
-  { 
-    label: "Active Orders", value: "12", trend: "Live", isUp: true, 
-    icon: ChefHat, accent: "border-orange-500", iconBg: "bg-orange-50", iconColor: "text-orange-600",
-    trendBg: "bg-orange-50 text-orange-600"
-  },
-  { 
-    label: "Avg Prep Time", value: "18 min", trend: "-2.1%", isUp: false, 
-    icon: Clock, accent: "border-emerald-500", iconBg: "bg-emerald-50", iconColor: "text-emerald-600",
-    trendBg: "bg-rose-50 text-rose-600"
-  },
-];
-
-
-const quickStats = [
-  { label: 'Tables Occupied', value: '8 / 14', icon: Table, color: 'text-[#E1261C]' },
-  { label: 'Kitchen Queue', value: '12 Items', icon: ChefHat, color: 'text-orange-600' },
-  { label: 'Pending Bills', value: '3 Tables', icon: CreditCard, color: 'text-blue-600' },
-  { label: 'Floor Staff', value: '6 On Duty', icon: Users, color: 'text-emerald-600' },
-];
 
 export default function AdminDashboard() {
-  const maxRevenue = Math.max(...ADMIN_STATS_HISTORY.map(d => d.revenue));
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const now = new Date();
+
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const { data } = await api.get('/dashboard/stats');
+        setDashboardData(data);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  const [recentOrders, setRecentOrders] = useState([]);
+  
+  React.useEffect(() => {
+    const fetchRecentOrders = async () => {
+      try {
+        const { data } = await api.get('/orders');
+        setRecentOrders(data.slice(0, 5));
+      } catch (error) {
+        console.error("Error fetching recent orders:", error);
+      }
+    };
+    fetchRecentOrders();
+  }, []);
+
+  if (loading) {
+    return <div className="p-8 flex items-center justify-center min-h-screen"><div className="animate-spin text-[#E1261C]"><BarChart3 size={32} /></div></div>;
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center min-h-screen text-stone-500">
+        <AlertCircle size={48} className="mb-4 text-[#E1261C]" />
+        <h2 className="text-xl font-bold mb-2">Failed to load dashboard data</h2>
+        <p className="text-sm">Please ensure you are logged in and the server is running.</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-[#E1261C] text-white rounded-lg text-sm font-bold uppercase"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const stats = [
+    { 
+      label: "Today's Revenue", value: `₹${dashboardData.sales.today.total.toLocaleString()}`, trend: "Live", isUp: true, 
+      icon: TrendingUp, accent: "border-amber-500", iconBg: "bg-amber-50", iconColor: "text-amber-600",
+      trendBg: "bg-emerald-50 text-emerald-600"
+    },
+    { 
+      label: "MTD Sales", value: `₹${dashboardData.sales.month.total.toLocaleString()}`, trend: "MTD", isUp: true, 
+      icon: ShoppingBag, accent: "border-blue-500", iconBg: "bg-blue-50", iconColor: "text-blue-600",
+      trendBg: "bg-emerald-50 text-emerald-600"
+    },
+    { 
+      label: "Total Customers", value: dashboardData.customers.toString(), trend: "Growth", isUp: true, 
+      icon: Users, accent: "border-orange-500", iconBg: "bg-orange-50", iconColor: "text-orange-600",
+      trendBg: "bg-orange-50 text-orange-600"
+    },
+    { 
+      label: "MTD Expenses", value: `₹${dashboardData.expenses.toLocaleString()}`, trend: "MTD", isUp: false, 
+      icon: CreditCard, accent: "border-emerald-500", iconBg: "bg-emerald-50", iconColor: "text-emerald-600",
+      trendBg: "bg-rose-50 text-rose-600"
+    },
+  ];
+
+  const quickStats = [
+    { label: 'Today Orders', value: `${dashboardData.sales.today.count} Units`, icon: ShoppingBag, color: 'text-[#E1261C]' },
+    { label: 'Weekly Performance', value: `₹${dashboardData.sales.week.total.toLocaleString()}`, icon: ChefHat, color: 'text-orange-600' },
+    { label: 'Top Item', value: dashboardData.topItems[0]?._id || 'N/A', icon: CreditCard, color: 'text-blue-600' },
+    { label: 'Customer Base', value: `${dashboardData.customers} Total`, icon: Users, color: 'text-emerald-600' },
+  ];
+
+  const maxRevenue = Math.max(...(dashboardData.hourlySales.length > 0 ? dashboardData.hourlySales.map(d => d.total) : [1000]));
 
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500">
@@ -116,14 +167,6 @@ export default function AdminDashboard() {
               <h3 className="text-xs font-black uppercase tracking-widest text-stone-800">Hourly Sales — Today</h3>
               <p className="text-[10px] text-stone-400 font-semibold mt-0.5">Dine-in vs Takeaway performance</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-[9px] font-bold text-stone-400 uppercase">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />Dine-in
-              </div>
-              <div className="flex items-center gap-1.5 text-[9px] font-bold text-stone-400 uppercase">
-                <div className="w-2.5 h-2.5 rounded-full bg-stone-300" />Takeaway
-              </div>
-            </div>
           </div>
           <div className="flex-1 p-6">
             <div className="h-full w-full flex flex-col relative overflow-hidden rounded-lg">
@@ -141,36 +184,40 @@ export default function AdminDashboard() {
                       <stop offset="100%" stopColor="#E1261C" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  <motion.path
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1 }}
-                    d={`M 0 100 ${ADMIN_STATS_HISTORY.map((item, i) => {
-                      const x = (i / (ADMIN_STATS_HISTORY.length - 1)) * 100;
-                      const y = 98 - (item.revenue / maxRevenue) * 90; 
-                      return `L ${x} ${y}`;
-                    }).join(' ')} L 100 100 Z`}
-                    fill="url(#lineGlow)" stroke="none"
-                  />
-                  <motion.path
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 2, ease: "easeInOut" }}
-                    d={`M 0 100 ${ADMIN_STATS_HISTORY.map((item, i) => {
-                      const x = (i / (ADMIN_STATS_HISTORY.length - 1)) * 100;
-                      const y = 98 - (item.revenue / maxRevenue) * 90;
-                      return `L ${x} ${y}`;
-                    }).join(' ')}`}
-                    fill="none" stroke="#E1261C" strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
-                  />
+                  {dashboardData.hourlySales.length > 1 && (
+                    <>
+                      <motion.path
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 1 }}
+                        d={`M 0 100 ${dashboardData.hourlySales.map((item, i) => {
+                          const x = (i / (dashboardData.hourlySales.length - 1)) * 100;
+                          const y = 98 - (item.total / maxRevenue) * 90; 
+                          return `L ${x} ${y}`;
+                        }).join(' ')} L 100 100 Z`}
+                        fill="url(#lineGlow)" stroke="none"
+                      />
+                      <motion.path
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 2, ease: "easeInOut" }}
+                        d={`M 0 100 ${dashboardData.hourlySales.map((item, i) => {
+                          const x = (i / (dashboardData.hourlySales.length - 1)) * 100;
+                          const y = 98 - (item.total / maxRevenue) * 90;
+                          return `L ${x} ${y}`;
+                        }).join(' ')}`}
+                        fill="none" stroke="#E1261C" strokeWidth="2.5"
+                        strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
+                      />
+                    </>
+                  )}
                 </svg>
               </div>
 
               {/* Interaction Layer */}
               <div className="flex-1 flex justify-between gap-0 h-full relative z-10 pr-4">
-                {ADMIN_STATS_HISTORY.map((item, idx) => {
-                  const yPos = 98 - (item.revenue / maxRevenue) * 90;
+                {dashboardData.hourlySales.map((item, idx) => {
+                  const yPos = 98 - (item.total / maxRevenue) * 90;
                   return (
                     <div key={idx} className="flex-1 flex flex-col items-center group relative h-full">
                       <div 
@@ -185,12 +232,12 @@ export default function AdminDashboard() {
                         style={{ top: `calc(${yPos}% - 38px)` }}
                       >
                         <div className="bg-stone-800 text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                          ₹{item.revenue.toLocaleString()}
+                          ₹{item.total.toLocaleString()}
                         </div>
                       </div>
                       <div className="mt-auto pt-2 w-full h-10 flex items-center justify-center">
                         <span className="text-[9px] font-bold text-stone-400 uppercase tracking-tighter w-full text-center truncate px-1">
-                          {item.time}
+                          {item._id}:00
                         </span>
                       </div>
                     </div>
@@ -207,23 +254,19 @@ export default function AdminDashboard() {
             <h3 className="text-xs font-black uppercase tracking-widest text-stone-800">Recent Orders</h3>
             <span className="text-[9px] font-bold text-stone-400 bg-stone-50 px-2 py-0.5 rounded-full border border-stone-100">Live</span>
           </div>
-          <div className="p-3 space-y-1.5 flex-1">
-            {[
-              { num: 8821, table: 'T-04', method: 'Card', amount: 850, time: '2m ago', status: 'paid' },
-              { num: 8820, table: 'T-07', method: 'Cash', amount: 1200, time: '5m ago', status: 'paid' },
-              { num: 8819, table: 'T-02', method: 'UPI', amount: 650, time: '12m ago', status: 'paid' },
-              { num: 8818, table: 'Takeaway', method: 'Card', amount: 450, time: '18m ago', status: 'paid' },
-              { num: 8817, table: 'T-09', method: 'Cash', amount: 2100, time: '25m ago', status: 'paid' },
-            ].map((order, i) => (
-              <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-stone-50/60 hover:bg-stone-100 border border-transparent hover:border-stone-200 cursor-pointer transition-all group">
+          <div className="p-3 space-y-1.5 flex-1 overflow-y-auto no-scrollbar">
+            {recentOrders.map((order, i) => (
+              <div key={order._id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-stone-50/60 hover:bg-stone-100 border border-transparent hover:border-stone-200 cursor-pointer transition-all group">
                 <div className="w-8 h-8 rounded-lg bg-[#E1261C]/10 text-[#E1261C] flex items-center justify-center group-hover:bg-[#E1261C] group-hover:text-white transition-all shrink-0">
                   <ShoppingBag size={13} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black text-stone-800 uppercase tracking-tight leading-none">#{order.num} — {order.table}</p>
-                  <p className="text-[9px] font-semibold text-stone-400 mt-0.5">{order.time} · {order.method}</p>
+                  <p className="text-[11px] font-black text-stone-800 uppercase tracking-tight leading-none">#{order.orderNumber} — {order.orderType === 'DINE-IN' ? order.table?.name : order.carNumber || 'Pickup'}</p>
+                  <p className="text-[9px] font-semibold text-stone-400 mt-0.5">
+                    {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {order.paymentMethod}
+                  </p>
                 </div>
-                <span className="text-[11px] font-black text-stone-800">₹{order.amount}</span>
+                <span className="text-[11px] font-black text-stone-800">₹{order.totalAmount.toFixed(0)}</span>
               </div>
             ))}
           </div>

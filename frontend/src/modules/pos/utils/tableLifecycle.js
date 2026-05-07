@@ -1,4 +1,4 @@
-import { TABLE_STATUS_COLORS } from '../data/tablesMockData';
+import { TABLE_STATUS_COLORS } from '../../../constants/tableStyles';
 
 export const TABLE_LIFECYCLE_DEFAULTS = Object.freeze({
   orderPlaced: false,
@@ -41,6 +41,7 @@ export const normalizeTableLifecycle = (entity = {}) => {
 
   if (entity.status === 'running-kot') {
     inferred.orderPlaced = true;
+    inferred.kotPrinted = true;
   }
 
   if (entity.status === 'printed' || entity.status === 'paid' || entity.status === 'running') {

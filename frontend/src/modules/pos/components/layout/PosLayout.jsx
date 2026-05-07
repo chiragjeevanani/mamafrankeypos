@@ -1,41 +1,30 @@
 import { usePos } from '../../context/PosContext';
 import { Outlet } from 'react-router-dom';
 import PosSidebar from '../navigation/PosSidebar';
-import { useOrders } from '../../../../context/OrderContext';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, MoreVertical, X, Plus, Minus } from 'lucide-react';
 
 export default function PosLayout() {
   const { isSidebarOpen, closeSidebar } = usePos();
-  const { orders, updateOrderStatus } = useOrders();
   const [acceptingOrder, setAcceptingOrder] = useState(null);
   const [deliveryTime, setDeliveryTime] = useState(30);
   const [prepTime, setPrepTime] = useState(0);
 
-  const incomingOrders = useMemo(() => 
-    orders.filter(o => 
-      o.status === 'new' && 
-      (!o.source || o.source.toLowerCase() !== 'pos terminal')
-    ),
-    [orders]
-  );
+  const incomingOrders = []; // Temporary empty for now since external orders are being refactored
 
   const handleAcceptOrder = (order) => {
     setAcceptingOrder(order);
     setDeliveryTime(order.type?.toLowerCase() === 'delivery' ? 30 : 0);
-    setPrepTime(15); // Default prep time
+    setPrepTime(15);
   };
 
   const handleConfirmAccept = () => {
-    if (acceptingOrder) {
-      updateOrderStatus(acceptingOrder.id, 'preparing');
-      setAcceptingOrder(null);
-    }
+    setAcceptingOrder(null);
   };
 
   const handleRejectOrder = (orderId) => {
-    updateOrderStatus(orderId, 'cancelled');
+    // Rejection logic
   };
 
   return (

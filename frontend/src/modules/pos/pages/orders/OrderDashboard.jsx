@@ -7,7 +7,6 @@ import {
   ClipboardList, Send, Truck, ShoppingBag, Globe, 
   MoreHorizontal, ChevronRight, Info, Clock
 } from 'lucide-react';
-import { useOrders } from '../../../../context/OrderContext';
 import { usePos } from '../../context/PosContext';
 import { playClickSound } from '../../utils/sounds';
 
@@ -15,7 +14,7 @@ export default function OrderDashboard() {
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState('Order View');
   const [activeCategory, setActiveCategory] = useState('All');
-  const { orders } = useOrders();
+  const { orders } = usePos();
   
   const categories = [
     { id: 'All', icon: <LayoutGrid size={16} />, label: 'All' },

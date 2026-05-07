@@ -1,54 +1,69 @@
-
 import React, { useState } from 'react';
 import { ShoppingBag, Search, Filter, Clock, CheckCircle, XCircle, ChevronRight, Eye, Edit2, Trash2, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { maskQuantity, maskCurrency } from '../../utils/dataMask';
 import AdminModal from '../../components/ui/AdminModal';
+import api from '../../../../utils/api';
 
 export default function AllOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [orders, setOrders] = useState([
-    { id: 'ORD-8821', type: 'Dine-in', items: 4, total: 1240, status: 'Completed', time: '12:45 PM', customer: 'Aryan Sharma' },
-    { id: 'ORD-8822', type: 'Takeaway', items: 2, total: 580, status: 'Active', time: '01:10 PM', customer: 'Priya Patel' },
-    { id: 'ORD-8823', type: 'Delivery', items: 3, total: 940, status: 'Cancelled', time: '01:15 PM', customer: 'Rahul Verma' },
-    { id: 'ORD-8824', type: 'Dine-in', items: 5, total: 2100, status: 'Active', time: '01:20 PM', customer: 'Sonia Khan' },
-  ]);
+  React.useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const { data } = await api.get('/orders');
+        setOrders(data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   const [formData, setFormData] = useState({
-    status: 'Active'
+    status: 'RUNNING'
   });
 
   const getStatusColor = (status) => {
     switch(status) {
-      case 'Completed': return 'text-emerald-500 bg-emerald-50';
-      case 'Active': return 'text-blue-500 bg-blue-50';
-      case 'Cancelled': return 'text-red-500 bg-red-50';
+      case 'COMPLETED': return 'text-emerald-500 bg-emerald-50';
+      case 'RUNNING': return 'text-blue-500 bg-blue-50';
+      case 'BILLED': return 'text-amber-500 bg-amber-50';
+      case 'CANCELLED': return 'text-red-500 bg-red-50';
       default: return 'text-slate-400 bg-slate-50';
     }
   };
 
   const handleOpenView = (order) => {
     setViewingOrder(order);
-    setFormData({ status: order.status });
+    setFormData({ status: order.orderStatus });
     setIsModalOpen(true);
   };
 
-  const handleUpdateStatus = (e) => {
+  const handleUpdateStatus = async (e) => {
     e.preventDefault();
-    setOrders(orders.map(o => o.id === viewingOrder.id ? { ...o, ...formData } : o));
+    // Implementation for updating status via API would go here
     setIsModalOpen(false);
   };
 
-  const handleCancelOrder = (id) => {
+  const handleCancelOrder = async (id) => {
     if (window.confirm('PROTOCOL: Proceed with order cancellation?')) {
-      setOrders(orders.map(o => o.id === id ? { ...o, status: 'Cancelled' } : o));
+       // Implementation for cancellation via API
     }
   };
 
-  const filteredOrders = orders.filter(o => o.id.toLowerCase().includes(searchQuery.toLowerCase()) || o.type.toLowerCase().includes(searchQuery.toLowerCase()) || o.customer.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredOrders = orders.filter(o => 
+    o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    o.orderType.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (o.customer?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (o.carNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500">
@@ -95,22 +110,26 @@ export default function AllOrders() {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {filteredOrders.map((order) => (
-              <tr key={order.id} className="hover:bg-slate-900/5 group transition-all duration-300 underline decoration-transparent">
+              <tr key={order._id} className="hover:bg-slate-900/5 group transition-all duration-300 underline decoration-transparent">
                 <td className="px-6 py-4">
                   <div className="flex flex-col underline decoration-transparent">
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors underline decoration-transparent">#{order.id}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 underline decoration-transparent">{order.time} | {order.customer}</span>
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-tight group-hover:text-blue-600 transition-colors underline decoration-transparent">#{order.orderNumber}</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 underline decoration-transparent">
+                      {new Date(order.createdAt).toLocaleString()} | {order.orderType === 'DINE-IN' ? order.table?.name : order.carNumber || 'Pickup'}
+                    </span>
                   </div>
                 </td>
                 <td className="px-6 py-4 underline decoration-transparent">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tracking-tighter underline decoration-transparent">{order.type} ({maskQuantity(order.items)} Items)</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tracking-tighter underline decoration-transparent">
+                    {order.orderType} ({order.kots.reduce((acc, k) => acc + k.items.length, 0)} Items)
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-right underline decoration-transparent">
-                  <span className="text-xs font-black text-slate-900 tracking-tighter underline decoration-transparent">₹{maskCurrency(order.total)}</span>
+                  <span className="text-xs font-black text-slate-900 tracking-tighter underline decoration-transparent">₹{order.totalAmount.toFixed(2)}</span>
                 </td>
                 <td className="px-6 py-4 underline decoration-transparent">
-                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusColor(order.status)} underline decoration-transparent`}>
-                    {order.status}
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusColor(order.orderStatus)} underline decoration-transparent`}>
+                    {order.orderStatus}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-right underline decoration-transparent">
@@ -119,9 +138,9 @@ export default function AllOrders() {
                       onClick={() => handleOpenView(order)}
                       className="p-2 text-slate-400 hover:text-slate-900 transition-colors outline-none"
                     ><Eye size={16} /></button>
-                    {order.status !== 'Cancelled' && (
+                    {order.orderStatus !== 'CANCELLED' && (
                       <button 
-                        onClick={() => handleCancelOrder(order.id)}
+                        onClick={() => handleCancelOrder(order._id)}
                         className="p-2 text-slate-400 hover:text-red-500 transition-colors outline-none"
                       ><XCircle size={16} /></button>
                     )}
@@ -136,7 +155,7 @@ export default function AllOrders() {
       <AdminModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={viewingOrder ? `Audit Order ${viewingOrder.id}` : 'Order Context'}
+        title={viewingOrder ? `Audit Order ${viewingOrder.orderNumber}` : 'Order Context'}
         subtitle="Protocol Status Override & Flow Audit"
         onSubmit={handleUpdateStatus}
         submitLabel="Synchronize Status"
@@ -146,19 +165,19 @@ export default function AllOrders() {
             <div className="grid grid-cols-2 gap-4 underline decoration-transparent">
               <div className="bg-slate-50 p-4 border border-slate-100 rounded-sm underline decoration-transparent">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-transparent">Customer Entity</label>
-                <div className="text-xs font-black text-slate-900 uppercase underline decoration-transparent">{viewingOrder.customer}</div>
+                <div className="text-xs font-black text-slate-900 uppercase underline decoration-transparent">{viewingOrder.customer?.name || viewingOrder.carNumber || 'N/A'}</div>
               </div>
               <div className="bg-slate-50 p-4 border border-slate-100 rounded-sm underline decoration-transparent">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-transparent">Channel</label>
-                <div className="text-xs font-black text-slate-900 uppercase underline decoration-transparent">{viewingOrder.type}</div>
+                <div className="text-xs font-black text-slate-900 uppercase underline decoration-transparent">{viewingOrder.orderType}</div>
               </div>
             </div>
             
             <div className="bg-slate-50 p-4 border border-slate-100 rounded-sm underline decoration-transparent">
               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-transparent">Status Protocol Override</label>
               <div className="flex gap-2 underline decoration-transparent">
-                {['Active', 'Completed', 'Cancelled'].map((status) => (
-                  <button
+                {['RUNNING', 'COMPLETED', 'CANCELLED'].map((status) => (
+                   <button
                     key={status}
                     type="button"
                     onClick={() => setFormData({ status })}
@@ -177,20 +196,22 @@ export default function AllOrders() {
             <div className="p-4 border border-slate-100 rounded-sm underline decoration-transparent">
               <div className="flex justify-between items-center mb-4 underline decoration-transparent">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-transparent">Manifest Data</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 underline decoration-transparent">{viewingOrder.items} Elements</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 underline decoration-transparent">
+                  {viewingOrder.kots.reduce((acc, k) => acc + k.items.length, 0)} Elements
+                </span>
               </div>
               <div className="space-y-2 underline decoration-transparent">
                 <div className="flex justify-between text-xs underline decoration-transparent">
                   <span className="text-slate-500 font-bold uppercase underline decoration-transparent">Subtotal Protocol</span>
-                  <span className="text-slate-900 font-black underline decoration-transparent">₹{viewingOrder.total - 120}</span>
+                  <span className="text-slate-900 font-black underline decoration-transparent">₹{viewingOrder.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs underline decoration-transparent">
                   <span className="text-slate-500 font-bold uppercase underline decoration-transparent">Surcharge/Tax</span>
-                  <span className="text-slate-900 font-black underline decoration-transparent">₹120</span>
+                  <span className="text-slate-900 font-black underline decoration-transparent">₹{(viewingOrder.totalAmount - viewingOrder.subtotal).toFixed(2)}</span>
                 </div>
                 <div className="pt-2 border-t border-slate-50 flex justify-between text-sm underline decoration-transparent">
                   <span className="text-slate-900 font-black uppercase underline decoration-transparent">Fiscal Total</span>
-                  <span className="text-blue-600 font-black underline decoration-transparent">₹{viewingOrder.total}</span>
+                  <span className="text-blue-600 font-black underline decoration-transparent">₹{viewingOrder.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>

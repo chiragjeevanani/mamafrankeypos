@@ -12,7 +12,8 @@ export default function AdminModal({
   children, 
   onSubmit, 
   submitLabel = 'Commit Record',
-  maxWidth = 'max-w-lg'
+  maxWidth = 'max-w-lg',
+  isSaving = false
 }) {
   return (
     <AnimatePresence>
@@ -72,10 +73,15 @@ export default function AdminModal({
                        >Cancel</button>
                        <button 
                           type="submit"
-                          className="flex-1 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all outline-none"
+                          disabled={isSaving}
+                          className={`flex-1 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2 active:scale-[0.98] transition-all outline-none ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}
                        >
-                          <Save size={14} />
-                          {submitLabel}
+                          {isSaving ? (
+                            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                              <Save size={14} className="opacity-50" />
+                            </motion.div>
+                          ) : <Save size={14} />}
+                          {isSaving ? 'SYNCHRONIZING...' : submitLabel}
                        </button>
                     </div>
                   </form>

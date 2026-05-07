@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Calculator, Delete, ArrowRight, UserCheck, Shield, Zap } from 'lucide-react';
+import { Calculator, Delete, ArrowRight, UserCheck, Shield, Zap, AlertCircle } from 'lucide-react';
+import api from '../../../utils/api';
+import { usePos } from '../context/PosContext';
 
 export default function PosLoginPage() {
   const [pin, setPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -18,23 +21,37 @@ export default function PosLoginPage() {
   }, []);
 
   const handleNumberClick = (num) => {
-    if (pin.length < 4) setPin(prev => prev + num);
+    if (pin.length < 4) {
+      setPin(prev => prev + num);
+      setError('');
+    }
   };
 
   const handleDelete = () => {
     setPin(prev => prev.slice(0, -1));
+    setError('');
   };
 
-  const handleLogin = (e) => {
+  const { login } = usePos();
+
+  const handleLogin = async (e) => {
     if (e) e.preventDefault();
     if (pin.length !== 4) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('pos_access', 'mock_pos_token');
+    setError('');
+    
+    try {
+      const { data } = await api.post('/auth/pos/login', { pin });
+      localStorage.setItem('pos_access', data.token);
+      login(data);
       setIsLoading(false);
       navigate('/pos/tables');
-    }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid PIN');
+      setIsLoading(false);
+      setPin(''); // Clear PIN on error
+    }
   };
 
   // Keyboard support
@@ -135,6 +152,16 @@ export default function PosLoginPage() {
                     />
                   ))}
                 </div>
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-center gap-2 text-rose-500"
+                  >
+                    <AlertCircle size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{error}</span>
+                  </motion.div>
+                )}
               </div>
 
               {/* Keypad */}

@@ -6,7 +6,6 @@ import PosTopNavbar from '../../components/PosTopNavbar';
 import { usePos } from '../../context/PosContext';
 import { Trash2 } from 'lucide-react';
 import { printBillReceipt } from '../../utils/printBill';
-import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
 import { playClickSound } from '../../utils/sounds';
 import { getTableColor, getTableStatusText } from '../../utils/tableLifecycle';
 
@@ -14,7 +13,7 @@ export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, saveOrder, settleOrder, clearTable, carOrders, pickupOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes
+    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff
   } = usePos();
 
   // --- Car Service state ---
@@ -91,7 +90,10 @@ export default function TableView() {
 
   const handlePrintBill = (e, order, table, orderType = 'dine-in', options = {}) => {
     e.stopPropagation();
-    const subTotal = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+    const subTotal = order.kots?.reduce((sum, kot) => {
+      if (kot.total) return sum + kot.total;
+      return sum + (kot.items?.reduce((iSum, item) => iSum + (item.price * item.quantity), 0) || 0);
+    }, 0) || 0;
     const taxesArr = calculateTaxes(subTotal);
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     const total = Math.round(subTotal + tax);
@@ -102,7 +104,7 @@ export default function TableView() {
       { total, subTotal, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal })) }
     );
 
-    saveOrder(table.id, { 
+    saveOrder(order.id || order._id, { 
       isCarOrder: options.isCarOrder,
       isPickupOrder: options.isPickupOrder
     });
@@ -113,17 +115,23 @@ export default function TableView() {
     const isCarOrder = !!options.isCarOrder;
     const isPickupOrder = !!options.isPickupOrder;
     const order = isPickupOrder ? pickupOrders[table.id] : (isCarOrder ? carOrders[table.id] : orders[table.id]);
-    const subTotal = order?.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+    const subTotal = order?.kots?.reduce((sum, kot) => {
+      // Robust calculation: use kot.total or sum items
+      if (kot.total) return sum + kot.total;
+      return sum + (kot.items?.reduce((iSum, item) => iSum + (item.price * item.quantity), 0) || 0);
+    }, 0) || 0;
+    
     const taxesArr = calculateTaxes ? calculateTaxes(subTotal) : [];
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     const total = Math.round(subTotal + tax);
 
     setSettlementTarget({
-      id: table.id,
+      id: order.id || order._id, // USE ORDER ID
       name: table.name,
       isCarOrder,
       isPickupOrder,
       total,
+      appliedTaxes: taxesArr, // STORE TAXES
     });
     setShowUpiQR(false);
     setShowCashlessOptions(false);
@@ -162,6 +170,8 @@ export default function TableView() {
     }
 
     settleOrder(settlementTarget.id, paymentMethod, {
+      total: settlementTarget.total,
+      taxes: settlementTarget.appliedTaxes,
       isCarOrder: settlementTarget.isCarOrder,
       isPickupOrder: settlementTarget.isPickupOrder,
     });
@@ -433,7 +443,7 @@ export default function TableView() {
                           className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full"
                           style={{ color: statusConfig.textColor }}
                         >
-                          🚗 {car.name.replace(/\s/g, '').slice(-4)}
+                          🚗 {(car.name || '').replace(/\s/g, '').slice(-4)}
                         </span>
                         {order.waiter && (
                           <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
@@ -476,7 +486,7 @@ export default function TableView() {
                   ) : (
                     <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
                       <span className="font-black text-[13px] tracking-tight text-center leading-tight w-full px-1" style={{ color: statusConfig.textColor }}>
-                        🚗 {car.name.replace(/\s/g, '').slice(-4)}
+                        🚗 {(car.name || '').replace(/\s/g, '').slice(-4)}
                       </span>
                       <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
                     </div>
@@ -488,8 +498,10 @@ export default function TableView() {
             <AnimatePresence mode="popLayout">
               {Object.values(carOrders)
                 .filter(car =>
-                  carSearch === '' ||
-                  car.carNumber.toLowerCase().includes(carSearch.toLowerCase())
+                  car && car.carNumber && (
+                    carSearch === '' ||
+                    car.carNumber.toLowerCase().includes(carSearch.toLowerCase())
+                  )
                 )
                 .map((car) => {
                   const statusConfig = getTableColor(car);
@@ -524,7 +536,7 @@ export default function TableView() {
                               className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full"
                               style={{ color: statusConfig.textColor }}
                             >
-                              🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
+                              🚗 {(car.carNumber || '').replace(/\s/g, '').slice(-4)}
                             </span>
                             {car.waiter && (
                               <span className="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
@@ -568,7 +580,7 @@ export default function TableView() {
                       ) : (
                         <div className="h-full w-full flex flex-col items-center justify-center opacity-60">
                           <span className="font-black text-[13px] tracking-tight text-center leading-tight truncate w-full" style={{ color: statusConfig.textColor }}>
-                             🚗 {car.carNumber.replace(/\s/g, '').slice(-4)}
+                             🚗 {(car.carNumber || '').replace(/\s/g, '').slice(-4)}
                           </span>
                           <div className="w-6 h-0.5 bg-gray-300 mt-2 rounded-full opacity-30" />
                         </div>
@@ -1039,9 +1051,9 @@ export default function TableView() {
                 </button>
               </div>
               <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto">
-                {MOCK_WAITERS.map((waiter) => (
+                {(staff || []).map((waiter) => (
                   <button 
-                    key={waiter.id}
+                    key={waiter.id || waiter._id}
                     onClick={() => handleWaiterSelect(waiter)}
                     className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-100 hover:border-[#E1261C] hover:bg-red-50 transition-all group"
                   >

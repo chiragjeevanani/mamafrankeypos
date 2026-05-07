@@ -8,8 +8,6 @@ import {
   Ticket, Wallet, CheckCircle2, ShoppingBag, Truck, X, Check, ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { POS_CATEGORIES, POS_MENU_ITEMS } from '../../data/posMenu';
-import { TABLE_SECTIONS } from '../../data/tablesMockData';
 import PosTopNavbar from '../../components/PosTopNavbar';
 import { usePos } from '../../context/PosContext';
 import { printKOTReceipt } from '../../utils/printKOT';
@@ -18,7 +16,7 @@ import { downloadBillAndKOT } from '../../utils/printCombined';
 import { playClickSound } from '../../utils/sounds';
 
 
-import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
+// import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
 
 export default function PosOrderPage() {
   const { tableId } = useParams();
@@ -27,7 +25,7 @@ export default function PosOrderPage() {
   const { 
     placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable, cancelKOTItem,
     orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
-    variantGroups, dishVariants, categories, menuItems
+    variantGroups, dishVariants, categories, menuItems, tables, sections
   } = usePos();
   
   const [selectedCategory, setSelectedCategory] = useState('fav');
@@ -65,7 +63,7 @@ export default function PosOrderPage() {
   const [splitPayments, setSplitPayments] = useState([]);
   const [selectedWaiter, setSelectedWaiter] = useState(() => {
     if (location.state?.waiter) return location.state.waiter;
-    return MOCK_WAITERS[1]; // Default to Peter
+    return { id: 'w1', name: 'Peter' }; // Default fallback
   });
   const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
 
@@ -94,10 +92,9 @@ export default function PosOrderPage() {
   useEffect(() => {
     const existingOrder = isPickupMode ? pickupOrders[tableId] : isCarServiceMode ? carOrders[tableId] : orders[tableId];
     if (existingOrder) {
-       if (existingOrder.waiter) {
-          const matched = MOCK_WAITERS.find(w => w.id === existingOrder.waiter.id || w.name === existingOrder.waiter.name);
-          setSelectedWaiter(matched || existingOrder.waiter);
-       }
+        if (existingOrder.waiter) {
+           setSelectedWaiter(existingOrder.waiter);
+        }
        if (existingOrder.customer) {
           setCustomer(existingOrder.customer);
        }
@@ -123,12 +120,13 @@ export default function PosOrderPage() {
 
   // Find table details
   const tableInfo = useMemo(() => {
-    for (const section of TABLE_SECTIONS) {
-      const table = section.tables.find(t => t.id === tableId);
+    if (!sections || !tableId) return { name: tableId, section: 'AC' };
+    for (const section of sections) {
+      const table = (section.tables || []).find(t => t.id === tableId || t._id === tableId);
       if (table) return { name: table.name, section: section.label };
     }
     return { name: tableId, section: 'AC' };
-  }, [tableId]);
+  }, [tableId, sections]);
 
   const filteredItems = useMemo(() => {
     return (menuItems || []).filter(item => {
@@ -424,7 +422,7 @@ export default function PosOrderPage() {
         {/* 1. Categories Sidebar (Left - 12%) */}
         <div className="w-[12%] bg-[#6D6D6D] flex flex-col shrink-0">
           <button className="bg-[#E1261C] text-white p-3 flex items-center justify-between font-bold text-xs uppercase tracking-wider">
-            <span>{POS_CATEGORIES.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
+            <span>{categories.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
             <ChevronDown size={14} />
           </button>
           
@@ -477,22 +475,31 @@ export default function PosOrderPage() {
           {/* Items Grid */}
           <div className="flex-1 overflow-y-auto p-2">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {filteredItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => addToCart(item)}
-                  className="bg-white p-3 rounded-sm shadow-sm border border-gray-300 text-left transition-all hover:shadow-md flex items-center relative group min-h-[70px]"
-                >
-                  <div 
-                    className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
-                    style={{ backgroundColor: categories.find(c => c.id === item.catId)?.color || '#4CAF50' }}
-                  />
-                  <div className="flex flex-col ml-2 overflow-hidden">
-                    <span className="text-[11px] font-bold text-gray-700 leading-tight truncate">{item.name}</span>
-                    <span className="text-[10px] font-black text-orange-600 mt-1">₹{item.price}</span>
-                  </div>
-                </button>
-              ))}
+              {filteredItems.map(item => {
+                const isSoldOut = item.status === 'Out of Stock';
+                return (
+                  <button
+                    key={item.id}
+                    disabled={isSoldOut}
+                    onClick={() => addToCart(item)}
+                    className={`bg-white p-3 rounded-sm shadow-sm border border-gray-300 text-left transition-all flex items-center relative group min-h-[70px] ${
+                      isSoldOut ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:shadow-md'
+                    }`}
+                  >
+                    <div 
+                      className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
+                      style={{ backgroundColor: categories.find(c => c.id === item.catId)?.color || (isSoldOut ? '#9ca3af' : '#4CAF50') }}
+                    />
+                    <div className="flex flex-col ml-2 overflow-hidden">
+                      <span className="text-[11px] font-bold text-gray-700 leading-tight truncate">{item.name}</span>
+                      <span className="text-[10px] font-black text-orange-600 mt-1">₹{item.price}</span>
+                      {isSoldOut && (
+                        <span className="absolute right-1 bottom-1 text-[8px] font-black text-red-600 uppercase bg-red-50 px-1 rounded">Sold Out</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -661,18 +668,18 @@ export default function PosOrderPage() {
           <div className="flex-1 overflow-y-auto bg-white">
             {/* 1. Placed KOTs (History) */}
             {(isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.map((kot) => (
-              <div key={kot.id}>
+              <div key={kot._id || kot.id}>
                  <div className="bg-[#616161] text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between items-center">
-                    <span>KOT - {kot.id} Time - {kot.time}</span>
+                    <span>KOT - {(kot._id || kot.id)} Time - {kot.time}</span>
                  </div>
                   {kot.items.map(item => (
                     <CartItem 
-                      key={`${kot.id}-${item.id}`} 
+                      key={`${(kot._id || kot.id)}-${(item._id || item.id)}`} 
                       item={item} 
                       isPlaced={true} 
                       onCancel={() => {
                         if (window.confirm(`Are you sure you want to cancel ${item.name} from this KOT?`)) {
-                          cancelKOTItem(tableId, kot.id, item.id, { isCarOrder: isCarServiceMode });
+                          cancelKOTItem(tableId, (kot._id || kot.id), (item._id || item.id), { isCarOrder: isCarServiceMode });
                         }
                       }}
                     />

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PosLayout from '../components/layout/PosLayout';
 import PosLoginPage from '../pages/PosLoginPage';
+import ProtectedRoute from '../../../components/common/ProtectedRoute';
 
 // Orders sub-pages
 import ActiveOrders from '../pages/orders/ActiveOrders';
@@ -17,28 +18,30 @@ import OperationsDashboard from '../pages/operations/OperationsDashboard';
 // Tables sub-pages
 import TableView from '../pages/tables/TableView';
 import PosOrderPage from '../pages/tables/PosOrderPage';
-import { PosProvider } from '../context/PosContext';
 
 export default function PosRoutes() {
-  const isPosAuthenticated = localStorage.getItem('pos_access'); // Mock auth check
-
   return (
     <Routes>
       <Route path="/login" element={<PosLoginPage />} />
-      <Route element={<PosLayout />}>
-        <Route path="/" element={<Navigate to={isPosAuthenticated ? "/pos/tables" : "/pos/login"} replace />} />
+      
+      <Route element={
+        <ProtectedRoute authKey="pos_access" redirectPath="/pos/login">
+          <PosLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/pos/tables" replace />} />
 
         {/* Orders Routes */}
-        <Route path="/orders/active" element={<ActiveOrders />} />
-        <Route path="/dashboard" element={<OrderDashboard />} />
-        <Route path="/menu" element={<MenuManagement />} />
-        <Route path="/operations" element={<OperationsDashboard />} />
-        <Route path="/orders/completed" element={<CompletedOrders />} />
-        <Route path="/orders/cancelled" element={<CancelledOrders />} />
+        <Route path="orders/active" element={<ActiveOrders />} />
+        <Route path="dashboard" element={<OrderDashboard />} />
+        <Route path="menu" element={<MenuManagement />} />
+        <Route path="operations" element={<OperationsDashboard />} />
+        <Route path="orders/completed" element={<CompletedOrders />} />
+        <Route path="orders/cancelled" element={<CancelledOrders />} />
 
         {/* Tables Routes */}
-        <Route path="/tables" element={<TableView />} />
-        <Route path="/order/:tableId" element={<PosOrderPage />} />
+        <Route path="tables" element={<TableView />} />
+        <Route path="order/:tableId" element={<PosOrderPage />} />
 
         {/* Fallback for any other /pos/* matching routes */}
         <Route path="*" element={<Navigate to="/pos/tables" replace />} />

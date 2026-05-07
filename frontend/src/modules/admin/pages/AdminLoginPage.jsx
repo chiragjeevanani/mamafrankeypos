@@ -1,22 +1,31 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Mail, Lock, ArrowRight, ShieldCheck, HelpCircle } from 'lucide-react';
+import { ShieldAlert, Mail, Lock, ArrowRight, ShieldCheck, HelpCircle, AlertCircle } from 'lucide-react';
+import api from '../../../utils/api';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      localStorage.setItem('admin_access', 'mock_admin_token');
+    setError('');
+    
+    try {
+      const { data } = await api.post('/auth/admin/login', { email, password });
+      localStorage.setItem('admin_access', data.token);
+      localStorage.setItem('user_info', JSON.stringify(data));
       setIsLoading(false);
       navigate('/admin/dashboard');
-    }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid credentials');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -45,6 +54,16 @@ export default function AdminLoginPage() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           
           <form onSubmit={handleLogin} className="space-y-6 relative z-10">
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3"
+              >
+                <AlertCircle size={16} className="text-rose-500" />
+                <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{error}</p>
+              </motion.div>
+            )}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-charcoal-400 ml-1">Admin Identity</label>
               <div className="relative">

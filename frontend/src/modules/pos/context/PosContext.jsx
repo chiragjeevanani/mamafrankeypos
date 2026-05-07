@@ -1,634 +1,737 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import {
-  applyTableLifecycle,
-  normalizePaymentMode,
-  normalizeTableLifecycle,
-  resetTableLifecycle,
-} from '../utils/tableLifecycle';
-import { POS_CATEGORIES, POS_MENU_ITEMS } from '../data/posMenu';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from "../../../utils/api";
+import { normalizeTableLifecycle } from "../utils/tableLifecycle";
 
 const PosContext = createContext();
 
-const normalizeStoredSession = (session = {}) => normalizeTableLifecycle(session);
-const normalizeStoredTables = (items = []) => items.map((table) => normalizeTableLifecycle(table));
-
 export function PosProvider({ children }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [categories, setCategories] = useState(POS_CATEGORIES);
-  const [menuItems, setMenuItems] = useState(POS_MENU_ITEMS);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isCustomerSectionOpen, setIsCustomerSectionOpen] = useState(false);
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('pos_user_info')) || null);
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
+  const toggleCustomerSection = () => setIsCustomerSectionOpen(!isCustomerSectionOpen);
+
+  const [categories, setCategories] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [variantGroups, setVariantGroups] = useState([]);
+  const [replacements, setReplacements] = useState([]);
+  const [combos, setCombos] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [dishVariants, setDishVariants] = useState({});
+
+  const login = (userData) => {
+    setUser(userData);
+    localStorage.setItem('pos_user_info', JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('pos_access');
+    localStorage.removeItem('pos_user_info');
+  };
 
   useEffect(() => {
-    const fetchCSV = async () => {
+    const fetchMenu = async () => {
+      if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
       try {
-        const response = await fetch('/data/mama franky menu.csv');
-        const text = await response.text();
-        const lines = text.split('\n');
-        
-        if (lines.length < 2) return;
+        const [catRes, itemRes, variantRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
+          api.get('/menu/categories'),
+          api.get('/menu/items'),
+          api.get('/menu/variants'),
+          api.get('/menu/replacements'),
+          api.get('/menu/combos'),
+          api.get('/staff'),
+          api.get('/settings/counters')
+        ]);
 
-        const parseRow = (row) => {
-          const result = [];
-          let current = '';
-          let inQuotes = false;
-          for (let i = 0; i < row.length; i++) {
-            const char = row[i];
-            if (char === '"') {
-              inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-              result.push(current.trim());
-              current = '';
-            } else {
-              current += char;
-            }
-          }
-          result.push(current.trim());
-          return result;
-        };
-
-        const csvItems = [];
-        const csvCategories = new Set();
-        
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const row = parseRow(line);
-          if (row.length < 11) continue;
-
-          const name = row[0].replace(/^"|"$/g, '');
-          const category = row[8].replace(/^"|"$/g, '') || 'General';
-          const price = parseFloat(row[10]) || 0;
-          const code = row[3].replace(/^"|"$/g, '') || '';
-
-          csvCategories.add(category);
-          csvItems.push({
-            id: `csv-${i}`,
-            catId: category,
-            name: name,
-            price: price,
-            code: code,
-            shortcut: code,
-            image: ''
-          });
-        }
-
-        const newCategories = Array.from(csvCategories).map((cat, index) => ({
-          id: cat,
-          name: cat,
+        const formattedCategories = catRes.data.map((cat, index) => ({
+          id: cat._id,
+          name: cat.name,
           icon: 'Utensils',
+          status: cat.status || 'Active',
+          image: cat.image || '',
           color: index % 2 === 0 ? '#E1261C' : '#00BCD4'
         }));
 
-        newCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
-        
-        setCategories(newCategories);
-        setMenuItems(csvItems);
+        formattedCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
+
+        const formattedItems = itemRes.data.map((item) => ({
+          id: item._id,
+          catId: item.category?._id || item.category,
+          name: item.name,
+          price: item.price,
+          code: item.shortCode || '',
+          shortcut: item.shortCode || '',
+          image: item.image || '',
+          type: item.type || 'veg',
+          variantGroups: item.variantGroups
+        }));
+
+        const formattedVariants = variantRes.data.map(v => ({
+          id: v._id,
+          name: v.name,
+          type: v.type,
+          options: v.options
+        }));
+
+        const formattedReplacements = replaceRes.data.map(r => ({
+          id: r._id,
+          originalDishId: r.originalDish?._id || r.originalDish,
+          replacementDishId: r.replacementDish?._id || r.replacementDish,
+          startDate: r.startDate?.split('T')[0],
+          endDate: r.endDate?.split('T')[0],
+          status: r.status
+        }));
+
+        setCategories(formattedCategories);
+        setMenuItems(formattedItems);
+        setVariantGroups(formattedVariants);
+        setReplacements(formattedReplacements);
+        setCombos(comboRes.data.map(c => ({
+          id: c._id,
+          name: c.name,
+          price: c.price,
+          code: c.code,
+          elements: c.elements,
+          active: c.active
+        })));
+        setStaff(staffRes.data.map(s => ({
+          id: s._id,
+          name: s.name,
+          role: s.role,
+          status: s.status
+        })));
+
+        if (staffRes.data.length > 0 && !user) {
+           // Auto-select first staff for now if none selected
+           // setUser(staffRes.data[0]); 
+        }
+
+        if (counterRes.data.length > 0) {
+          setCurrentCounter(counterRes.data[0]);
+        }
       } catch (error) {
-        console.error("Error fetching CSV in Context:", error);
+        console.error("Error fetching menu from API:", error);
       }
     };
 
-    fetchCSV();
+    fetchMenu();
   }, []);
-  const [orders, setOrders] = useState(() => {
+
+  const [orders, setOrders] = useState({});
+  const [carOrders, setCarOrders] = useState({});
+  const [pickupOrders, setPickupOrders] = useState({});
+  const [tables, setTables] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [currentCounter, setCurrentCounter] = useState(null);
+
+  const fetchOrders = async () => {
     try {
-      const saved = localStorage.getItem('rms_pos_orders');
-      if (!saved) return {};
+      const [orderRes, carRes, pickupRes] = await Promise.all([
+        api.get('/orders?status=running-kot'),
+        api.get('/orders?type=CAR&status=running-kot'),
+        api.get('/orders?type=PICKUP&status=running-kot')
+      ]);
 
-      return Object.fromEntries(
-        Object.entries(JSON.parse(saved)).map(([tableId, order]) => [
-          tableId,
-          normalizeStoredSession(order),
-        ])
-      );
-    } catch {
-      return {};
-    }
-  });
-
-  // --- Car Service Orders (keyed by normalised car number) ---
-  const [carOrders, setCarOrders] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rms_pos_car_orders');
-      if (!saved) return {};
-
-      return Object.fromEntries(
-        Object.entries(JSON.parse(saved)).map(([tableId, order]) => [
-          tableId,
-          normalizeStoredSession(order),
-        ])
-      );
-    } catch {
-      return {};
-    }
-  });
-
-  // --- Pick Up Orders (keyed by unique PU ID) ---
-  const [pickupOrders, setPickupOrders] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rms_pos_pickup_orders');
-      if (!saved) return {};
-
-      return Object.fromEntries(
-        Object.entries(JSON.parse(saved)).map(([tableId, order]) => [
-          tableId,
-          normalizeStoredSession(order),
-        ])
-      );
-    } catch {
-      return {};
-    }
-  });
-
-  // --- Dynamic Sections & Tables (Admin Managed) ---
-  const [sections, setSections] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rms_pos_sections');
-      if (saved) return JSON.parse(saved);
-      
-      // Default Sections from mock
-      return [
-        { id: 'ac', label: 'AC' },
-        { id: 'garden', label: 'Garden' },
-        { id: 'non-ac', label: 'Non-AC' },
-        { id: 'rooftops', label: 'Rooftops' },
-        { id: 'second-floor', label: 'Second Floor' },
-        { id: 'car-service', label: 'Car Service' }
-      ];
-    } catch { return []; }
-  });
-
-  const [tables, setTables] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rms_pos_tables');
-      if (saved) return normalizeStoredTables(JSON.parse(saved));
-
-      // Default Tables generated from sections logic
-      const defaultTables = [
-        ...Array.from({ length: 20 }, (_, i) => ({ id: `AC${i + 1}`, name: `AC${i + 1}`, sectionId: 'ac', status: 'blank', capacity: 4 })),
-        ...Array.from({ length: 20 }, (_, i) => ({ id: `G${i + 21}`, name: `G${i + 21}`, sectionId: 'garden', status: 'blank', capacity: 6 })),
-        ...Array.from({ length: 15 }, (_, i) => ({ id: `NAC${i + 1}`, name: `NAC${i + 1}`, sectionId: 'non-ac', status: 'blank', capacity: 4 })),
-        ...Array.from({ length: 10 }, (_, i) => ({ id: `R${i + 1}`, name: `R${i + 1}`, sectionId: 'rooftops', status: 'blank', capacity: 4 })),
-        ...Array.from({ length: 12 }, (_, i) => ({ id: `SF${i + 1}`, name: `SF${i + 1}`, sectionId: 'second-floor', status: 'blank', capacity: 4 }))
-      ];
-      return normalizeStoredTables(defaultTables);
-    } catch { return []; }
-  });
-
-  // Persist table orders
-  useEffect(() => {
-    localStorage.setItem('rms_pos_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  // Persist car orders
-  useEffect(() => {
-    localStorage.setItem('rms_pos_car_orders', JSON.stringify(carOrders));
-  }, [carOrders]);
-
-  // Persist pickup orders
-  useEffect(() => {
-    localStorage.setItem('rms_pos_pickup_orders', JSON.stringify(pickupOrders));
-  }, [pickupOrders]);
-
-
-  // One-time cleanup: reset stale table statuses (Blue/Orange etc. from previous mock runs)
-  // Ensures ALL tables without active orders are set to 'blank' (Grey)
-  useEffect(() => {
-    setTables(prev => prev.map(table => {
-      const order = orders[table.id];
-      // If no active order session, reset to blank
-      if (!order) return resetTableLifecycle(table);
-      return applyTableLifecycle(table, order);
-    }));
-  }, []); // Run once on mount
-
-  // Persist dynamic configuration
-  useEffect(() => {
-    localStorage.setItem('rms_pos_sections', JSON.stringify(sections));
-  }, [sections]);
-
-  useEffect(() => {
-    localStorage.setItem('rms_pos_tables', JSON.stringify(tables));
-  }, [tables]);
-
-  // --- Dynamic Tax Management ---
-  const [appliedTaxes, setAppliedTaxes] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rms_pos_taxes');
-      if (saved) return JSON.parse(saved);
-      // No default fallback
-      return [];
-    } catch { return []; }
-  });
-
-  // --- Variant Management ---
-  const [variantGroups, setVariantGroups] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rms_pos_variant_groups');
-      return saved ? JSON.parse(saved) : [
-        { 
-          id: 'size', 
-          name: 'Plate Size', 
-          options: [
-            { id: 'full', name: 'Full', priceType: 'fixed', priceValue: 200 },
-            { id: 'half', name: 'Half', priceType: 'fixed', priceValue: 120 }
-          ]
-        },
-        {
-          id: 'style',
-          name: 'Cooking Style',
-          options: [
-            { id: 'grilled', name: 'Grilled', priceType: 'addon', priceValue: 20 },
-            { id: 'dry', name: 'Dry', priceType: 'addon', priceValue: 10 }
-          ]
+      const tableMap = {};
+      orderRes.data.forEach(order => {
+        if (order.table) {
+          const normalized = normalizeTableLifecycle({
+            ...order,
+            id: order._id,
+            status: order.table.status // Use table status for inference
+          });
+          tableMap[order.table.name] = normalized;
         }
-      ];
-    } catch { return []; }
-  });
+      });
 
-  const [dishVariants, setDishVariants] = useState(() => {
+      const carMap = {};
+      carRes.data.forEach(order => {
+        carMap[order.carNumber] = normalizeTableLifecycle({
+          ...order,
+          id: order._id,
+          status: 'running-kot' // Inferred for car orders if they are in running state
+        });
+      });
+
+      const pickupMap = {};
+      pickupRes.data.forEach(order => {
+        pickupMap[order._id] = normalizeTableLifecycle({
+          ...order,
+          id: order._id,
+          status: 'running-kot'
+        });
+      });
+
+      setOrders(tableMap);
+      setCarOrders(carMap);
+      setPickupOrders(pickupMap);
+    } catch (error) {
+      console.error("Error fetching running orders:", error);
+    }
+  };
+
+  const fetchTables = async () => {
+    if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
     try {
-      const saved = localStorage.getItem('rms_pos_dish_variants');
-      return saved ? JSON.parse(saved) : {}; // dishId -> array of { groupId, required }
-    } catch { return {}; }
-  });
+      const [secRes, tabRes] = await Promise.all([
+        api.get('/tables/sections'),
+        api.get('/tables')
+      ]);
+
+      const formattedSections = secRes.data.map(sec => ({
+        id: sec.name,
+        label: sec.label,
+        _id: sec._id
+      }));
+
+      const formattedTables = tabRes.data.map(tab => ({
+        id: tab.name,
+        name: tab.name,
+        sectionId: tab.section?.name,
+        status: tab.status || 'blank',
+        capacity: tab.capacity || 4,
+        _id: tab._id
+      }));
+
+      setSections(formattedSections);
+      setTables(formattedTables);
+    } catch (error) {
+      console.error("Error fetching tables:", error);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('rms_pos_variant_groups', JSON.stringify(variantGroups));
-  }, [variantGroups]);
+    fetchOrders();
+    fetchTables();
 
-  useEffect(() => {
-    localStorage.setItem('rms_pos_dish_variants', JSON.stringify(dishVariants));
-  }, [dishVariants]);
+    // PRODUCTION HEARTBEAT: Poll for updates every 15 seconds to keep terminals in sync
+    const heartbeat = setInterval(() => {
+      if (localStorage.getItem('admin_access') || localStorage.getItem('pos_access')) {
+        fetchOrders();
+        fetchTables();
+      }
+    }, 15000);
 
-  const addVariantGroup = (group) => setVariantGroups(prev => [...prev, { ...group, id: `vg-${Date.now()}` }]);
-  const updateVariantGroup = (id, updates) => setVariantGroups(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
-  const deleteVariantGroup = (id) => setVariantGroups(prev => prev.filter(g => g.id !== id));
-  
+    return () => clearInterval(heartbeat);
+  }, []);
+
+  const addCategory = async (formData) => {
+    try {
+      const { data } = await api.post('/menu/categories', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setCategories(prev => [...prev, { 
+        id: data._id, 
+        name: data.name, 
+        icon: 'Utensils', 
+        status: data.status,
+        image: data.image,
+        color: '#E1261C' 
+      }]);
+      return data;
+    } catch (error) {
+      console.error('Error adding category:', error);
+      throw error;
+    }
+  };
+
+  const updateCategory = async (id, formData) => {
+    try {
+      const { data } = await api.put(`/menu/categories/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setCategories(prev => prev.map(c => c.id === id ? { 
+        ...c, 
+        name: data.name, 
+        status: data.status, 
+        image: data.image 
+      } : c));
+      return data;
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+  };
+
+  const deleteCategory = async (id) => {
+    try {
+      await api.delete(`/menu/categories/${id}`);
+      setCategories(prev => prev.filter(c => c.id !== id));
+      setMenuItems(prev => prev.filter(i => i.catId !== id));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      throw error;
+    }
+  };
+
+  const addMenuItem = async (formData) => {
+    try {
+      const { data } = await api.post('/menu/items', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const newItem = {
+        id: data._id,
+        catId: data.category?._id || data.category,
+        name: data.name,
+        price: data.price,
+        code: data.shortCode || '',
+        shortcut: data.shortCode || '',
+        image: data.image || '',
+        type: data.type || 'veg',
+        variantGroups: data.variantGroups
+      };
+      setMenuItems(prev => [...prev, newItem]);
+      return data;
+    } catch (error) {
+      console.error('Error adding menu item:', error);
+      throw error;
+    }
+  };
+
+  const updateMenuItem = async (id, formData) => {
+    try {
+      const { data } = await api.put(`/menu/items/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const updatedItem = {
+        id: data._id,
+        catId: data.category?._id || data.category,
+        name: data.name,
+        price: data.price,
+        code: data.shortCode || '',
+        shortcut: data.shortCode || '',
+        image: data.image || '',
+        type: data.type || 'veg',
+        variantGroups: data.variantGroups
+      };
+      setMenuItems(prev => prev.map(i => i.id === id ? updatedItem : i));
+      return data;
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      throw error;
+    }
+  };
+
+  const deleteMenuItem = async (id) => {
+    try {
+      await api.delete(`/menu/items/${id}`);
+      setMenuItems(prev => prev.filter(i => i.id !== id));
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      throw error;
+    }
+  };
+
+  const bulkUpdateMenuItems = async (ids, updates) => {
+    try {
+      await api.post('/menu/items/bulk-update', { ids, updates });
+      setMenuItems(prev => prev.map(item => 
+        ids.includes(item.id) ? { ...item, ...updates } : item
+      ));
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      throw error;
+    }
+  };
+
+  const addVariantGroup = async (groupData) => {
+    try {
+      const { data } = await api.post('/menu/variants', groupData);
+      const newGroup = {
+        id: data._id,
+        name: data.name,
+        type: data.type,
+        options: data.options
+      };
+      setVariantGroups(prev => [...prev, newGroup]);
+      return data;
+    } catch (error) {
+      console.error('Error adding variant group:', error);
+      throw error;
+    }
+  };
+
+  const updateVariantGroup = async (id, groupData) => {
+    try {
+      const { data } = await api.put(`/menu/variants/${id}`, groupData);
+      const updatedGroup = {
+        id: data._id,
+        name: data.name,
+        type: data.type,
+        options: data.options
+      };
+      setVariantGroups(prev => prev.map(g => g.id === id ? updatedGroup : g));
+      return data;
+    } catch (error) {
+      console.error('Error updating variant group:', error);
+      throw error;
+    }
+  };
+
+  const deleteVariantGroup = async (id) => {
+    try {
+      await api.delete(`/menu/variants/${id}`);
+      setVariantGroups(prev => prev.filter(g => g.id !== id));
+    } catch (error) {
+      console.error('Error deleting variant group:', error);
+      throw error;
+    }
+  };
+
+  const addReplacement = async (ruleData) => {
+    try {
+      const { data } = await api.post('/menu/replacements', ruleData);
+      const newRule = {
+        id: data._id,
+        originalDishId: data.originalDish,
+        replacementDishId: data.replacementDish,
+        startDate: data.startDate?.split('T')[0],
+        endDate: data.endDate?.split('T')[0],
+        status: data.status
+      };
+      setReplacements(prev => [...prev, newRule]);
+      return data;
+    } catch (error) {
+      console.error('Error adding replacement:', error);
+      throw error;
+    }
+  };
+
+  const updateReplacement = async (id, ruleData) => {
+    try {
+      const { data } = await api.put(`/menu/replacements/${id}`, ruleData);
+      const updatedRule = {
+        id: data._id,
+        originalDishId: data.originalDish,
+        replacementDishId: data.replacementDish,
+        startDate: data.startDate?.split('T')[0],
+        endDate: data.endDate?.split('T')[0],
+        status: data.status
+      };
+      setReplacements(prev => prev.map(r => r.id === id ? updatedRule : r));
+      return data;
+    } catch (error) {
+      console.error('Error updating replacement:', error);
+      throw error;
+    }
+  };
+
+  const deleteReplacement = async (id) => {
+    try {
+      await api.delete(`/menu/replacements/${id}`);
+      setReplacements(prev => prev.filter(r => r.id !== id));
+    } catch (error) {
+      console.error('Error deleting replacement:', error);
+      throw error;
+    }
+  };
+
+  const addCombo = async (comboData) => {
+    try {
+      const { data } = await api.post('/menu/combos', comboData);
+      setCombos(prev => [...prev, {
+        id: data._id,
+        name: data.name,
+        price: data.price,
+        code: data.code,
+        elements: data.elements,
+        active: data.active
+      }]);
+      return data;
+    } catch (error) {
+      console.error('Error adding combo:', error);
+      throw error;
+    }
+  };
+
+  const updateCombo = async (id, comboData) => {
+    try {
+      const { data } = await api.put(`/menu/combos/${id}`, comboData);
+      setCombos(prev => prev.map(c => c.id === id ? {
+        id: data._id,
+        name: data.name,
+        price: data.price,
+        code: data.code,
+        elements: data.elements,
+        active: data.active
+      } : c));
+      return data;
+    } catch (error) {
+      console.error('Error updating combo:', error);
+      throw error;
+    }
+  };
+
+  const deleteCombo = async (id) => {
+    try {
+      await api.delete(`/menu/combos/${id}`);
+      setCombos(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting combo:', error);
+      throw error;
+    }
+  };
+
   const assignVariantsToDish = (dishId, mappings) => setDishVariants(prev => ({ ...prev, [dishId]: mappings }));
 
-  useEffect(() => {
-    localStorage.setItem('rms_pos_taxes', JSON.stringify(appliedTaxes));
-  }, [appliedTaxes]);
-
-  const addTax = (name, rate) => {
-    const newTax = {
-      id: `tax-${Date.now()}`,
-      name,
-      rate: Number(rate),
-      enabled: true
-    };
-    setAppliedTaxes(prev => [...prev, newTax]);
-  };
-
-  const updateTax = (id, updates) => {
-    setAppliedTaxes(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-  };
-
-  const deleteTax = (id) => {
-    setAppliedTaxes(prev => prev.filter(t => t.id !== id));
-  };
-
-  const calculateTaxes = (subtotal) => {
-    return appliedTaxes
-      .filter(t => t.enabled)
-      .map(tax => ({
-        id: tax.id,
-        name: tax.name,
-        rate: tax.rate,
-        amount: Number(((subtotal * tax.rate) / 100).toFixed(2))
-      }));
-  };
-
-  const [isCustomerSectionOpen, setIsCustomerSectionOpen] = useState(false);
-  const [user, setUser] = useState({ name: 'Biller' });
-
-  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
-  const closeSidebar = () => setIsSidebarOpen(false);
-  const toggleCustomerSection = () => setIsCustomerSectionOpen(prev => !prev);
-
-  const updateTableLifecycleById = (tableId, updates) => {
-    setTables(prev => prev.map(table => (
-      table.id === tableId ? applyTableLifecycle(table, updates) : table
-    )));
-  };
-
-  const resetTableById = (tableId) => {
-    setTables(prev => prev.map(table => (
-      table.id === tableId ? resetTableLifecycle(table) : table
-    )));
-  };
-
-  const placeKOT = (tableId, cart, total, staff = null, options = {}) => {
-    const { kotPrinted = false, isCarOrder = false, isPickupOrder = false } = options;
-    const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
-
-    setOrderStore(prev => {
-      const existingOrder = normalizeStoredSession(prev[tableId] || { 
-        kots: [], 
-        status: 'blank', 
-        sessionStartTime: new Date().toISOString(),
-        waiter: staff
+  const bulkUploadMenu = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post('/menu/bulk-upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+      // Refresh menu
+      window.location.reload(); 
+    } catch (error) {
+      console.error('Error bulk uploading menu:', error);
+      throw error;
+    }
+  };
+
+  const placeKOT = async (tableId, items, staff, details = {}) => {
+    try {
+      const table = tables.find(t => t.id === tableId);
+      const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
-      const newKOT = {
-        id: (existingOrder.kots?.length || 0) + 1,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        items: cart,
-        total,
-        staff: staff // Track staff per KOT if needed
+      const orderData = {
+        tableId: table?._id,
+        orderType: details.isCarOrder ? 'CAR-SERVICE' : (details.isPickupOrder ? 'PICKUP' : 'DINE-IN'),
+        carNumber: details.isCarOrder ? tableId : null,
+        items: items,
+        total: total,
+        staffId: staff?._id || staff?.id,
+        counterId: currentCounter?._id
       };
+      
+      await api.post('/orders', orderData);
+      fetchOrders();
+      fetchTables(); // Refresh table status
+    } catch (error) {
+      console.error("Error placing KOT:", error);
+    }
+  };
 
-      return {
-        ...prev,
-        [tableId]: {
-          ...existingOrder,
-          kots: [...(existingOrder.kots || []), newKOT],
-          waiter: staff || existingOrder.waiter, // Primary waiter for the table
-          orderPlaced: true,
-          kotPrinted,
-          billPrinted: false,
-          paymentMode: null,
-          status: kotPrinted ? 'printed' : 'running-kot'
-        }
+  const markKOTPrinted = async (orderId, details = {}) => {
+    try {
+      // If we don't have a specific kotId, we might want to mark all as printed
+      // For now, the backend route is /api/orders/:id/kot/:kotId/print
+      // Since the frontend often prints the LATEST KOT:
+      const order = details.isPickupOrder ? pickupOrders[orderId] : (details.isCarOrder ? carOrders[orderId] : orders[orderId]);
+      if (!order || !order.kots || order.kots.length === 0) return;
+      
+      const latestKot = order.kots[order.kots.length - 1];
+      const kotId = latestKot._id || latestKot.id;
+      
+      await api.patch(`/orders/${order.id || order._id}/kot/${kotId}/print`);
+      fetchOrders();
+      fetchTables();
+    } catch (error) {
+      console.error("Error marking KOT printed:", error);
+    }
+  };
+
+  const saveOrder = async (orderId, orderData) => {
+    // In this POS, saveOrder is primarily used to mark as BILLED
+    await api.post(`/orders/${orderId}/bill`, orderData);
+    fetchOrders();
+    fetchTables();
+  };
+
+  const holdOrder = (orderId) => {
+    // Logic to hold order
+  };
+
+  const settleOrder = async (orderId, paymentMethod, details = {}) => {
+    try {
+      const payload = {
+        paymentMethod,
+        taxes: details.taxes || [],
+        totalAmount: details.total || 0
       };
-    });
-
-    if (!isCarOrder) {
-      updateTableLifecycleById(tableId, {
-        orderPlaced: true,
-        kotPrinted,
-        billPrinted: false,
-        paymentMode: null,
-      });
+      await api.post(`/orders/${orderId}/settle`, payload);
+      fetchOrders();
+      fetchTables();
+    } catch (error) {
+      console.error("Settlement error:", error);
     }
   };
 
-  const markKOTPrinted = (tableId, options = {}) => {
-    const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-    const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
-    const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
-
-    setOrderStore(prev => {
-      if (!prev[tableId]) return prev;
-
-      return {
-        ...prev,
-        [tableId]: {
-          ...normalizeStoredSession(prev[tableId]),
-          orderPlaced: true,
-          kotPrinted: true,
-          status: 'printed',
-        }
-      };
-    });
-
-    if (!isCarOrder) {
-      updateTableLifecycleById(tableId, {
-        orderPlaced: true,
-        kotPrinted: true,
-      });
-    }
+  const clearTable = async (tableId) => {
+    // Logic to clear table
   };
 
-  const saveOrder = (tableId, options = {}) => {
-     const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-     const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
-     const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
-
-     setOrderStore(prev => {
-       if (!prev[tableId]) return prev;
-
-       return {
-         ...prev,
-         [tableId]: {
-           ...normalizeStoredSession(prev[tableId]),
-           orderPlaced: true,
-           kotPrinted: true,
-           billPrinted: true,
-           status: 'printed'
-         }
-       };
-     });
-
-     if (!isCarOrder) {
-       updateTableLifecycleById(tableId, {
-         orderPlaced: true,
-         kotPrinted: true,
-         billPrinted: true,
-       });
-     }
-  };
-
-  const holdOrder = (tableId) => {
-    setOrders(prev => ({
-      ...prev,
-      [tableId]: {
-        ...prev[tableId],
-        status: 'on-hold'
-      }
-    }));
-  };
-
-  const settleOrder = (tableId, paymentMethod, options = {}) => {
-     const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-     const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
-     const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
-     const paymentMode = normalizePaymentMode(paymentMethod);
-
-     setOrderStore(prev => {
-       if (!prev[tableId]) return prev;
-
-       return {
-         ...prev,
-         [tableId]: {
-           ...normalizeStoredSession(prev[tableId]),
-           orderPlaced: true,
-           kotPrinted: true,
-           billPrinted: true,
-           status: 'paid',
-           paymentMethod,
-           paymentMode
-         }
-       };
-     });
-
-     if (!isCarOrder) {
-       updateTableLifecycleById(tableId, {
-         orderPlaced: true,
-         kotPrinted: true,
-         billPrinted: true,
-         paymentMode,
-       });
-     }
-  };
-
-  const clearTable = (tableId, options = {}) => {
-    const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-
-    setOrders(prev => {
-      if (!prev[tableId]) return prev;
-      const newOrders = { ...prev };
-      delete newOrders[tableId];
-      return newOrders;
-    });
-
-    if (isCarOrder) {
-      setCarOrders(prev => {
-        if (!prev[tableId]) return prev;
-        const newOrders = { ...prev };
-        delete newOrders[tableId];
-        return newOrders;
-      });
-    }
-
-    if (options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId])) {
-      setPickupOrders(prev => {
-        if (!prev[tableId]) return prev;
-        const newOrders = { ...prev };
-        delete newOrders[tableId];
-        return newOrders;
-      });
-    }
-
-    resetTableById(tableId);
-  };
-
-  const cancelKOTItem = (tableId, kotId, itemId, options = {}) => {
-    const isCarOrder = options.isCarOrder || (!orders[tableId] && !!carOrders[tableId]);
-    const isPickupOrder = options.isPickupOrder || (!orders[tableId] && !carOrders[tableId] && !!pickupOrders[tableId]);
-    const setOrderStore = isPickupOrder ? setPickupOrders : isCarOrder ? setCarOrders : setOrders;
-
-    setOrderStore(prev => {
-      const order = prev[tableId];
-      if (!order || !order.kots) return prev;
-
-      const updatedKots = order.kots.map(kot => {
-        if (kot.id === kotId) {
-          const updatedItems = kot.items.filter(item => item.id !== itemId);
-          const newTotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-          return { ...kot, items: updatedItems, total: newTotal };
-        }
-        return kot;
-      }).filter(kot => kot.items.length > 0);
-
-      const hasKotsLeft = updatedKots.length > 0;
-
-      return {
-        ...prev,
-        [tableId]: {
-          ...order,
-          kots: updatedKots,
-          kotPrinted: hasKotsLeft ? order.kotPrinted : false,
-          status: hasKotsLeft ? order.status : 'blank'
-        }
-      };
-    });
-
-    // Update table status if it was a table order
-    if (!isCarOrder) {
-      setTables(prev => prev.map(table => {
-        if (table.id === tableId) {
-          const order = orders[tableId]; // This might be stale in this closure, but context will re-render
-          // We'll rely on the next render or manual status update if needed
-          return table;
-        }
-        return table;
-      }));
-    }
+  const cancelKOTItem = (orderId, kotId, itemId) => {
+    // Logic to cancel KOT item
   };
 
   const setTableWaiter = (tableId, staff) => {
-    setOrders(prev => ({
-      ...prev,
-      [tableId]: {
-        ...normalizeStoredSession(prev[tableId] || { kots: [], status: 'running-kot', sessionStartTime: new Date().toISOString() }),
-        waiter: staff,
-        orderPlaced: true
-      }
-    }));
-    
-    updateTableLifecycleById(tableId, { orderPlaced: true });
+    // Logic to set waiter
   };
 
-  // ---- Car Service helpers ----
-  const addCarOrder = (carNumber, initialCart = [], total = 0, staff = null) => {
-    const key = carNumber.trim().toUpperCase();
-    const hasItems = initialCart && initialCart.length > 0;
-    
-    setCarOrders(prev => ({
-      ...prev,
-      [key]: {
-        carNumber: key,
+  const addTax = async (tax) => {
+     // logic
+  };
+
+  const updateTax = async (id, tax) => {
+    // logic
+  };
+
+  const deleteTax = async (id) => {
+    // logic
+  };
+
+  const addCarOrder = async (carNumber, items, total, waiter) => {
+    try {
+      const orderData = {
+        carNumber,
         type: 'CAR',
-        status: 'running-kot',
-        sessionStartTime: new Date().toISOString(),
-        waiter: staff,
-        orderPlaced: true,
-        kotPrinted: false,
-        billPrinted: false,
-        paymentMode: null,
-        kots: hasItems ? [
-          {
-            id: 1,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            items: initialCart,
-            total,
-            staff
-          }
-        ] : []
-      }
-    }));
-  };
-
-  const updateCarOrderStatus = (carNumber, status) => {
-    const key = carNumber.trim().toUpperCase();
-    setCarOrders(prev => ({
-      ...prev,
-      [key]: { ...normalizeStoredSession(prev[key]), status }
-    }));
-  };
-
-  const clearCarOrder = (carNumber) => {
-    const key = carNumber.trim().toUpperCase();
-    setCarOrders(prev => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-  };
-
-  const addPosTable = (sectionId, tableName) => {
-    setTables(prev => {
-      // Duplicate table check (same section and same name)
-      if (prev.some(t => t.sectionId === sectionId && t.name === tableName)) {
-        return prev;
-      }
-      const newTable = {
-        id: tableName.toUpperCase(),
-        name: tableName,
-        sectionId: sectionId,
-        status: 'blank',
-        capacity: 4,
-        ...normalizeTableLifecycle()
+        kots: items.length > 0 ? [{ items, staff: waiter }] : []
       };
-      return [...prev, newTable];
-    });
+      await api.post('/orders', orderData);
+      fetchOrders();
+    } catch (error) {
+      console.error("Error adding car order:", error);
+    }
+  };
+
+  const updateCarOrderStatus = async (carNumber, status) => {
+    try {
+      const orderId = carOrders[carNumber]?.id;
+      if (orderId) {
+        await api.put(`/orders/${orderId}`, { status });
+        fetchOrders();
+      }
+    } catch (error) {
+      console.error("Error updating car order status:", error);
+    }
+  };
+
+  const clearCarOrder = async (carNumber) => {
+    try {
+      const orderId = carOrders[carNumber]?.id;
+      if (orderId) {
+        await api.put(`/orders/${orderId}/settle`, { paymentMode: 'CASH' }); // Mock settle
+        fetchOrders();
+      }
+    } catch (error) {
+      console.error("Error clearing car order:", error);
+    }
+  };
+  const addSection = async (sectionData) => {
+    try {
+      const { data } = await api.post('/tables/sections', sectionData);
+      fetchTables();
+      return data;
+    } catch (error) {
+      console.error("Error adding section:", error);
+    }
+  };
+
+  const updateSection = async (id, sectionData) => {
+    try {
+      await api.put(`/tables/sections/${id}`, sectionData);
+      fetchTables();
+    } catch (error) {
+      console.error("Error updating section:", error);
+    }
+  };
+
+  const deleteSection = async (id) => {
+    try {
+      await api.delete(`/tables/sections/${id}`);
+      fetchTables();
+    } catch (error) {
+      console.error("Error deleting section:", error);
+    }
+  };
+
+  const addTable = async (tableData) => {
+    try {
+      await api.post('/tables', tableData);
+      fetchTables();
+    } catch (error) {
+      console.error("Error adding table:", error);
+    }
+  };
+
+  const updateTable = async (id, tableData) => {
+    try {
+      await api.put(`/tables/${id}`, tableData);
+      fetchTables();
+    } catch (error) {
+      console.error("Error updating table:", error);
+    }
+  };
+
+  const deleteTable = async (id) => {
+    try {
+      await api.delete(`/tables/${id}`);
+      fetchTables();
+    } catch (error) {
+      console.error("Error deleting table:", error);
+    }
+  };
+
+  const addPosTable = async (sectionId, tableName) => {
+    try {
+      const section = sections.find(s => s.id === sectionId)?._id;
+      if (!section) return;
+      await api.post('/tables', { name: tableName, section, capacity: 4 });
+      fetchTables();
+    } catch (error) {
+      console.error("Error adding POS table:", error);
+    }
+  };
+
+  const [storeSettings, setStoreSettings] = useState(null);
+
+  const fetchStoreSettings = async () => {
+    try {
+      const { data } = await api.get('/settings/store');
+      setStoreSettings(data);
+    } catch (error) {
+      console.error("Error fetching store settings:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStoreSettings();
+  }, []);
+
+  const calculateTaxes = (amount) => {
+    if (!storeSettings || !storeSettings.taxes) return [];
+    
+    return storeSettings.taxes
+      .filter(t => t.active)
+      .map(t => ({
+        name: t.name,
+        percentage: t.percentage,
+        amount: (amount * t.percentage) / 100
+      }));
   };
 
   return (
-    <PosContext.Provider value={{ 
-      isSidebarOpen, orders, toggleSidebar, closeSidebar, 
+    <PosContext.Provider value={{
+      isSidebarOpen, toggleSidebar, closeSidebar,
       isCustomerSectionOpen, toggleCustomerSection,
       placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
-      pickupOrders, setPickupOrders,
-      sections, setSections, tables, setTables, addPosTable,
-      appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
+      pickupOrders,
+      sections, addSection, updateSection, deleteSection,
+      tables, addTable, updateTable, deleteTable, addPosTable,
+      categories, addCategory, updateCategory, deleteCategory,
+      menuItems, addMenuItem, updateMenuItem, deleteMenuItem, bulkUpdateMenuItems, bulkUploadMenu,
       variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup,
+      replacements, addReplacement, updateReplacement, deleteReplacement,
+      combos, addCombo, updateCombo, deleteCombo,
+      staff,
       dishVariants, assignVariantsToDish,
-      categories, setCategories, menuItems, setMenuItems,
-      user, setUser
+      user, login, logout, currentCounter, appliedTaxes: [], addTax, updateTax, deleteTax, calculateTaxes,
+      orders
     }}>
       {children}
     </PosContext.Provider>

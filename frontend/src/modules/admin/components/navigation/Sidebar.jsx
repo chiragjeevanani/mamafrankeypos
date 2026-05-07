@@ -40,22 +40,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       ]
     },
     {
-      label: 'Supply Chain',
-      items: [
-        { 
-          label: 'Inventory Management', 
-          path: '/admin/inventory', 
-          icon: Box,
-          subItems: [
-            { label: 'Stock Management', path: '/admin/inventory/stock' },
-            { label: 'Vendors', path: '/admin/inventory/vendors' },
-            { label: 'Purchase Orders', path: '/admin/inventory/orders' },
-            { label: 'Wastage', path: '/admin/inventory/wastage' },
-          ]
-        },
-      ]
-    },
-    {
       label: 'Operations',
       items: [
         { 
@@ -68,13 +52,14 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             { label: 'Cancelled Orders', path: '/admin/orders/cancelled' },
           ]
         },
+        { label: 'Customer CRM', path: '/admin/customers', icon: Users },
       ]
     },
     {
       label: 'Personnel',
       items: [
         { 
-          label: 'Staff & User Management', 
+          label: 'Staff Management', 
           path: '/admin/staff', 
           icon: Users,
           subItems: [
@@ -89,19 +74,20 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
       label: 'Adjustment Center',
       items: [
         { label: 'System Protocols', path: '/admin/adjustment-protocols', icon: ShieldCheck },
+        { label: 'Security Audit', path: '/admin/audit', icon: History },
       ]
     },
     {
       label: 'Compliance & Config',
       items: [
         { 
-          label: 'Reports & Settings', 
+          label: 'Reports & Finance', 
           path: '/admin/reports', 
           icon: BarChart3,
           subItems: [
+            { label: 'Financials', path: '/admin/finance' },
             { label: 'Sales Reports', path: '/admin/reports/sales' },
-            { label: 'Inventory Reports', path: '/admin/reports/inventory' },
-            { label: 'Customer Reports', path: '/admin/reports/customers' },
+            { label: 'Customer Reports', path: '/admin/reports/customer-reports' },
             { label: 'System Settings', path: '/admin/settings' },
           ]
         },

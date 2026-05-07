@@ -125,20 +125,55 @@ export default function MenuItems() {
     }
   };
   
-  const handleToggleVariantGroup = (group) => {
+  const handleAddVariantGroup = () => {
+    setFormData(prev => ({
+      ...prev,
+      variantGroups: [
+        ...prev.variantGroups,
+        { name: '', type: 'Add-on', options: [{ name: '', price: '' }] }
+      ]
+    }));
+  };
+
+  const handleUpdateVariantGroup = (groupIndex, field, value) => {
     setFormData(prev => {
-      const isSelected = prev.variantGroups.some(g => (g.id || g._id) === (group.id || group._id));
-      if (isSelected) {
-        return {
-          ...prev,
-          variantGroups: prev.variantGroups.filter(g => (g.id || g._id) !== (group.id || group._id))
-        };
-      } else {
-        return {
-          ...prev,
-          variantGroups: [...prev.variantGroups, group]
-        };
-      }
+      const newGroups = [...prev.variantGroups];
+      newGroups[groupIndex] = { ...newGroups[groupIndex], [field]: value };
+      return { ...prev, variantGroups: newGroups };
+    });
+  };
+
+  const handleRemoveVariantGroup = (groupIndex) => {
+    setFormData(prev => ({
+      ...prev,
+      variantGroups: prev.variantGroups.filter((_, i) => i !== groupIndex)
+    }));
+  };
+
+  const handleAddVariantOption = (groupIndex) => {
+    setFormData(prev => {
+      const newGroups = [...prev.variantGroups];
+      newGroups[groupIndex].options.push({ name: '', price: '' });
+      return { ...prev, variantGroups: newGroups };
+    });
+  };
+
+  const handleUpdateVariantOption = (groupIndex, optionIndex, field, value) => {
+    setFormData(prev => {
+      const newGroups = [...prev.variantGroups];
+      newGroups[groupIndex].options[optionIndex] = { 
+        ...newGroups[groupIndex].options[optionIndex], 
+        [field]: value 
+      };
+      return { ...prev, variantGroups: newGroups };
+    });
+  };
+
+  const handleRemoveVariantOption = (groupIndex, optionIndex) => {
+    setFormData(prev => {
+      const newGroups = [...prev.variantGroups];
+      newGroups[groupIndex].options = newGroups[groupIndex].options.filter((_, i) => i !== optionIndex);
+      return { ...prev, variantGroups: newGroups };
     });
   };
 
@@ -439,49 +474,109 @@ export default function MenuItems() {
             </select>
           </div>
 
-          {/* Variant Groups Assignment */}
-          <div className="pt-4 border-t border-slate-100 space-y-4">
-             <div className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                   <Tag size={12} /> Linked Variant Groups
-                </label>
+          {/* In-Line Variant Groups Builder */}
+          <div className="pt-6 border-t border-slate-100 space-y-6">
+             <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Tag size={12} className="text-blue-600" /> Item Modifiers / Variants
+                   </label>
+                   <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Define custom options for this item</p>
+                </div>
+                <button 
+                  type="button"
+                  onClick={handleAddVariantGroup}
+                  className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest rounded-sm border border-blue-100 hover:bg-blue-100 transition-all flex items-center gap-1.5"
+                >
+                   <Plus size={10} strokeWidth={4} /> Add Group
+                </button>
              </div>
              
-             {variantGroups.length === 0 ? (
-                <div className="text-[10px] font-bold text-slate-400 italic bg-slate-50 p-4 rounded-sm border border-slate-100/50">
-                   No variant groups defined. Create them in System Settings &gt; Variant Master.
+             {formData.variantGroups.length === 0 ? (
+                <div className="text-[10px] font-bold text-slate-400 italic bg-slate-50 p-6 rounded-sm border border-slate-100/50 text-center">
+                   No custom modifiers defined for this item. Click "Add Group" to begin.
                 </div>
              ) : (
-                <div className="space-y-2">
-                   <p className="text-[9px] text-slate-400 font-bold uppercase mb-2">Select variant groups to enable for this item</p>
-                  {variantGroups.map(group => {
-                    const isSelected = formData.variantGroups.some(g => (g.id || g._id) === (group.id || group._id));
-                    return (
+                <div className="space-y-6">
+                  {formData.variantGroups.map((group, gIdx) => (
+                    <div key={gIdx} className="bg-slate-50 border border-slate-200 rounded-sm p-4 space-y-4 relative group/v">
                       <button 
-                        key={group.id} 
                         type="button"
-                        onClick={() => handleToggleVariantGroup(group)}
-                        className={`w-full p-3 border rounded-sm transition-all flex items-center justify-between group/v ${
-                          isSelected 
-                            ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
-                            : 'border-slate-100 bg-slate-50 text-slate-600 hover:border-slate-300'
-                        }`}
+                        onClick={() => handleRemoveVariantGroup(gIdx)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-100 rounded-full flex items-center justify-center shadow-sm transition-all"
                       >
-                         <div className="flex items-center gap-2">
-                            <Tag size={12} className={isSelected ? 'text-white' : 'text-slate-400'} />
-                            <div className="text-left">
-                               <p className="text-[10px] font-black uppercase leading-tight">{group.name}</p>
-                               <p className={`text-[8px] font-bold uppercase ${isSelected ? 'text-white/60' : 'text-slate-400'}`}>{group.options.length} Options</p>
-                            </div>
-                         </div>
-                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                            isSelected ? 'bg-white border-white' : 'bg-white border-slate-200'
-                         }`}>
-                            {isSelected && <Check size={10} className="text-slate-900" strokeWidth={4} />}
-                         </div>
+                         <Trash2 size={10} />
                       </button>
-                    );
-                  })}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Group Name</label>
+                          <input 
+                            type="text"
+                            placeholder="E.G. CHOICE OF SAUCE"
+                            className="w-full bg-white border border-slate-200 p-2 text-[10px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                            value={group.name}
+                            onChange={(e) => handleUpdateVariantGroup(gIdx, 'name', e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Type</label>
+                          <select 
+                            className="w-full bg-white border border-slate-200 p-2 text-[10px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                            value={group.type}
+                            onChange={(e) => handleUpdateVariantGroup(gIdx, 'type', e.target.value)}
+                          >
+                            <option value="Add-on">ADD-ON</option>
+                            <option value="Upgrade">UPGRADE</option>
+                            <option value="Size">SIZE</option>
+                            <option value="Dietary">DIETARY</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Options & Pricing</label>
+                          <button 
+                            type="button"
+                            onClick={() => handleAddVariantOption(gIdx)}
+                            className="text-[8px] font-black text-blue-600 uppercase tracking-widest hover:underline"
+                          >+ Add Option</button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {group.options.map((opt, oIdx) => (
+                            <div key={oIdx} className="flex items-center gap-2">
+                              <input 
+                                type="text"
+                                placeholder="OPTION NAME"
+                                className="flex-1 bg-white border border-slate-200 p-2 text-[10px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                value={opt.name}
+                                onChange={(e) => handleUpdateVariantOption(gIdx, oIdx, 'name', e.target.value)}
+                              />
+                              <div className="relative w-24">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">₹</span>
+                                <input 
+                                  type="number"
+                                  placeholder="0"
+                                  className="w-full bg-white border border-slate-200 p-2 pl-5 text-[10px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={opt.price}
+                                  onChange={(e) => handleUpdateVariantOption(gIdx, oIdx, 'price', e.target.value)}
+                                />
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => handleRemoveVariantOption(gIdx, oIdx)}
+                                className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
              )}
           </div>

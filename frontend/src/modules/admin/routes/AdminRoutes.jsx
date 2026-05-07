@@ -50,7 +50,7 @@ export default function AdminRoutes() {
         <Route path="menu" element={<Navigate to="items" replace />} />
         <Route path="menu/categories" element={<Categories />} />
         <Route path="menu/items" element={<MenuItems />} />
-        <Route path="menu/modifiers" element={<Modifiers />} />
+
         <Route path="menu/combos" element={<ComboMeals />} />
         <Route path="menu/substitutions" element={<DishReplacementManagement />} />
         

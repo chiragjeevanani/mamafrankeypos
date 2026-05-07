@@ -3,6 +3,54 @@ const Table = require('../models/Table');
 const Counter = require('../models/Counter');
 const logAudit = require('../utils/auditLogger');
 
+const ORDER_TYPE_QUERY_MAP = {
+  CAR: 'CAR-SERVICE',
+  'CAR-SERVICE': 'CAR-SERVICE',
+  PICKUP: 'PICKUP',
+  'DINE-IN': 'DINE-IN',
+  DINEIN: 'DINE-IN',
+};
+
+const ORDER_STATUS_QUERY_MAP = {
+  'running-kot': 'RUNNING',
+  running: 'RUNNING',
+  billed: 'BILLED',
+  printed: 'BILLED',
+  paid: 'COMPLETED',
+  completed: 'COMPLETED',
+  cancelled: 'CANCELLED',
+};
+
+const normalizeCustomerPayload = (customer = {}) => {
+  const normalized = {
+    name: String(customer.name || '').trim(),
+    phone: String(customer.phone || customer.mobile || '').trim(),
+    address: String(customer.address || '').trim(),
+    locality: String(customer.locality || '').trim(),
+    notes: String(customer.notes || customer.extra || '').trim(),
+  };
+
+  return Object.values(normalized).some(Boolean) ? normalized : undefined;
+};
+
+const applyOrderMetadata = (order, body = {}) => {
+  const normalizedCustomer = normalizeCustomerPayload(body.customer);
+
+  if (body.staffId) {
+    order.waiter = body.staffId;
+  }
+
+  if (body.orderType) {
+    order.orderType = body.orderType;
+  }
+
+  if (normalizedCustomer) {
+    order.customer = normalizedCustomer;
+  }
+
+  return order;
+};
+
 // @desc    Create new order or add KOT to existing order
 // @route   POST /api/orders
 // @access  Private
@@ -15,7 +63,8 @@ const processOrder = async (req, res) => {
     total, 
     staffId, 
     counterId,
-    orderId // Optional: if provided, add KOT to this order
+    orderId, // Optional: if provided, add KOT to this order
+    customer
   } = req.body;
 
   try {
@@ -47,6 +96,7 @@ const processOrder = async (req, res) => {
 
     if (order) {
       // Add KOT to existing order
+      applyOrderMetadata(order, { staffId, orderType, customer });
       order.kots.push(newKOT);
       order.subtotal += kotTotal;
       order.totalAmount += kotTotal; // Simplified for now, taxes re-calculated at billing
@@ -70,6 +120,7 @@ const processOrder = async (req, res) => {
         orderType: orderType || 'DINE-IN',
         carNumber,
         waiter: staffId,
+        customer: normalizeCustomerPayload(customer),
         kots: [newKOT],
         subtotal: total,
         totalAmount: total,
@@ -87,6 +138,34 @@ const processOrder = async (req, res) => {
   } catch (error) {
     res.status(500);
     throw new Error(error.message);
+  }
+};
+
+// @desc    Update active order metadata
+// @route   PUT /api/orders/:id
+// @access  Private
+const updateOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      res.status(404);
+      throw new Error('Order not found');
+    }
+
+    if (order.orderStatus === 'COMPLETED' || order.orderStatus === 'CANCELLED') {
+      res.status(400);
+      throw new Error(`Order cannot be updated in ${order.orderStatus} state`);
+    }
+
+    applyOrderMetadata(order, req.body);
+    await order.save();
+
+    const populatedOrder = await Order.findById(order._id).populate('table waiter counter');
+    res.json(populatedOrder);
+  } catch (error) {
+    console.error('Update order error:', error);
+    res.status(res.statusCode && res.statusCode !== 200 ? res.statusCode : 500).json({ message: error.message });
   }
 };
 
@@ -147,6 +226,7 @@ const billOrder = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (order) {
+      applyOrderMetadata(order, req.body);
       order.orderStatus = 'BILLED';
       order.billedAt = new Date();
       await order.save();
@@ -175,6 +255,7 @@ const settleOrder = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (order) {
+      applyOrderMetadata(order, req.body);
       order.paymentMethod = paymentMethod;
       order.taxes = taxes;
       order.totalAmount = totalAmount;
@@ -208,11 +289,79 @@ const settleOrder = async (req, res) => {
   }
 };
 
+// @desc    Cancel a KOT item
+// @route   PATCH /api/orders/:id/kot/:kotId/items/:itemId/cancel
+// @access  Private
+const cancelKOTItem = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      res.status(404);
+      throw new Error('Order not found');
+    }
+
+    if (order.orderStatus === 'COMPLETED' || order.orderStatus === 'CANCELLED') {
+      res.status(400);
+      throw new Error(`Cannot cancel items for an order in ${order.orderStatus} state`);
+    }
+
+    const kot = order.kots.id(req.params.kotId);
+    if (!kot) {
+      res.status(404);
+      throw new Error('KOT not found');
+    }
+
+    const item = kot.items.id(req.params.itemId);
+    if (!item) {
+      res.status(404);
+      throw new Error('KOT item not found');
+    }
+
+    if (item.status === 'cancelled') {
+      res.status(400);
+      throw new Error('KOT item is already cancelled');
+    }
+
+    item.status = 'cancelled';
+
+    const lineTotal = Number(item.price || 0) * Number(item.quantity || 0);
+    kot.total = Math.max(0, Number(kot.total || 0) - lineTotal);
+    order.subtotal = Math.max(0, Number(order.subtotal || 0) - lineTotal);
+    order.totalAmount = Math.max(0, Number(order.totalAmount || 0) - lineTotal);
+
+    await order.save();
+
+    res.json(order);
+  } catch (error) {
+    console.error('Cancel KOT item error:', error);
+    res.status(res.statusCode && res.statusCode !== 200 ? res.statusCode : 500).json({ message: error.message });
+  }
+};
+
 // @desc    Get order history
 // @route   GET /api/orders
 // @access  Private/Admin
 const getOrders = async (req, res) => {
-  const orders = await Order.find({}).sort({ createdAt: -1 }).populate('table waiter counter');
+  const query = {};
+
+  if (req.query.type) {
+    const mappedType = ORDER_TYPE_QUERY_MAP[String(req.query.type).trim().toUpperCase()];
+    if (mappedType) {
+      query.orderType = mappedType;
+    }
+  }
+
+  if (req.query.status) {
+    const mappedStatus = ORDER_STATUS_QUERY_MAP[String(req.query.status).trim().toLowerCase()];
+    if (mappedStatus) {
+      query.orderStatus = mappedStatus;
+    }
+  }
+
+  const orders = await Order.find(query)
+    .sort({ createdAt: -1 })
+    .populate('table waiter counter');
   res.json(orders);
 };
 
@@ -345,8 +494,10 @@ const cancelOrder = async (req, res) => {
 
 module.exports = {
   processOrder,
+  updateOrder,
   getActiveOrder,
   markKOTPrinted,
+  cancelKOTItem,
   billOrder,
   settleOrder,
   cancelOrder,

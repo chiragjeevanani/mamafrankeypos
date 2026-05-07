@@ -4,6 +4,63 @@ import { normalizeTableLifecycle } from "../utils/tableLifecycle";
 
 const PosContext = createContext();
 
+const normalizeCategory = (cat, index = 0) => ({
+  id: cat._id,
+  name: cat.name,
+  icon: 'Utensils',
+  status: cat.status || 'Active',
+  image: cat.image || '',
+  description: cat.description || '',
+  rank: cat.rank ?? 0,
+  color: index % 2 === 0 ? '#E1261C' : '#00BCD4'
+});
+
+const normalizeMenuItem = (item) => ({
+  id: item._id,
+  catId: item.category?._id || item.category,
+  name: item.name,
+  description: item.description || '',
+  price: item.price,
+  code: item.shortCode || '',
+  shortcut: item.shortCode || '',
+  image: item.image || '',
+  type: item.type || 'veg',
+  status: item.status || 'Available',
+  rank: item.rank ?? 0,
+  variantGroups: item.variantGroups || []
+});
+
+const normalizeVariantGroup = (group) => ({
+  id: group._id,
+  name: group.name,
+  type: group.type,
+  options: group.options || []
+});
+
+const normalizeReplacement = (rule) => ({
+  id: rule._id,
+  originalDishId: rule.originalDish?._id || rule.originalDish,
+  replacementDishId: rule.replacementDish?._id || rule.replacementDish,
+  startDate: rule.startDate?.split('T')[0],
+  endDate: rule.endDate?.split('T')[0],
+  status: rule.status
+});
+
+const normalizeCombo = (combo) => ({
+  id: combo._id,
+  name: combo.name,
+  price: combo.price,
+  code: combo.code || '',
+  elements: combo.elements || [],
+  active: combo.active
+});
+
+const normalizeOrder = (order, fallbackStatus) => normalizeTableLifecycle({
+  ...order,
+  id: order._id,
+  status: fallbackStatus,
+});
+
 export function PosProvider({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCustomerSectionOpen, setIsCustomerSectionOpen] = useState(false);
@@ -32,91 +89,43 @@ export function PosProvider({ children }) {
     localStorage.removeItem('pos_user_info');
   };
 
-  useEffect(() => {
-    const fetchMenu = async () => {
-      if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
-      try {
-        const [catRes, itemRes, variantRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
-          api.get('/menu/categories'),
-          api.get('/menu/items'),
-          api.get('/menu/variants'),
-          api.get('/menu/replacements'),
-          api.get('/menu/combos'),
-          api.get('/staff'),
-          api.get('/settings/counters')
-        ]);
+  const fetchMenu = async () => {
+    if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
+    try {
+      const [catRes, itemRes, variantRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
+        api.get('/menu/categories'),
+        api.get('/menu/items'),
+        api.get('/menu/variants'),
+        api.get('/menu/replacements'),
+        api.get('/menu/combos'),
+        api.get('/staff'),
+        api.get('/settings/counters')
+      ]);
 
-        const formattedCategories = catRes.data.map((cat, index) => ({
-          id: cat._id,
-          name: cat.name,
-          icon: 'Utensils',
-          status: cat.status || 'Active',
-          image: cat.image || '',
-          color: index % 2 === 0 ? '#E1261C' : '#00BCD4'
-        }));
+      const formattedCategories = catRes.data.map((cat, index) => normalizeCategory(cat, index));
+      formattedCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
 
-        formattedCategories.unshift({ id: 'fav', name: 'Favorite Items', icon: 'Star', color: '#4CAF50' });
+      setCategories(formattedCategories);
+      setMenuItems(itemRes.data.map(normalizeMenuItem));
+      setVariantGroups(variantRes.data.map(normalizeVariantGroup));
+      setReplacements(replaceRes.data.map(normalizeReplacement));
+      setCombos(comboRes.data.map(normalizeCombo));
+      setStaff(staffRes.data.map(s => ({
+        id: s._id,
+        name: s.name,
+        role: s.role,
+        status: s.status
+      })));
 
-        const formattedItems = itemRes.data.map((item) => ({
-          id: item._id,
-          catId: item.category?._id || item.category,
-          name: item.name,
-          price: item.price,
-          code: item.shortCode || '',
-          shortcut: item.shortCode || '',
-          image: item.image || '',
-          type: item.type || 'veg',
-          variantGroups: item.variantGroups
-        }));
-
-        const formattedVariants = variantRes.data.map(v => ({
-          id: v._id,
-          name: v.name,
-          type: v.type,
-          options: v.options
-        }));
-
-        const formattedReplacements = replaceRes.data.map(r => ({
-          id: r._id,
-          originalDishId: r.originalDish?._id || r.originalDish,
-          replacementDishId: r.replacementDish?._id || r.replacementDish,
-          startDate: r.startDate?.split('T')[0],
-          endDate: r.endDate?.split('T')[0],
-          status: r.status
-        }));
-
-        setCategories(formattedCategories);
-        setMenuItems(formattedItems);
-        setVariantGroups(formattedVariants);
-        setReplacements(formattedReplacements);
-        setCombos(comboRes.data.map(c => ({
-          id: c._id,
-          name: c.name,
-          price: c.price,
-          code: c.code,
-          elements: c.elements,
-          active: c.active
-        })));
-        setStaff(staffRes.data.map(s => ({
-          id: s._id,
-          name: s.name,
-          role: s.role,
-          status: s.status
-        })));
-
-        if (staffRes.data.length > 0 && !user) {
-           // Auto-select first staff for now if none selected
-           // setUser(staffRes.data[0]); 
-        }
-
-        if (counterRes.data.length > 0) {
-          setCurrentCounter(counterRes.data[0]);
-        }
-      } catch (error) {
-        console.error("Error fetching menu from API:", error);
+      if (counterRes.data.length > 0) {
+        setCurrentCounter(counterRes.data[0]);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching menu from API:", error);
+    }
+  };
 
+  useEffect(() => {
     fetchMenu();
   }, []);
 
@@ -127,42 +136,70 @@ export function PosProvider({ children }) {
   const [sections, setSections] = useState([]);
   const [currentCounter, setCurrentCounter] = useState(null);
 
+  const getScopedOrderMaps = (details = {}) => {
+    if (details.isPickupOrder) return pickupOrders;
+    if (details.isCarOrder) return carOrders;
+    return orders;
+  };
+
+  const resolveOrderFromIdentifier = (identifier, details = {}) => {
+    const scopedOrders = getScopedOrderMaps(details);
+    return scopedOrders[identifier] || Object.values(scopedOrders).find(order =>
+      order?.id === identifier ||
+      order?._id === identifier ||
+      order?.orderNumber === identifier ||
+      order?.table?._id === identifier ||
+      order?.table?.name === identifier ||
+      order?.carNumber === identifier
+    ) || null;
+  };
+
   const fetchOrders = async () => {
     try {
-      const [orderRes, carRes, pickupRes] = await Promise.all([
+      const [
+        runningOrderRes,
+        billedOrderRes,
+        runningCarRes,
+        billedCarRes,
+        runningPickupRes,
+        billedPickupRes
+      ] = await Promise.all([
         api.get('/orders?status=running-kot'),
+        api.get('/orders?status=printed'),
         api.get('/orders?type=CAR&status=running-kot'),
-        api.get('/orders?type=PICKUP&status=running-kot')
+        api.get('/orders?type=CAR&status=printed'),
+        api.get('/orders?type=PICKUP&status=running-kot'),
+        api.get('/orders?type=PICKUP&status=printed')
       ]);
 
+      const mergeOrdersById = (...groups) => {
+        const merged = new Map();
+        groups.flat().forEach((order) => {
+          if (order?._id) merged.set(order._id, order);
+        });
+        return Array.from(merged.values());
+      };
+
+      const activeDineInOrders = mergeOrdersById(runningOrderRes.data, billedOrderRes.data);
+      const activeCarOrders = mergeOrdersById(runningCarRes.data, billedCarRes.data);
+      const activePickupOrders = mergeOrdersById(runningPickupRes.data, billedPickupRes.data);
+
       const tableMap = {};
-      orderRes.data.forEach(order => {
+      activeDineInOrders.forEach(order => {
         if (order.table) {
-          const normalized = normalizeTableLifecycle({
-            ...order,
-            id: order._id,
-            status: order.table.status // Use table status for inference
-          });
+          const normalized = normalizeOrder(order, order.table.status);
           tableMap[order.table.name] = normalized;
         }
       });
 
       const carMap = {};
-      carRes.data.forEach(order => {
-        carMap[order.carNumber] = normalizeTableLifecycle({
-          ...order,
-          id: order._id,
-          status: 'running-kot' // Inferred for car orders if they are in running state
-        });
+      activeCarOrders.forEach(order => {
+        carMap[order.carNumber] = normalizeOrder(order, 'running-kot');
       });
 
       const pickupMap = {};
-      pickupRes.data.forEach(order => {
-        pickupMap[order._id] = normalizeTableLifecycle({
-          ...order,
-          id: order._id,
-          status: 'running-kot'
-        });
+      activePickupOrders.forEach(order => {
+        pickupMap[order._id] = normalizeOrder(order, 'running-kot');
       });
 
       setOrders(tableMap);
@@ -184,7 +221,9 @@ export function PosProvider({ children }) {
       const formattedSections = secRes.data.map(sec => ({
         id: sec.name,
         label: sec.label,
-        _id: sec._id
+        _id: sec._id,
+        rank: sec.rank ?? 0,
+        status: sec.status || 'Active'
       }));
 
       const formattedTables = tabRes.data.map(tab => ({
@@ -223,14 +262,7 @@ export function PosProvider({ children }) {
       const { data } = await api.post('/menu/categories', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setCategories(prev => [...prev, { 
-        id: data._id, 
-        name: data.name, 
-        icon: 'Utensils', 
-        status: data.status,
-        image: data.image,
-        color: '#E1261C' 
-      }]);
+      setCategories(prev => [...prev, normalizeCategory(data, prev.length)]);
       return data;
     } catch (error) {
       console.error('Error adding category:', error);
@@ -243,12 +275,7 @@ export function PosProvider({ children }) {
       const { data } = await api.put(`/menu/categories/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setCategories(prev => prev.map(c => c.id === id ? { 
-        ...c, 
-        name: data.name, 
-        status: data.status, 
-        image: data.image 
-      } : c));
+      setCategories(prev => prev.map((c, index) => c.id === id ? { ...normalizeCategory(data, index), color: c.color } : c));
       return data;
     } catch (error) {
       console.error('Error updating category:', error);
@@ -272,18 +299,7 @@ export function PosProvider({ children }) {
       const { data } = await api.post('/menu/items', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const newItem = {
-        id: data._id,
-        catId: data.category?._id || data.category,
-        name: data.name,
-        price: data.price,
-        code: data.shortCode || '',
-        shortcut: data.shortCode || '',
-        image: data.image || '',
-        type: data.type || 'veg',
-        variantGroups: data.variantGroups
-      };
-      setMenuItems(prev => [...prev, newItem]);
+      setMenuItems(prev => [...prev, normalizeMenuItem(data)]);
       return data;
     } catch (error) {
       console.error('Error adding menu item:', error);
@@ -296,18 +312,7 @@ export function PosProvider({ children }) {
       const { data } = await api.put(`/menu/items/${id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      const updatedItem = {
-        id: data._id,
-        catId: data.category?._id || data.category,
-        name: data.name,
-        price: data.price,
-        code: data.shortCode || '',
-        shortcut: data.shortCode || '',
-        image: data.image || '',
-        type: data.type || 'veg',
-        variantGroups: data.variantGroups
-      };
-      setMenuItems(prev => prev.map(i => i.id === id ? updatedItem : i));
+      setMenuItems(prev => prev.map(i => i.id === id ? normalizeMenuItem(data) : i));
       return data;
     } catch (error) {
       console.error('Error updating menu item:', error);
@@ -340,13 +345,7 @@ export function PosProvider({ children }) {
   const addVariantGroup = async (groupData) => {
     try {
       const { data } = await api.post('/menu/variants', groupData);
-      const newGroup = {
-        id: data._id,
-        name: data.name,
-        type: data.type,
-        options: data.options
-      };
-      setVariantGroups(prev => [...prev, newGroup]);
+      setVariantGroups(prev => [...prev, normalizeVariantGroup(data)]);
       return data;
     } catch (error) {
       console.error('Error adding variant group:', error);
@@ -357,13 +356,7 @@ export function PosProvider({ children }) {
   const updateVariantGroup = async (id, groupData) => {
     try {
       const { data } = await api.put(`/menu/variants/${id}`, groupData);
-      const updatedGroup = {
-        id: data._id,
-        name: data.name,
-        type: data.type,
-        options: data.options
-      };
-      setVariantGroups(prev => prev.map(g => g.id === id ? updatedGroup : g));
+      setVariantGroups(prev => prev.map(g => g.id === id ? normalizeVariantGroup(data) : g));
       return data;
     } catch (error) {
       console.error('Error updating variant group:', error);
@@ -384,15 +377,7 @@ export function PosProvider({ children }) {
   const addReplacement = async (ruleData) => {
     try {
       const { data } = await api.post('/menu/replacements', ruleData);
-      const newRule = {
-        id: data._id,
-        originalDishId: data.originalDish,
-        replacementDishId: data.replacementDish,
-        startDate: data.startDate?.split('T')[0],
-        endDate: data.endDate?.split('T')[0],
-        status: data.status
-      };
-      setReplacements(prev => [...prev, newRule]);
+      setReplacements(prev => [...prev, normalizeReplacement(data)]);
       return data;
     } catch (error) {
       console.error('Error adding replacement:', error);
@@ -403,15 +388,7 @@ export function PosProvider({ children }) {
   const updateReplacement = async (id, ruleData) => {
     try {
       const { data } = await api.put(`/menu/replacements/${id}`, ruleData);
-      const updatedRule = {
-        id: data._id,
-        originalDishId: data.originalDish,
-        replacementDishId: data.replacementDish,
-        startDate: data.startDate?.split('T')[0],
-        endDate: data.endDate?.split('T')[0],
-        status: data.status
-      };
-      setReplacements(prev => prev.map(r => r.id === id ? updatedRule : r));
+      setReplacements(prev => prev.map(r => r.id === id ? normalizeReplacement(data) : r));
       return data;
     } catch (error) {
       console.error('Error updating replacement:', error);
@@ -432,14 +409,7 @@ export function PosProvider({ children }) {
   const addCombo = async (comboData) => {
     try {
       const { data } = await api.post('/menu/combos', comboData);
-      setCombos(prev => [...prev, {
-        id: data._id,
-        name: data.name,
-        price: data.price,
-        code: data.code,
-        elements: data.elements,
-        active: data.active
-      }]);
+      setCombos(prev => [...prev, normalizeCombo(data)]);
       return data;
     } catch (error) {
       console.error('Error adding combo:', error);
@@ -450,14 +420,7 @@ export function PosProvider({ children }) {
   const updateCombo = async (id, comboData) => {
     try {
       const { data } = await api.put(`/menu/combos/${id}`, comboData);
-      setCombos(prev => prev.map(c => c.id === id ? {
-        id: data._id,
-        name: data.name,
-        price: data.price,
-        code: data.code,
-        elements: data.elements,
-        active: data.active
-      } : c));
+      setCombos(prev => prev.map(c => c.id === id ? normalizeCombo(data) : c));
       return data;
     } catch (error) {
       console.error('Error updating combo:', error);
@@ -484,92 +447,199 @@ export function PosProvider({ children }) {
       await api.post('/menu/bulk-upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      // Refresh menu
-      window.location.reload(); 
+      await fetchMenu();
     } catch (error) {
       console.error('Error bulk uploading menu:', error);
       throw error;
     }
   };
 
-  const placeKOT = async (tableId, items, staff, details = {}) => {
+  const placeKOT = async (tableId, items, staffOrLegacyTotal, maybeStaff, maybeDetails = {}) => {
     try {
+      const details = maybeStaff && typeof maybeStaff === 'object' && !Array.isArray(maybeStaff) && maybeStaff.name !== undefined
+        ? maybeDetails
+        : (maybeStaff && typeof maybeStaff === 'object' && !Array.isArray(maybeStaff) ? maybeStaff : maybeDetails);
+      const staff = maybeStaff && typeof maybeStaff === 'object' && !Array.isArray(maybeStaff) && maybeStaff.name !== undefined
+        ? maybeStaff
+        : (staffOrLegacyTotal && typeof staffOrLegacyTotal === 'object' && !Array.isArray(staffOrLegacyTotal) ? staffOrLegacyTotal : null);
+      const existingOrder = resolveOrderFromIdentifier(tableId, details);
       const table = tables.find(t => t.id === tableId);
       const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
+
       const orderData = {
+        orderId: existingOrder?.id || existingOrder?._id,
         tableId: table?._id,
         orderType: details.isCarOrder ? 'CAR-SERVICE' : (details.isPickupOrder ? 'PICKUP' : 'DINE-IN'),
         carNumber: details.isCarOrder ? tableId : null,
         items: items,
         total: total,
         staffId: staff?._id || staff?.id,
-        counterId: currentCounter?._id
+        counterId: currentCounter?._id,
+        customer: details.customer
       };
-      
-      await api.post('/orders', orderData);
-      fetchOrders();
-      fetchTables(); // Refresh table status
+      const { data } = await api.post('/orders', orderData);
+      await fetchOrders();
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error placing KOT:", error);
+      throw error;
     }
   };
 
   const markKOTPrinted = async (orderId, details = {}) => {
     try {
-      // If we don't have a specific kotId, we might want to mark all as printed
-      // For now, the backend route is /api/orders/:id/kot/:kotId/print
-      // Since the frontend often prints the LATEST KOT:
-      const order = details.isPickupOrder ? pickupOrders[orderId] : (details.isCarOrder ? carOrders[orderId] : orders[orderId]);
-      if (!order || !order.kots || order.kots.length === 0) return;
+      const order = resolveOrderFromIdentifier(orderId, details);
+      if (!order || !order.kots || order.kots.length === 0) return null;
       
       const latestKot = order.kots[order.kots.length - 1];
       const kotId = latestKot._id || latestKot.id;
       
-      await api.patch(`/orders/${order.id || order._id}/kot/${kotId}/print`);
-      fetchOrders();
-      fetchTables();
+      const { data } = await api.patch(`/orders/${order.id || order._id}/kot/${kotId}/print`);
+      await fetchOrders();
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error marking KOT printed:", error);
+      throw error;
     }
   };
 
-  const saveOrder = async (orderId, orderData) => {
-    // In this POS, saveOrder is primarily used to mark as BILLED
-    await api.post(`/orders/${orderId}/bill`, orderData);
-    fetchOrders();
-    fetchTables();
+  const saveOrder = async (identifier, details = {}) => {
+    const order = resolveOrderFromIdentifier(identifier, details);
+    if (!order) {
+      throw new Error('No active order found to bill');
+    }
+
+    const { data } = await api.post(`/orders/${order.id || order._id}/bill`, details);
+    await fetchOrders();
+    await fetchTables();
+    return data;
   };
 
-  const holdOrder = (orderId) => {
-    // Logic to hold order
+  const updateOrderMeta = async (identifier, details = {}) => {
+    const order = resolveOrderFromIdentifier(identifier, details);
+    if (!order) {
+      return null;
+    }
+
+    const payload = {};
+    if (details.staffId) payload.staffId = details.staffId;
+    if (details.customer) payload.customer = details.customer;
+    if (details.orderType) payload.orderType = details.orderType;
+
+    if (Object.keys(payload).length === 0) {
+      return order;
+    }
+
+    const { data } = await api.put(`/orders/${order.id || order._id}`, payload);
+    await fetchOrders();
+    await fetchTables();
+    return data;
   };
 
-  const settleOrder = async (orderId, paymentMethod, details = {}) => {
+  const holdOrder = async (identifier, details = {}) => {
+    return updateOrderMeta(identifier, details);
+  };
+
+  const settleOrder = async (identifier, paymentMethod, details = {}) => {
     try {
+      const order = resolveOrderFromIdentifier(identifier, details);
+      if (!order) {
+        throw new Error('No active order found to settle');
+      }
+
       const payload = {
         paymentMethod,
         taxes: details.taxes || [],
         totalAmount: details.total || 0
       };
-      await api.post(`/orders/${orderId}/settle`, payload);
-      fetchOrders();
-      fetchTables();
+      const { data } = await api.post(`/orders/${order.id || order._id}/settle`, payload);
+      await fetchOrders();
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Settlement error:", error);
+      throw error;
     }
   };
 
-  const clearTable = async (tableId) => {
-    // Logic to clear table
+  const clearTable = async (identifier, details = {}) => {
+    try {
+      const order = resolveOrderFromIdentifier(identifier, details);
+
+      if (!order) {
+        const table = tables.find(t => t.id === identifier || t._id === identifier);
+        if (table) {
+          const { data } = await api.patch(`/tables/${table._id}/status`, { status: 'blank', currentOrder: null });
+          await fetchTables();
+          return data;
+        }
+        return null;
+      }
+
+      // Completed orders are already cleared by settlement on the backend.
+      if (order.orderStatus === 'COMPLETED') {
+        await fetchOrders();
+        await fetchTables();
+        return order;
+      }
+
+      const { data } = await api.post(`/orders/${order.id || order._id}/cancel`, {
+        reason: details.reason || 'Cleared from POS terminal'
+      });
+      await fetchOrders();
+      await fetchTables();
+      return data;
+    } catch (error) {
+      console.error("Error clearing table/order:", error);
+      throw error;
+    }
   };
 
-  const cancelKOTItem = (orderId, kotId, itemId) => {
-    // Logic to cancel KOT item
+  const cancelKOTItem = async (identifier, kotId, itemId, details = {}) => {
+    try {
+      const order = resolveOrderFromIdentifier(identifier, details);
+      if (!order) {
+        throw new Error('No active order found for item cancellation');
+      }
+
+      const { data } = await api.patch(`/orders/${order.id || order._id}/kot/${kotId}/items/${itemId}/cancel`);
+      await fetchOrders();
+      await fetchTables();
+      return data;
+    } catch (error) {
+      console.error("Error cancelling KOT item:", error);
+      throw error;
+    }
   };
 
-  const setTableWaiter = (tableId, staff) => {
-    // Logic to set waiter
+  const setTableWaiter = (identifier, staffMember, details = {}) => {
+    const scopedOrders = getScopedOrderMaps(details);
+    const matchedOrder = resolveOrderFromIdentifier(identifier, details);
+
+    if (!matchedOrder) {
+      return staffMember;
+    }
+
+    const nextOrders = { ...scopedOrders };
+    const keysToUpdate = Object.keys(nextOrders).filter(key => {
+      const order = nextOrders[key];
+      return order?.id === matchedOrder.id || order?._id === matchedOrder._id;
+    });
+
+    keysToUpdate.forEach(key => {
+      nextOrders[key] = {
+        ...nextOrders[key],
+        waiter: staffMember
+      };
+    });
+
+    if (details.isPickupOrder) setPickupOrders(nextOrders);
+    else if (details.isCarOrder) setCarOrders(nextOrders);
+    else setOrders(nextOrders);
+
+    return staffMember;
   };
 
   const addTax = async (tax) => {
@@ -586,93 +656,109 @@ export function PosProvider({ children }) {
 
   const addCarOrder = async (carNumber, items, total, waiter) => {
     try {
+      if (!items || items.length === 0) {
+        return null;
+      }
       const orderData = {
         carNumber,
-        type: 'CAR',
-        kots: items.length > 0 ? [{ items, staff: waiter }] : []
+        orderType: 'CAR-SERVICE',
+        items,
+        total,
+        staffId: waiter?._id || waiter?.id,
+        counterId: currentCounter?._id
       };
-      await api.post('/orders', orderData);
-      fetchOrders();
+      const { data } = await api.post('/orders', orderData);
+      await fetchOrders();
+      return data;
     } catch (error) {
       console.error("Error adding car order:", error);
+      throw error;
     }
   };
 
   const updateCarOrderStatus = async (carNumber, status) => {
     try {
-      const orderId = carOrders[carNumber]?.id;
-      if (orderId) {
-        await api.put(`/orders/${orderId}`, { status });
-        fetchOrders();
+      if (status === 'paid' || status === 'completed') {
+        return await settleOrder(carNumber, 'Cash', { isCarOrder: true });
       }
+      return resolveOrderFromIdentifier(carNumber, { isCarOrder: true });
     } catch (error) {
       console.error("Error updating car order status:", error);
+      throw error;
     }
   };
 
   const clearCarOrder = async (carNumber) => {
     try {
-      const orderId = carOrders[carNumber]?.id;
-      if (orderId) {
-        await api.put(`/orders/${orderId}/settle`, { paymentMode: 'CASH' }); // Mock settle
-        fetchOrders();
-      }
+      return await clearTable(carNumber, { isCarOrder: true });
     } catch (error) {
       console.error("Error clearing car order:", error);
+      throw error;
     }
   };
   const addSection = async (sectionData) => {
     try {
       const { data } = await api.post('/tables/sections', sectionData);
-      fetchTables();
+      await fetchTables();
       return data;
     } catch (error) {
       console.error("Error adding section:", error);
+      throw error;
     }
   };
 
   const updateSection = async (id, sectionData) => {
     try {
-      await api.put(`/tables/sections/${id}`, sectionData);
-      fetchTables();
+      const { data } = await api.put(`/tables/sections/${id}`, sectionData);
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error updating section:", error);
+      throw error;
     }
   };
 
   const deleteSection = async (id) => {
     try {
-      await api.delete(`/tables/sections/${id}`);
-      fetchTables();
+      const { data } = await api.delete(`/tables/sections/${id}`);
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error deleting section:", error);
+      throw error;
     }
   };
 
   const addTable = async (tableData) => {
     try {
-      await api.post('/tables', tableData);
-      fetchTables();
+      const { data } = await api.post('/tables', tableData);
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error adding table:", error);
+      throw error;
     }
   };
 
   const updateTable = async (id, tableData) => {
     try {
-      await api.put(`/tables/${id}`, tableData);
-      fetchTables();
+      const { data } = await api.put(`/tables/${id}`, tableData);
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error updating table:", error);
+      throw error;
     }
   };
 
   const deleteTable = async (id) => {
     try {
-      await api.delete(`/tables/${id}`);
-      fetchTables();
+      const { data } = await api.delete(`/tables/${id}`);
+      await fetchTables();
+      return data;
     } catch (error) {
       console.error("Error deleting table:", error);
+      throw error;
     }
   };
 
@@ -731,7 +817,7 @@ export function PosProvider({ children }) {
       staff,
       dishVariants, assignVariantsToDish,
       user, login, logout, currentCounter, appliedTaxes: [], addTax, updateTax, deleteTax, calculateTaxes,
-      orders
+      orders, refreshMenu: fetchMenu
     }}>
       {children}
     </PosContext.Provider>

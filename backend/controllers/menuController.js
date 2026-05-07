@@ -3,6 +3,22 @@ const MenuItem = require('../models/MenuItem');
 const csv = require('csvtojson');
 const logAudit = require('../utils/auditLogger');
 
+const parseVariantGroups = (rawVariantGroups) => {
+  if (!rawVariantGroups) return [];
+  const parsed = typeof rawVariantGroups === 'string' ? JSON.parse(rawVariantGroups) : rawVariantGroups;
+
+  return parsed.map((group) => ({
+    name: String(group.name || '').trim(),
+    type: group.type || 'Add-on',
+    options: (group.options || [])
+      .filter((option) => String(option.name || '').trim() !== '')
+      .map((option) => ({
+        name: String(option.name || '').trim(),
+        price: Number(option.price ?? option.priceValue ?? 0) || 0,
+      })),
+  })).filter((group) => group.name && group.options.length > 0);
+};
+
 // --- Category Controllers ---
 
 // @desc    Get all categories
@@ -17,8 +33,15 @@ const getCategories = async (req, res) => {
 // @route   POST /api/menu/categories
 // @access  Private/Admin
 const createCategory = async (req, res) => {
-  const { name, description, rank } = req.body;
+  const name = String(req.body.name || '').trim();
+  const description = String(req.body.description || '').trim();
+  const rank = req.body.rank;
   const image = req.file ? req.file.path : '';
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Category name is required');
+  }
 
   const categoryExists = await Category.findOne({ name });
 
@@ -32,6 +55,7 @@ const createCategory = async (req, res) => {
     description,
     image,
     rank,
+    status: req.body.status || 'Active',
   });
 
   await logAudit(req.user._id, 'CREATE_CATEGORY', 'MENU', `Category created: ${name}`, req.ip);
@@ -46,9 +70,9 @@ const updateCategory = async (req, res) => {
   const category = await Category.findById(req.params.id);
 
   if (category) {
-    category.name = req.body.name || category.name;
-    category.description = req.body.description || category.description;
-    category.rank = req.body.rank || category.rank;
+    if (req.body.name !== undefined) category.name = String(req.body.name).trim() || category.name;
+    if (req.body.description !== undefined) category.description = String(req.body.description).trim();
+    if (req.body.rank !== undefined) category.rank = req.body.rank;
     category.status = req.body.status || category.status;
 
     if (req.file) {
@@ -77,8 +101,30 @@ const getMenuItems = async (req, res) => {
 // @route   POST /api/menu/items
 // @access  Private/Admin
 const createMenuItem = async (req, res) => {
-  const { name, description, category, price, type, shortCode, rank, variantGroups } = req.body;
+  const name = String(req.body.name || '').trim();
+  const description = String(req.body.description || '').trim();
+  const category = req.body.category;
+  const price = Number(req.body.price);
+  const type = req.body.type;
+  const shortCode = String(req.body.shortCode || '').trim().toUpperCase();
+  const rank = req.body.rank;
   const image = req.file ? req.file.path : '';
+  const parsedVariantGroups = parseVariantGroups(req.body.variantGroups);
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Item name is required');
+  }
+
+  if (!category) {
+    res.status(400);
+    throw new Error('Category is required');
+  }
+
+  if (!Number.isFinite(price) || price < 0) {
+    res.status(400);
+    throw new Error('Price must be a valid non-negative number');
+  }
 
   // Check for duplicate shortCode
   if (shortCode) {
@@ -105,7 +151,8 @@ const createMenuItem = async (req, res) => {
     image,
     shortCode,
     rank,
-    variantGroups: variantGroups ? JSON.parse(variantGroups) : [],
+    status: req.body.status || 'Available',
+    variantGroups: parsedVariantGroups,
   });
 
   await logAudit(req.user._id, 'CREATE_MENU_ITEM', 'MENU', `Menu item created: ${name}`, req.ip);
@@ -120,11 +167,18 @@ const updateMenuItem = async (req, res) => {
   const item = await MenuItem.findById(req.params.id);
 
   if (item) {
-    item.name = req.body.name || item.name;
-    item.description = req.body.description || item.description;
-    item.category = req.body.category || item.category;
-    item.price = req.body.price || item.price;
-    item.type = req.body.type || item.type;
+    if (req.body.name !== undefined) item.name = String(req.body.name).trim() || item.name;
+    if (req.body.description !== undefined) item.description = String(req.body.description).trim();
+    if (req.body.category !== undefined) item.category = req.body.category;
+    if (req.body.price !== undefined) {
+      const price = Number(req.body.price);
+      if (!Number.isFinite(price) || price < 0) {
+        res.status(400);
+        throw new Error('Price must be a valid non-negative number');
+      }
+      item.price = price;
+    }
+    if (req.body.type !== undefined) item.type = req.body.type;
     
     // Check for duplicate shortCode if changed
     if (req.body.shortCode && req.body.shortCode !== item.shortCode) {
@@ -135,12 +189,12 @@ const updateMenuItem = async (req, res) => {
       }
     }
     
-    item.shortCode = req.body.shortCode || item.shortCode;
-    item.rank = req.body.rank || item.rank;
-    item.status = req.body.status || item.status;
+    if (req.body.shortCode !== undefined) item.shortCode = String(req.body.shortCode).trim().toUpperCase();
+    if (req.body.rank !== undefined) item.rank = req.body.rank;
+    if (req.body.status !== undefined) item.status = req.body.status;
 
     if (req.body.variantGroups) {
-      item.variantGroups = JSON.parse(req.body.variantGroups);
+      item.variantGroups = parseVariantGroups(req.body.variantGroups);
     }
 
     if (req.file) {

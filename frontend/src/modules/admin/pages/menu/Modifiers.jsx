@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sliders, Plus, Search, Filter, Edit2, Trash2, Save, X } from 'lucide-react';
+import { Sliders, Plus, Search, Filter, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AdminModal from '../../components/ui/AdminModal';
 import { usePos } from '../../../pos/context/PosContext';
@@ -11,6 +11,8 @@ export default function Modifiers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingModifier, setEditingModifier] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -19,6 +21,7 @@ export default function Modifiers() {
   });
 
   const handleOpenModal = (mod = null) => {
+    setFormError('');
     if (mod) {
       setEditingModifier(mod);
       setFormData({ 
@@ -50,11 +53,26 @@ export default function Modifiers() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.name.trim()) {
+      setFormError('Modifier group name is required.');
+      return;
+    }
+
+    const cleanedOptions = formData.options
+      .filter(opt => opt.name.trim() !== '')
+      .map(opt => ({ ...opt, name: opt.name.trim() }));
+
+    if (cleanedOptions.length === 0) {
+      setFormError('At least one modifier option is required.');
+      return;
+    }
+
     try {
       setIsSaving(true);
-      // Clean options
-      const cleanedOptions = formData.options.filter(opt => opt.name.trim() !== '');
-      const data = { ...formData, options: cleanedOptions };
+      const data = { ...formData, name: formData.name.trim(), options: cleanedOptions };
 
       if (editingModifier) {
         await updateVariantGroup(editingModifier.id, data);
@@ -64,7 +82,7 @@ export default function Modifiers() {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error saving modifier:', error);
-      alert('Error saving modifier.');
+      setFormError(error.response?.data?.message || 'Unable to save modifier group.');
     } finally {
       setIsSaving(false);
     }
@@ -73,10 +91,11 @@ export default function Modifiers() {
   const handleDelete = async (id) => {
     if (window.confirm('PROTOCOL: Proceed with record termination?')) {
       try {
+        setError('');
         await deleteVariantGroup(id);
       } catch (error) {
         console.error('Error deleting modifier:', error);
-        alert('Error deleting modifier.');
+        setError(error.response?.data?.message || 'Unable to delete modifier group.');
       }
     }
   };
@@ -98,6 +117,13 @@ export default function Modifiers() {
           Create Modifier Group
         </button>
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+          <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{error}</p>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-100 rounded-sm p-4 flex gap-4">
         <div className="relative flex-1 group">
@@ -127,6 +153,13 @@ export default function Modifiers() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
+            {filteredModifiers.length === 0 && (
+              <tr>
+                <td colSpan="4" className="px-6 py-12 text-center text-slate-400">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em]">No modifier groups found</p>
+                </td>
+              </tr>
+            )}
             {filteredModifiers.map((mod) => (
               <tr key={mod.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="px-6 py-4">
@@ -166,6 +199,12 @@ export default function Modifiers() {
         maxWidth="max-w-2xl"
       >
         <div className="space-y-6">
+          {formError && (
+            <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+              <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{formError}</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Group Designation</label>

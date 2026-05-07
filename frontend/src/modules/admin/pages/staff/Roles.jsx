@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Search, Filter, Lock, Unlock, CheckSquare, Edit2, Trash2, Save, X, Settings, ShoppingCart } from 'lucide-react';
+import { Shield, Plus, Edit2, Trash2, Save, X, Settings, ShoppingCart, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../../utils/api';
 import { playClickSound } from '../../../pos/utils/sounds';
@@ -8,6 +8,7 @@ export default function Roles() {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
 
@@ -45,6 +46,7 @@ export default function Roles() {
   };
 
   const handleOpenModal = (role = null) => {
+    setFormError('');
     if (role) {
       setEditingRole(role);
       setFormData({
@@ -86,16 +88,24 @@ export default function Roles() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.name.trim()) {
+      setFormError('Role name is required.');
+      return;
+    }
+
     try {
       if (editingRole) {
-        await api.put(`/roles/${editingRole._id}`, formData);
+        await api.put(`/roles/${editingRole._id}`, { ...formData, name: formData.name.trim() });
       } else {
-        await api.post('/roles', formData);
+        await api.post('/roles', { ...formData, name: formData.name.trim() });
       }
-      fetchRoles();
+      await fetchRoles();
       setIsModalOpen(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save role');
+      setFormError(err.response?.data?.message || 'Failed to save role');
     }
   };
 
@@ -159,10 +169,14 @@ export default function Roles() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
+          {loading ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4">
              <div className="w-8 h-8 border-4 border-stone-100 border-t-[#E1261C] rounded-full animate-spin" />
              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Scanning Security Layers...</p>
+          </div>
+        ) : roles.length === 0 ? (
+          <div className="col-span-full py-20 text-center text-stone-400 font-bold uppercase tracking-widest text-[10px]">
+            No roles configured
           </div>
         ) : roles.map((role) => (
           <div key={role._id} className="bg-white border border-stone-200 rounded-2xl p-6 hover:border-[#E1261C]/30 transition-all group overflow-hidden relative shadow-sm">
@@ -246,6 +260,12 @@ export default function Roles() {
 
                 <form onSubmit={handleSave} className="flex flex-col h-[70vh]">
                   <div className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
+                    {formError && (
+                      <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3">
+                        <AlertCircle size={16} className="text-rose-500" />
+                        <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{formError}</p>
+                      </div>
+                    )}
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Role Designation</label>
@@ -256,6 +276,16 @@ export default function Roles() {
                           value={formData.name}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                           placeholder="e.g. FLOOR SUPERVISOR"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Description</label>
+                        <textarea
+                          rows="3"
+                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[12px] font-bold rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
+                          value={formData.description}
+                          onChange={(e) => setFormData({...formData, description: e.target.value})}
+                          placeholder="Short summary of this role and when to use it"
                         />
                       </div>
                     </div>

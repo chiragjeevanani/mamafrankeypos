@@ -1,6 +1,13 @@
 const Section = require('../models/Section');
 const Table = require('../models/Table');
 
+const slugifySectionName = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
 // --- Section Controllers ---
 
 // @desc    Get all sections
@@ -15,7 +22,19 @@ const getSections = async (req, res) => {
 // @route   POST /api/tables/sections
 // @access  Private/Admin
 const createSection = async (req, res) => {
-  const { name, label, rank } = req.body;
+  const label = String(req.body.label || '').trim();
+  const name = slugifySectionName(req.body.name || label);
+  const rank = req.body.rank;
+
+  if (!label) {
+    res.status(400);
+    throw new Error('Section label is required');
+  }
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Section name is required');
+  }
 
   const sectionExists = await Section.findOne({ name });
 
@@ -28,6 +47,7 @@ const createSection = async (req, res) => {
     name,
     label,
     rank,
+    status: req.body.status || 'Active',
   });
 
   res.status(201).json(section);
@@ -47,7 +67,36 @@ const getTables = async (req, res) => {
 // @route   POST /api/tables
 // @access  Private/Admin
 const createTable = async (req, res) => {
-  const { name, section, capacity } = req.body;
+  const name = String(req.body.name || '').trim().toUpperCase();
+  const { section } = req.body;
+  const capacity = Number(req.body.capacity ?? 4);
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Table name is required');
+  }
+
+  if (!section) {
+    res.status(400);
+    throw new Error('Table section is required');
+  }
+
+  if (!Number.isFinite(capacity) || capacity <= 0) {
+    res.status(400);
+    throw new Error('Capacity must be a positive number');
+  }
+
+  const sectionExists = await Section.findById(section);
+  if (!sectionExists) {
+    res.status(400);
+    throw new Error('Selected section does not exist');
+  }
+
+  const duplicateTable = await Table.findOne({ name, section });
+  if (duplicateTable) {
+    res.status(400);
+    throw new Error('A table with this name already exists in the selected section');
+  }
 
   const table = await Table.create({
     name,
@@ -55,7 +104,8 @@ const createTable = async (req, res) => {
     capacity,
   });
 
-  res.status(201).json(table);
+  const createdTable = await Table.findById(table._id).populate('section');
+  res.status(201).json(createdTable);
 };
 
 // @desc    Update table status
@@ -82,9 +132,29 @@ const updateTableStatus = async (req, res) => {
 const updateSection = async (req, res) => {
   const section = await Section.findById(req.params.id);
   if (section) {
-    section.label = req.body.label || section.label;
-    section.name = req.body.name || section.name;
+    if (req.body.label !== undefined) {
+      const label = String(req.body.label).trim();
+      if (!label) {
+        res.status(400);
+        throw new Error('Section label is required');
+      }
+      section.label = label;
+    }
+    if (req.body.name !== undefined) {
+      const name = slugifySectionName(req.body.name);
+      if (!name) {
+        res.status(400);
+        throw new Error('Section name is required');
+      }
+      const existingSection = await Section.findOne({ name, _id: { $ne: section._id } });
+      if (existingSection) {
+        res.status(400);
+        throw new Error('Section already exists');
+      }
+      section.name = name;
+    }
     section.rank = req.body.rank !== undefined ? req.body.rank : section.rank;
+    if (req.body.status !== undefined) section.status = req.body.status;
     const updatedSection = await section.save();
     res.json(updatedSection);
   } else {
@@ -115,11 +185,44 @@ const deleteSection = async (req, res) => {
 const updateTable = async (req, res) => {
   const table = await Table.findById(req.params.id);
   if (table) {
-    table.name = req.body.name || table.name;
-    table.section = req.body.section || table.section;
-    table.capacity = req.body.capacity || table.capacity;
-    table.status = req.body.status || table.status;
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim().toUpperCase();
+      if (!name) {
+        res.status(400);
+        throw new Error('Table name is required');
+      }
+      table.name = name;
+    }
+    if (req.body.section !== undefined) {
+      const sectionExists = await Section.findById(req.body.section);
+      if (!sectionExists) {
+        res.status(400);
+        throw new Error('Selected section does not exist');
+      }
+      table.section = req.body.section;
+    }
+    if (req.body.capacity !== undefined) {
+      const capacity = Number(req.body.capacity);
+      if (!Number.isFinite(capacity) || capacity <= 0) {
+        res.status(400);
+        throw new Error('Capacity must be a positive number');
+      }
+      table.capacity = capacity;
+    }
+    if (req.body.status !== undefined) table.status = req.body.status;
+
+    const duplicateTable = await Table.findOne({
+      name: table.name,
+      section: table.section,
+      _id: { $ne: table._id }
+    });
+    if (duplicateTable) {
+      res.status(400);
+      throw new Error('A table with this name already exists in the selected section');
+    }
+
     const updatedTable = await table.save();
+    await updatedTable.populate('section');
     res.json(updatedTable);
   } else {
     res.status(404);

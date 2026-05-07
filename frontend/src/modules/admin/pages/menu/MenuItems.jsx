@@ -19,9 +19,11 @@ export default function MenuItems() {
     menuItems, categories, addMenuItem, updateMenuItem, deleteMenuItem, 
     bulkUpdateMenuItems, variantGroups, bulkUploadMenu 
   } = usePos();
+  const availableCategories = categories.filter(c => c.id !== 'fav');
 
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     price: '',
     category: '',
     shortCode: '',
@@ -36,6 +38,7 @@ export default function MenuItems() {
       setEditingItem(item);
       setFormData({
         name: item.name,
+        description: item.description || '',
         price: item.price,
         category: item.catId,
         shortCode: item.code,
@@ -48,8 +51,9 @@ export default function MenuItems() {
       setEditingItem(null);
       setFormData({
         name: '',
+        description: '',
         price: '',
-        category: categories[1]?.id || '', // Skip 'fav'
+        category: availableCategories[0]?.id || '',
         shortCode: `ITEM-${menuItems.length + 101}`,
         type: 'veg',
         image: '',
@@ -66,6 +70,7 @@ export default function MenuItems() {
       setIsSaving(true);
       const data = new FormData();
       data.append('name', formData.name);
+      data.append('description', formData.description);
       data.append('price', formData.price);
       data.append('category', formData.category);
       data.append('shortCode', formData.shortCode);
@@ -230,7 +235,7 @@ export default function MenuItems() {
             className="flex-1 lg:flex-none h-10 px-4 bg-white border border-slate-100 text-slate-500 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center justify-center outline-none cursor-pointer"
           >
             <option value="all">ALL CATEGORIES</option>
-            {categories.filter(c => c.id !== 'fav').map(cat => (
+            {availableCategories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
@@ -238,6 +243,11 @@ export default function MenuItems() {
       </div>
 
       <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6' : 'space-y-3'}>
+        {filteredItems.length === 0 && (
+          <div className="col-span-full bg-white border border-slate-100 rounded-sm p-12 text-center text-slate-400">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em]">No menu items found</p>
+          </div>
+        )}
         {filteredItems.map((item) => (
           viewMode === 'grid' ? (
             <motion.div 
@@ -354,6 +364,17 @@ export default function MenuItems() {
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</label>
+            <textarea
+              rows="3"
+              className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              placeholder="Short internal or menu-facing description"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fiscal Value (INR)</label>
@@ -369,11 +390,13 @@ export default function MenuItems() {
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Unit</label>
               <select 
+                required
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
                 value={formData.category}
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
               >
-                {categories.filter(c => c.id !== 'fav').map(cat => (
+                <option value="">Select category</option>
+                {availableCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>

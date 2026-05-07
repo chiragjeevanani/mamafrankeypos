@@ -12,7 +12,26 @@ const getCombos = async (req, res) => {
 // @route   POST /api/menu/combos
 // @access  Private/Admin
 const createCombo = async (req, res) => {
-  const { name, price, code, elements, active } = req.body;
+  const name = String(req.body.name || '').trim();
+  const price = Number(req.body.price);
+  const code = String(req.body.code || '').trim().toUpperCase();
+  const elements = (req.body.elements || []).filter((element) => element.item);
+  const active = req.body.active;
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Combo name is required');
+  }
+
+  if (!Number.isFinite(price) || price < 0) {
+    res.status(400);
+    throw new Error('Combo price must be a valid non-negative number');
+  }
+
+  if (elements.length === 0) {
+    res.status(400);
+    throw new Error('At least one combo item is required');
+  }
 
   const combo = await Combo.create({
     name,
@@ -32,10 +51,24 @@ const updateCombo = async (req, res) => {
   const combo = await Combo.findById(req.params.id);
 
   if (combo) {
-    combo.name = req.body.name || combo.name;
-    combo.price = req.body.price || combo.price;
-    combo.code = req.body.code || combo.code;
-    combo.elements = req.body.elements || combo.elements;
+    if (req.body.name !== undefined) combo.name = String(req.body.name).trim() || combo.name;
+    if (req.body.price !== undefined) {
+      const price = Number(req.body.price);
+      if (!Number.isFinite(price) || price < 0) {
+        res.status(400);
+        throw new Error('Combo price must be a valid non-negative number');
+      }
+      combo.price = price;
+    }
+    if (req.body.code !== undefined) combo.code = String(req.body.code).trim().toUpperCase();
+    if (req.body.elements !== undefined) {
+      const elements = req.body.elements.filter((element) => element.item);
+      if (elements.length === 0) {
+        res.status(400);
+        throw new Error('At least one combo item is required');
+      }
+      combo.elements = elements;
+    }
     combo.active = req.body.active !== undefined ? req.body.active : combo.active;
 
     const updatedCombo = await combo.save();

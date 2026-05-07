@@ -15,17 +15,14 @@ import { printBillReceipt } from '../../utils/printBill';
 import { downloadBillAndKOT } from '../../utils/printCombined';
 import { playClickSound } from '../../utils/sounds';
 
-
-// import { ALL_STAFF as MOCK_WAITERS } from '../../data/staff';
-
 export default function PosOrderPage() {
   const { tableId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { 
-    placeKOT, markKOTPrinted, saveOrder, settleOrder, holdOrder, clearTable, cancelKOTItem,
+    placeKOT, markKOTPrinted, saveOrder, holdOrder, clearTable, cancelKOTItem,
     orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
-    variantGroups, dishVariants, categories, menuItems, tables, sections
+    variantGroups, dishVariants, categories, menuItems, tables, sections, staff
   } = usePos();
   
   const [selectedCategory, setSelectedCategory] = useState('fav');
@@ -46,8 +43,8 @@ export default function PosOrderPage() {
   );
 
   // Initialize cart from existing order if any
-  const currentOrderStore = isPickupMode ? pickupOrders : (isCarServiceMode ? carOrders : orders);
-  const [cart, setCart] = useState(() => currentOrderStore[tableId]?.items || []);
+  const activeOrder = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
+  const [cart, setCart] = useState([]);
   
   // States for interactive checkboxes/radios
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -83,31 +80,11 @@ export default function PosOrderPage() {
   const [isTaxModalOpen, setIsTaxModalOpen] = useState(false);
   const [isOtherPaymentModalOpen, setIsOtherPaymentModalOpen] = useState(false);
   const [otherPaymentDetails, setOtherPaymentDetails] = useState({ type: 'UPI', note: '' });
+  const [orderNotice, setOrderNotice] = useState(null);
 
   // Dish Variant Selection State
   const [variantModalItem, setVariantModalItem] = useState(null);
   const [selectedVariants, setSelectedVariants] = useState({}); // groupId -> variantOptionId
-
-  // Sync waiter and order data from shared context
-  useEffect(() => {
-    const existingOrder = isPickupMode ? pickupOrders[tableId] : isCarServiceMode ? carOrders[tableId] : orders[tableId];
-    if (existingOrder) {
-        if (existingOrder.waiter) {
-           setSelectedWaiter(existingOrder.waiter);
-        }
-       if (existingOrder.customer) {
-          setCustomer(existingOrder.customer);
-       }
-    }
-  }, [tableId, pickupOrders, carOrders, orders, isPickupMode, isCarServiceMode]);
-
-  // Reset cart/states when ID changes (important for next-customer flow)
-  useEffect(() => {
-    const existingOrder = currentOrderStore[tableId]?.items || [];
-    setCart(existingOrder);
-    setSearchQuery('');
-    setShortCode('');
-  }, [tableId, currentOrderStore]);
 
   // Customer Section States
   const [customer, setCustomer] = useState({
@@ -118,15 +95,101 @@ export default function PosOrderPage() {
      extra: ''
   });
 
+  const draftStorageKey = useMemo(() => `pos_draft_${orderType}_${tableId}`, [orderType, tableId]);
+
+  const buildCustomerPayload = () => ({
+    name: customer.name?.trim() || '',
+    mobile: customer.mobile?.trim() || '',
+    address: customer.address?.trim() || '',
+    locality: customer.locality?.trim() || '',
+    extra: customer.extra?.trim() || ''
+  });
+
+  const clearDraft = () => {
+    sessionStorage.removeItem(draftStorageKey);
+  };
+
+  const persistOrderMeta = async () => {
+    const staffId = selectedWaiter?._id || selectedWaiter?.id;
+    return holdOrder(tableId, {
+      isCarOrder: isCarServiceMode,
+      isPickupOrder: isPickupMode,
+      orderType: orderType === 'car-service' ? 'CAR-SERVICE' : orderType.toUpperCase(),
+      staffId,
+      customer: buildCustomerPayload()
+    });
+  };
+
+  // Sync waiter and order data from shared context
+  useEffect(() => {
+    if (activeOrder) {
+        if (activeOrder.waiter) {
+           setSelectedWaiter(activeOrder.waiter);
+        }
+       if (activeOrder.customer) {
+          setCustomer({
+            mobile: activeOrder.customer.phone || '',
+            name: activeOrder.customer.name || '',
+            address: activeOrder.customer.address || '',
+            locality: activeOrder.customer.locality || '',
+            extra: activeOrder.customer.notes || ''
+          });
+       }
+    }
+  }, [activeOrder]);
+
+  // Reset cart/states when ID changes (important for next-customer flow)
+  useEffect(() => {
+    setCart([]);
+    setSearchQuery('');
+    setShortCode('');
+  }, [tableId]);
+
+  useEffect(() => {
+    const rawDraft = sessionStorage.getItem(draftStorageKey);
+    if (!rawDraft) return;
+
+    try {
+      const draft = JSON.parse(rawDraft);
+      if (Array.isArray(draft.cart)) setCart(draft.cart);
+      if (draft.customer) setCustomer(prev => ({ ...prev, ...draft.customer }));
+      if (draft.selectedWaiter) setSelectedWaiter(draft.selectedWaiter);
+    } catch (error) {
+      console.error('Unable to restore POS draft:', error);
+    }
+  }, [draftStorageKey]);
+
+  useEffect(() => {
+    const customerPayload = buildCustomerPayload();
+    const hasDraftCart = cart.length > 0;
+    const hasCustomerDraft = Object.values(customerPayload).some(Boolean);
+    const hasWaiterDraft = !!(selectedWaiter?.id || selectedWaiter?._id);
+
+    if (!hasDraftCart && !hasCustomerDraft && !hasWaiterDraft) {
+      sessionStorage.removeItem(draftStorageKey);
+      return;
+    }
+
+    sessionStorage.setItem(draftStorageKey, JSON.stringify({
+      cart,
+      customer,
+      selectedWaiter,
+      updatedAt: new Date().toISOString()
+    }));
+  }, [draftStorageKey, cart, customer, selectedWaiter]);
+
   // Find table details
   const tableInfo = useMemo(() => {
-    if (!sections || !tableId) return { name: tableId, section: 'AC' };
-    for (const section of sections) {
-      const table = (section.tables || []).find(t => t.id === tableId || t._id === tableId);
-      if (table) return { name: table.name, section: section.label };
+    if (!tableId) return { name: tableId, section: 'AC' };
+    const matchedTable = tables.find(t => t.id === tableId || t._id === tableId);
+    if (matchedTable) {
+      const matchedSection = sections.find(section => section.id === matchedTable.sectionId);
+      return { name: matchedTable.name, section: matchedSection?.label || matchedTable.sectionId || 'AC' };
     }
+    if (isPickupMode) return { name: tableId, section: 'PICKUP' };
+    if (isCarServiceMode) return { name: tableId, section: 'CAR SERVICE' };
     return { name: tableId, section: 'AC' };
-  }, [tableId, sections]);
+  }, [tableId, tables, sections, isPickupMode, isCarServiceMode]);
 
   const filteredItems = useMemo(() => {
     return (menuItems || []).filter(item => {
@@ -242,8 +305,7 @@ export default function PosOrderPage() {
 
   const { total, subTotal, totalItemCount, tax, appliedTaxes, roundOff, changeToReturn, bogoDiscount } = useMemo(() => {
     const cartItems = cart || [];
-    const currentOrderData = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
-    const kotItems = currentOrderData?.kots?.flatMap(kot => kot.items) || [];
+    const kotItems = activeOrder?.kots?.flatMap(kot => kot.items.filter(item => item.status !== 'cancelled')) || [];
     const allItems = [...cartItems, ...kotItems];
     
     const count = allItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -282,7 +344,7 @@ export default function PosOrderPage() {
       changeToReturn: cToReturn,
       bogoDiscount: bDiscount
     };
-  }, [cart, orders, carOrders, tableId, isCarServiceMode, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
+  }, [cart, activeOrder, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
 
   const cartTotal = useMemo(() => {
     const sTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -292,7 +354,7 @@ export default function PosOrderPage() {
   }, [cart, calculateTaxes]);
 
   // Sync manual return amount with calculated change
-  useMemo(() => {
+  useEffect(() => {
     setManualReturnAmount(Number(changeToReturn.toFixed(2)));
   }, [changeToReturn]);
 
@@ -310,36 +372,53 @@ export default function PosOrderPage() {
     }
   };
 
+  const canPlaceKot = cart.length > 0 && cartTotal > 0;
+  const canHoldDraft = cart.length > 0 || !!activeOrder || Object.values(buildCustomerPayload()).some(Boolean);
+  const canReprint = !!activeOrder?.billPrinted;
+  const canDownloadPickup = !!activeOrder || cart.length > 0;
+
   // --- ACTIONS ---
-  const handleKOT = (isPrint = false) => {
+  const handleKOT = async (isPrint = false) => {
     playClickSound();
-    if (cart.length === 0 || cartTotal <= 0) {
-       alert("No items in cart to place KOT!");
+    setOrderNotice(null);
+    if (!canPlaceKot) {
+       setOrderNotice({ type: 'error', text: 'Add items before placing a KOT.' });
        return;
     }
-    placeKOT(tableId, cart, cartTotal, selectedWaiter, { 
-      isCarOrder: orderType === 'car-service',
-      isPickupOrder: orderType === 'pickup'
-    });
-    if (isPrint) {
+    if (!isPickupMode && !selectedWaiter) {
+       setOrderNotice({ type: 'error', text: 'Select a waiter before placing this order.' });
+       return;
+    }
+    try {
+      const savedOrder = await placeKOT(tableId, cart, selectedWaiter, { 
+        isCarOrder: orderType === 'car-service',
+        isPickupOrder: orderType === 'pickup',
+        customer: buildCustomerPayload()
+      });
+      if (isPrint) {
       printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
-      markKOTPrinted(tableId, { 
+      await markKOTPrinted(savedOrder?._id || savedOrder?.id || tableId, { 
         isCarOrder: orderType === 'car-service',
         isPickupOrder: orderType === 'pickup'
       });
-    }
+      }
 
-    setCart([]); // Clear immediately to avoid visual duplicity
-    setTimeout(() => {
-      navigate('/pos/tables'); 
-    }, 1500);
+      setCart([]);
+      clearDraft();
+      setTimeout(() => {
+        navigate('/pos/tables'); 
+      }, 1500);
+    } catch (error) {
+      setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to place KOT.' });
+    }
   };
 
   const handleReprint = () => {
     playClickSound();
-    const orderData = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
-    if (!orderData || !orderData.kots || orderData.kots.length === 0) {
-      alert("No active order to reprint!");
+    setOrderNotice(null);
+    const orderData = activeOrder;
+    if (!orderData?.billPrinted) {
+      setOrderNotice({ type: 'error', text: 'Bill reprint is available only after the bill has been generated.' });
       return;
     }
     
@@ -364,38 +443,68 @@ export default function PosOrderPage() {
     );
   };
 
-  const handleSave = (isPrint = false) => {
+  const handleSave = () => {
     playClickSound();
-    holdOrder(tableId);
-    navigate('/pos/tables');
+    setOrderNotice(null);
+    if (!canHoldDraft) {
+      setOrderNotice({ type: 'error', text: 'There is nothing to hold for this order yet.' });
+      return;
+    }
+    persistOrderMeta()
+      .catch((error) => {
+        setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to save order details.' });
+      })
+      .finally(() => {
+        navigate('/pos/tables');
+      });
   };
 
-  const handleClearTable = () => {
+  const handleClearTable = async () => {
     playClickSound();
     if (window.confirm(`Are you sure you want to cancel the order for ${tableInfo.name}?`)) {
-      clearTable(tableId, { 
-        isCarOrder: isCarServiceMode,
-        isPickupOrder: isPickupMode
-      });
-      navigate('/pos/tables');
+      try {
+        await clearTable(tableId, { 
+          isCarOrder: isCarServiceMode,
+          isPickupOrder: isPickupMode
+        });
+        clearDraft();
+        navigate('/pos/tables');
+      } catch (error) {
+        setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to clear this order.' });
+      }
     }
   };
   
-  const handleDownloadBillAndKOT = () => {
+  const handleDownloadBillAndKOT = async () => {
     playClickSound();
-    const orderData = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
-    if (!orderData && cart.length === 0) {
-      alert("No active order data to download!");
+    setOrderNotice(null);
+    let orderData = activeOrder;
+    if (!canDownloadPickup) {
+      setOrderNotice({ type: 'error', text: 'Add items or open an active pickup order before downloading the bill.' });
+      return;
+    }
+    if (!selectedWaiter) {
+      setOrderNotice({ type: 'error', text: 'Select a waiter before preparing a pickup bill.' });
       return;
     }
 
-    // SAVE THE ORDER FOR PICKUP (to ensure it shows in TableView/Context)
-    if (isPickupMode && cart.length > 0) {
-      placeKOT(tableId, cart, total, selectedWaiter, { 
-        kotPrinted: true, 
-        isPickupOrder: true 
-      });
-      saveOrder(tableId, { isPickupOrder: true });
+    try {
+      if (isPickupMode && cart.length > 0) {
+        const savedOrder = await placeKOT(tableId, cart, selectedWaiter, {
+          isPickupOrder: true,
+          customer: buildCustomerPayload()
+        });
+        await markKOTPrinted(savedOrder?._id || savedOrder?.id || tableId, { isPickupOrder: true });
+        await saveOrder(savedOrder?._id || savedOrder?.id || tableId, {
+          isPickupOrder: true,
+          customer: buildCustomerPayload(),
+          staffId: selectedWaiter?._id || selectedWaiter?.id
+        });
+        orderData = savedOrder || orderData;
+      }
+    } catch (error) {
+      setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to prepare pickup bill.' });
+      return;
     }
 
     downloadBillAndKOT(
@@ -406,6 +515,7 @@ export default function PosOrderPage() {
 
     // Refresh for next pickup customer (NEW ID for fresh session)
     if (isPickupMode) {
+       clearDraft();
        setTimeout(() => {
           const nextPuId = `PU-${Date.now().toString().slice(-6)}`;
           // Use navigate for smoothness, the useEffect above will handle the state reset
@@ -608,7 +718,18 @@ export default function PosOrderPage() {
                          />
                          <div className="flex items-center gap-1.5 opacity-60">
                             <FileText size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
-                            <Save size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
+                            <Save
+                              size={16}
+                              className="text-gray-400 hover:text-[#E1261C] cursor-pointer"
+                              onClick={async () => {
+                                playClickSound();
+                                try {
+                                  await persistOrderMeta();
+                                } catch (error) {
+                                  setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to save customer details.' });
+                                }
+                              }}
+                            />
                             <ClipboardList size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
                             <Wallet size={16} className="bg-cyan-500 text-white rounded p-0.5" onClick={playClickSound} />
                             <Trash2 size={16} className="text-gray-300 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
@@ -656,6 +777,16 @@ export default function PosOrderPage() {
             )}
           </AnimatePresence>
 
+          {orderNotice && (
+            <div className={`mx-4 mt-3 rounded-sm border px-3 py-2 text-[10px] font-black uppercase tracking-widest ${
+              orderNotice.type === 'error'
+                ? 'bg-rose-50 border-rose-100 text-rose-600'
+                : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+            }`}>
+              {orderNotice.text}
+            </div>
+          )}
+
           {/* Column Headers */}
           <div className="px-4 py-2 border-b border-gray-100 flex items-center text-[10px] font-bold text-gray-400 tracking-wider">
             <span className="w-[45%]">ITEMS</span>
@@ -667,19 +798,23 @@ export default function PosOrderPage() {
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto bg-white">
             {/* 1. Placed KOTs (History) */}
-            {(isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.map((kot) => (
+            {(activeOrder?.kots || []).map((kot) => (
               <div key={kot._id || kot.id}>
                  <div className="bg-[#616161] text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between items-center">
                     <span>KOT - {(kot._id || kot.id)} Time - {kot.time}</span>
                  </div>
-                  {kot.items.map(item => (
+                  {kot.items.filter(item => item.status !== 'cancelled').map(item => (
                     <CartItem 
                       key={`${(kot._id || kot.id)}-${(item._id || item.id)}`} 
                       item={item} 
                       isPlaced={true} 
-                      onCancel={() => {
+                      onCancel={async () => {
                         if (window.confirm(`Are you sure you want to cancel ${item.name} from this KOT?`)) {
-                          cancelKOTItem(tableId, (kot._id || kot.id), (item._id || item.id), { isCarOrder: isCarServiceMode });
+                          try {
+                            await cancelKOTItem(tableId, (kot._id || kot.id), (item._id || item.id), { isCarOrder: isCarServiceMode, isPickupOrder: isPickupMode });
+                          } catch (error) {
+                            setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to cancel this KOT item.' });
+                          }
                         }
                       }}
                     />
@@ -706,7 +841,7 @@ export default function PosOrderPage() {
             )}
 
             {/* Empty State */}
-            {(!(isCarServiceMode ? carOrders[tableId] : orders[tableId])?.kots?.length && cart.length === 0) && (
+            {(!(activeOrder?.kots?.length) && cart.length === 0) && (
               <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-4 p-8">
                 <p className="font-bold text-sm text-gray-400">No Item Selected</p>
                 <p className="text-[10px] text-gray-300">Please Select Item from Left Menu Item</p>
@@ -912,9 +1047,10 @@ export default function PosOrderPage() {
 
             {/* Always Visible Action Buttons (Row 4) */}
             {!isPickupMode && (
-              <div className="grid grid-cols-2 gap-2 p-2 border-t border-white/5">
-                <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" />
-                <ActionButton onClick={handleReprint} label="REPRINT" color="bg-[#555555]" textColor="text-white" />
+              <div className="grid grid-cols-3 gap-2 p-2 border-t border-white/5">
+                <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" disabled={!canPlaceKot} />
+                <ActionButton onClick={handleReprint} label="REPRINT" color="bg-[#555555]" textColor="text-white" disabled={!canReprint} />
+                <ActionButton onClick={handleSave} label="HOLD" color="bg-[#00BCD4]" textColor="text-white" disabled={!canHoldDraft} />
               </div>
             )}
             {/* Download Bill + KOT - only shown in pickup mode */}
@@ -924,6 +1060,7 @@ export default function PosOrderPage() {
                   onClick={handleDownloadBillAndKOT} 
                   label="Download Bill + KOT" 
                   color="bg-[#00BCD4]" 
+                  disabled={!canDownloadPickup}
                 />
               </div>
             )}
@@ -961,17 +1098,17 @@ export default function PosOrderPage() {
 
               {/* List */}
               <div className="py-2">
-                {MOCK_WAITERS.map((waiter) => (
+                {(staff || []).map((waiter) => (
                   <button
-                    key={waiter.id}
+                    key={waiter.id || waiter._id}
                     onClick={() => { playClickSound(); setSelectedWaiter(waiter); }}
                     className="w-full flex items-center justify-between px-5 py-4 transition-colors hover:bg-gray-50 group border-b border-gray-50 last:border-0"
                   >
-                    <span className={`text-[13px] font-bold ${selectedWaiter?.id === waiter.id ? 'text-gray-900' : 'text-gray-500'}`}>
+                    <span className={`text-[13px] font-bold ${(selectedWaiter?.id || selectedWaiter?._id) === (waiter.id || waiter._id) ? 'text-gray-900' : 'text-gray-500'}`}>
                       {waiter.name}
                     </span>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedWaiter?.id === waiter.id ? 'border-[#E1261C] bg-[#E1261C]' : 'border-gray-300 bg-white group-hover:border-gray-400'}`}>
-                      {selectedWaiter?.id === waiter.id && (
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${(selectedWaiter?.id || selectedWaiter?._id) === (waiter.id || waiter._id) ? 'border-[#E1261C] bg-[#E1261C]' : 'border-gray-300 bg-white group-hover:border-gray-400'}`}>
+                      {(selectedWaiter?.id || selectedWaiter?._id) === (waiter.id || waiter._id) && (
                         <Check size={12} strokeWidth={4} className="text-white" />
                       )}
                     </div>
@@ -988,7 +1125,16 @@ export default function PosOrderPage() {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => { playClickSound(); setIsWaiterModalOpen(false); }}
+                  onClick={async () => {
+                    playClickSound();
+                    try {
+                      await persistOrderMeta();
+                    } catch (error) {
+                      setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to save waiter assignment.' });
+                    } finally {
+                      setIsWaiterModalOpen(false);
+                    }
+                  }}
                   className="px-8 py-2 text-sm font-bold bg-[#E1261C] text-white rounded hover:bg-red-700 transition-colors shadow-md shadow-stone-900/20"
                 >
                   Done
@@ -1289,11 +1435,18 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
   );
 }
 
-function ActionButton({ onClick, label, color, textColor = "text-white" }) {
+function ActionButton({ onClick, label, color, textColor = "text-white", disabled = false }) {
   return (
     <button
-      onClick={() => { playClickSound(); onClick(); }}
-      className={`${color} ${textColor} py-2.5 rounded-sm font-black text-[9px] uppercase shadow-sm active:scale-95 transition-all text-center leading-tight px-1 hover:brightness-110 flex items-center justify-center min-h-[42px] border border-black/5`}
+      onClick={() => {
+        if (disabled) return;
+        playClickSound();
+        onClick();
+      }}
+      disabled={disabled}
+      className={`${color} ${textColor} py-2.5 rounded-sm font-black text-[9px] uppercase shadow-sm transition-all text-center leading-tight px-1 flex items-center justify-center min-h-[42px] border border-black/5 ${
+        disabled ? 'opacity-40 cursor-not-allowed shadow-none' : 'active:scale-95 hover:brightness-110'
+      }`}
     >
       {label}
     </button>

@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import { 
-  ArrowLeft, Plus, Search, Save, X, Edit3, Trash2, 
-  AlertCircle, ShieldCheck, Calendar, Utensils,
-  ChevronRight, RefreshCw, Filter
+  Plus, Edit3, Trash2, 
+  AlertCircle, Utensils,
+  RefreshCw
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { usePos } from '../../../pos/context/PosContext';
 import AdminModal from '../../components/ui/AdminModal';
 
@@ -14,6 +14,8 @@ export default function DishReplacementManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     originalDishId: '',
     replacementDishId: '',
@@ -36,6 +38,7 @@ export default function DishReplacementManagement() {
   };
 
   const handleOpenModal = (rule = null) => {
+    setFormError('');
     if (rule) {
       setEditingRule(rule);
       setFormData({
@@ -58,14 +61,21 @@ export default function DishReplacementManagement() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.originalDishId || !formData.replacementDishId || !formData.startDate || !formData.endDate) {
+      setFormError('All replacement fields are required.');
+      return;
+    }
     
     if (formData.originalDishId === formData.replacementDishId) {
-      alert('Original Dish and Replacement Dish cannot be the same.');
+      setFormError('Original dish and replacement dish cannot be the same.');
       return;
     }
 
     if (new Date(formData.endDate) < new Date(formData.startDate)) {
-      alert('End Date cannot be before Start Date.');
+      setFormError('End date cannot be before start date.');
       return;
     }
 
@@ -86,7 +96,7 @@ export default function DishReplacementManagement() {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error saving replacement rule:', error);
-      alert('Error saving replacement rule.');
+      setFormError(error.response?.data?.message || 'Unable to save replacement rule.');
     } finally {
       setIsSaving(false);
     }
@@ -95,10 +105,11 @@ export default function DishReplacementManagement() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this replacement rule?')) {
       try {
+        setError('');
         await deleteReplacement(id);
       } catch (error) {
         console.error('Error deleting replacement rule:', error);
-        alert('Error deleting replacement rule.');
+        setError(error.response?.data?.message || 'Unable to delete replacement rule.');
       }
     }
   };
@@ -118,6 +129,13 @@ export default function DishReplacementManagement() {
            Create Replacement Rule
         </button>
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+          <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{error}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm">
@@ -224,6 +242,12 @@ export default function DishReplacementManagement() {
         isSaving={isSaving}
       >
         <div className="space-y-6">
+          {formError && (
+            <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+              <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{formError}</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Original Dish</label>

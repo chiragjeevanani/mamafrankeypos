@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, Search, Filter, Calendar, MapPin, Monitor, LogIn, LogOut, Edit2, Trash2, Save, X, AlertCircle } from 'lucide-react';
+import { Clock, Search, Monitor, Edit2, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../../utils/api';
 import { playClickSound } from '../../../pos/utils/sounds';
@@ -8,6 +8,7 @@ export default function Attendance() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -37,12 +38,13 @@ export default function Attendance() {
   };
 
   const handleOpenModal = (record = null) => {
+    setFormError('');
     if (record) {
       setEditingRecord(record);
       setFormData({
         staffName: record.staffName,
-        checkIn: new Date(record.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        checkOut: record.checkOut ? new Date(record.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        checkIn: new Date(record.checkIn).toISOString().slice(0, 16),
+        checkOut: record.checkOut ? new Date(record.checkOut).toISOString().slice(0, 16) : '',
         terminal: record.terminal,
         status: record.status
       });
@@ -61,14 +63,27 @@ export default function Attendance() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.checkIn) {
+      setFormError('Check-in time is required.');
+      return;
+    }
+
+    if (formData.checkOut && new Date(formData.checkOut) < new Date(formData.checkIn)) {
+      setFormError('Check-out cannot be earlier than check-in.');
+      return;
+    }
+
     try {
       if (editingRecord) {
         await api.put(`/staff/attendance/${editingRecord._id}`, formData);
-        fetchAttendance();
+        await fetchAttendance();
       }
       setIsModalOpen(false);
     } catch (err) {
-      setError('Failed to commit shift override');
+      setFormError(err.response?.data?.message || 'Failed to commit shift override');
     }
   };
 
@@ -218,6 +233,12 @@ export default function Attendance() {
                 </div>
 
                 <form onSubmit={handleSave} className="p-8 space-y-6">
+                  {formError && (
+                    <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3">
+                      <AlertCircle size={16} className="text-rose-500" />
+                      <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{formError}</p>
+                    </div>
+                  )}
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Personnel Name</label>
@@ -232,7 +253,7 @@ export default function Attendance() {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Check-In</label>
                         <input 
-                          type="text" 
+                          type="datetime-local" 
                           required
                           className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/10"
                           value={formData.checkIn}
@@ -249,6 +270,26 @@ export default function Attendance() {
                           <option value="In">Shift Active</option>
                           <option value="Out">Shift Ended</option>
                         </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Check-Out</label>
+                        <input
+                          type="datetime-local"
+                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/10"
+                          value={formData.checkOut}
+                          onChange={(e) => setFormData({...formData, checkOut: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Terminal</label>
+                        <input
+                          type="text"
+                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/10"
+                          value={formData.terminal}
+                          onChange={(e) => setFormData({...formData, terminal: e.target.value})}
+                        />
                       </div>
                     </div>
                   </div>

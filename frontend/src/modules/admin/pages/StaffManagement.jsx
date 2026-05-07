@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, UserPlus, Shield, ShieldCheck, 
-  Search, Filter, MoreHorizontal, Edit3, 
-  Trash2, Mail, Phone, MapPin, X, Save,
-  AlertTriangle, Lock, Unlock, BadgeCheck, AlertCircle
+  Search, MoreHorizontal, Edit3, 
+  Trash2, Mail, Phone, X, Save,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../pos/utils/sounds';
 import api from '../../../utils/api';
+import { useNavigate } from 'react-router-dom';
 
 export default function StaffManagement() {
+  const navigate = useNavigate();
   const [staff, setStaff] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [formData, setFormData] = useState({
@@ -37,6 +42,7 @@ export default function StaffManagement() {
       setRoles(data);
     } catch (err) {
       console.error('Failed to fetch roles');
+      setError('Failed to fetch role definitions');
     }
   };
 
@@ -53,6 +59,7 @@ export default function StaffManagement() {
   };
 
   const handleOpenModal = (member = null) => {
+    setFormError('');
     if (member) {
       setEditingMember(member);
       setFormData({
@@ -77,26 +84,58 @@ export default function StaffManagement() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.name.trim()) {
+      setFormError('Staff name is required.');
+      return;
+    }
+
+    if (!formData.role) {
+      setFormError('Role is required.');
+      return;
+    }
+
+    if (formData.role === 'Admin' && !editingMember && !formData.password) {
+      setFormError('Admin staff must have a password.');
+      return;
+    }
+
+    if (formData.role !== 'Admin' && !editingMember && !/^\d{4}$/.test(formData.pin)) {
+      setFormError('POS staff must have a 4-digit PIN.');
+      return;
+    }
+
+    if (formData.pin && !/^\d{4}$/.test(formData.pin)) {
+      setFormError('PIN must be exactly 4 digits.');
+      return;
+    }
+
     try {
+      setIsSaving(true);
       if (editingMember) {
         await api.put(`/staff/${editingMember._id}`, formData);
       } else {
         await api.post('/staff', formData);
       }
-      fetchStaff();
+      await fetchStaff();
       setIsModalOpen(false);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save staff');
+      setFormError(err.response?.data?.message || 'Failed to save staff');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Delete this staff member record?')) {
       try {
+        setError('');
         await api.delete(`/staff/${id}`);
-        fetchStaff();
+        await fetchStaff();
       } catch (err) {
-        setError('Failed to delete staff member');
+        setError(err.response?.data?.message || 'Failed to delete staff member');
       }
     }
   };
@@ -104,6 +143,13 @@ export default function StaffManagement() {
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
+
+  const filteredStaff = staff.filter(member =>
+    member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (member.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (member.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (member.role || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500 overflow-y-auto no-scrollbar max-h-full">
@@ -117,7 +163,7 @@ export default function StaffManagement() {
         </div>
          <div className="flex items-center gap-2">
             <button 
-              onClick={playClickSound}
+              onClick={() => { playClickSound(); navigate('/admin/staff/roles'); }}
               className="h-10 px-4 bg-white text-stone-500 rounded-xl text-[11px] font-bold uppercase tracking-wider hover:text-stone-800 transition-all border border-stone-200 shadow-sm"
             >Roles Setup</button>
             <button 
@@ -128,6 +174,19 @@ export default function StaffManagement() {
                Add Member
             </button>
          </div>
+      </div>
+
+      <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#E1261C] transition-colors" size={16} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="SEARCH STAFF BY NAME, EMAIL, PHONE OR ROLE..."
+            className="w-full bg-stone-50 border-stone-100 rounded-xl py-3 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/10 transition-all"
+          />
+        </div>
       </div>
 
       {/* Staff Overview Stats */}
@@ -168,10 +227,10 @@ export default function StaffManagement() {
              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">Loading Team Registry...</p>
            </div>
          )}
-         {!loading && staff.length === 0 && (
+         {!loading && filteredStaff.length === 0 && (
            <div className="col-span-full py-20 text-center text-stone-400 font-bold uppercase tracking-widest text-[10px]">No staff members found in registry</div>
          )}
-         {staff.map(member => (
+         {filteredStaff.map(member => (
             <div key={member._id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm hover:border-[#E1261C]/30 transition-all group relative">
                <div className="flex items-start justify-between mb-5">
                    <div className="flex items-center gap-4">
@@ -192,11 +251,11 @@ export default function StaffManagement() {
                <div className="space-y-3 bg-stone-50/50 p-4 rounded-xl border border-stone-100">
                   <div className="flex items-center gap-3 text-stone-400">
                      <Mail size={12} className="shrink-0" />
-                     <span className="text-[11px] font-semibold text-stone-600 truncate">{member.email}</span>
+                     <span className="text-[11px] font-semibold text-stone-600 truncate">{member.email || 'No email assigned'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-stone-400">
                      <Phone size={12} className="shrink-0" />
-                     <span className="text-[11px] font-semibold text-stone-600">+91 {member.phone}</span>
+                     <span className="text-[11px] font-semibold text-stone-600">{member.phone || 'No phone assigned'}</span>
                   </div>
                </div>
 
@@ -253,14 +312,14 @@ export default function StaffManagement() {
                 </div>
 
                <form onSubmit={handleSave} className="p-6 space-y-5">
-                  {error && (
+                  {formError && (
                     <motion.div 
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3"
                     >
                       <AlertCircle size={16} className="text-rose-500" />
-                      <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{error}</p>
+                      <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{formError}</p>
                     </motion.div>
                   )}
                   <div className="grid grid-cols-2 gap-5">
@@ -314,11 +373,11 @@ export default function StaffManagement() {
                         <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Email Address</label>
                         <input 
                            type="email" 
-                           required
                            className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.email}
                            onChange={(e) => setFormData({...formData, email: e.target.value})}
                            placeholder="staff@restaurant.com"
+                           required={formData.role === 'Admin'}
                         />
                      </div>
 
@@ -355,7 +414,7 @@ export default function StaffManagement() {
                            value={formData.pin}
                            onChange={(e) => setFormData({...formData, pin: e.target.value})}
                            placeholder="1234"
-                           required={!editingMember && formData.role === 'Biller'}
+                           required={!editingMember && formData.role !== 'Admin'}
                         />
                      </div>
                   </div>
@@ -369,10 +428,11 @@ export default function StaffManagement() {
                       <button 
                          type="submit"
                          onClick={playClickSound}
+                         disabled={isSaving}
                          className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:bg-[#4E342E]"
                       >
                          <Save size={14} />
-                         {editingMember ? 'Update Staff Member' : 'Onboard Member'}
+                         {isSaving ? 'Saving...' : (editingMember ? 'Update Staff Member' : 'Onboard Member')}
                       </button>
                    </div>
                </form>

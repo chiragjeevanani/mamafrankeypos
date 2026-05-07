@@ -1,5 +1,11 @@
 const Attendance = require('../models/Attendance');
 
+const parseDateTime = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 // @desc    Get all attendance records for today
 // @route   GET /api/staff/attendance
 // @access  Private/Admin
@@ -28,10 +34,35 @@ const updateAttendance = async (req, res) => {
   const record = await Attendance.findById(req.params.id);
 
   if (record) {
-    record.checkIn = req.body.checkIn || record.checkIn;
-    record.checkOut = req.body.checkOut || record.checkOut;
-    record.status = req.body.status || record.status;
-    record.terminal = req.body.terminal || record.terminal;
+    if (req.body.checkIn !== undefined) {
+      const checkIn = parseDateTime(req.body.checkIn);
+      if (!checkIn) {
+        res.status(400);
+        throw new Error('Valid check-in date/time is required');
+      }
+      record.checkIn = checkIn;
+    }
+
+    if (req.body.checkOut !== undefined) {
+      if (req.body.checkOut === '' || req.body.checkOut === null) {
+        record.checkOut = undefined;
+      } else {
+        const checkOut = parseDateTime(req.body.checkOut);
+        if (!checkOut) {
+          res.status(400);
+          throw new Error('Valid check-out date/time is required');
+        }
+        record.checkOut = checkOut;
+      }
+    }
+
+    if (req.body.status !== undefined) record.status = req.body.status;
+    if (req.body.terminal !== undefined) record.terminal = req.body.terminal;
+
+    if (record.checkOut && record.checkOut < record.checkIn) {
+      res.status(400);
+      throw new Error('Check-out cannot be earlier than check-in');
+    }
 
     const updatedRecord = await record.save();
     res.json(updatedRecord);

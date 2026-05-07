@@ -71,6 +71,9 @@ const orderSchema = mongoose.Schema(
     customer: {
       name: String,
       phone: String,
+      address: String,
+      locality: String,
+      notes: String,
     },
     waiter: {
       type: mongoose.Schema.Types.ObjectId,

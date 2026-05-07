@@ -313,6 +313,10 @@ export default function SystemSettings() {
 
   const [tablesSaved, setTablesSaved] = useState(false);
   const [activeTableSection, setActiveTableSection] = useState(sections[0]?._id || '');
+  const [tableError, setTableError] = useState('');
+  const [tableSuccess, setTableSuccess] = useState('');
+  const [sectionForm, setSectionForm] = useState({ id: null, label: '', rank: 0 });
+  const [tableForm, setTableForm] = useState({ id: null, name: '', capacity: 4, status: 'blank' });
 
   // Update active section if sections change or on first load
   React.useEffect(() => {
@@ -320,6 +324,98 @@ export default function SystemSettings() {
       setActiveTableSection(sections[0]._id);
     }
   }, [sections, activeTableSection]);
+
+  const clearTableMessages = () => {
+    setTableError('');
+    setTableSuccess('');
+  };
+
+  const resetSectionForm = () => {
+    setSectionForm({ id: null, label: '', rank: sections.length });
+  };
+
+  const resetTableForm = () => {
+    setTableForm({ id: null, name: '', capacity: 4, status: 'blank' });
+  };
+
+  const selectedSection = sections.find(s => s._id === activeTableSection) || null;
+  const tablesInActiveSection = tables.filter(t => t.sectionId === selectedSection?.id);
+
+  const saveSection = async () => {
+    clearTableMessages();
+    const label = sectionForm.label.trim();
+
+    if (!label) {
+      setTableError('Section name is required.');
+      return;
+    }
+
+    const payload = {
+      label,
+      name: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+      rank: Number(sectionForm.rank) || 0,
+    };
+
+    try {
+      let savedSection;
+      if (sectionForm.id) {
+        savedSection = await updateSection(sectionForm.id, payload);
+        setTableSuccess('Section updated successfully.');
+      } else {
+        savedSection = await addSection(payload);
+        setTableSuccess('Section created successfully.');
+      }
+
+      if (savedSection?._id) {
+        setActiveTableSection(savedSection._id);
+      }
+      resetSectionForm();
+    } catch (error) {
+      setTableError(error.response?.data?.message || 'Unable to save section.');
+    }
+  };
+
+  const saveTable = async () => {
+    clearTableMessages();
+
+    if (!selectedSection) {
+      setTableError('Select a section before saving a table.');
+      return;
+    }
+
+    const name = tableForm.name.trim().toUpperCase();
+    const capacity = Number(tableForm.capacity);
+
+    if (!name) {
+      setTableError('Table identifier is required.');
+      return;
+    }
+
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+      setTableError('Capacity must be greater than zero.');
+      return;
+    }
+
+    const payload = {
+      name,
+      section: activeTableSection,
+      capacity,
+      status: tableForm.status,
+    };
+
+    try {
+      if (tableForm.id) {
+        await updateTable(tableForm.id, payload);
+        setTableSuccess('Table updated successfully.');
+      } else {
+        await addTable(payload);
+        setTableSuccess('Table created successfully.');
+      }
+      resetTableForm();
+    } catch (error) {
+      setTableError(error.response?.data?.message || 'Unable to save table.');
+    }
+  };
 
   // ── Counter Billing Series state ──
   const [counters, setCounters] = useState([]);
@@ -787,25 +883,80 @@ export default function SystemSettings() {
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Define your physical dining areas</p>
                            </div>
                            <button 
-                             onClick={async () => {
-                               const label = window.prompt('Enter new section name:');
-                               if (label) {
-                                 const name = label.toLowerCase().replace(/\s/g, '-');
-                                 const res = await addSection({ name, label });
-                                 if (res && res._id) setActiveTableSection(res._id);
-                               }
+                             onClick={() => {
+                               clearTableMessages();
+                               resetSectionForm();
                              }}
                              className="bg-slate-900 text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10"
                            >
-                             <Plus size={12} /> Add New Section
+                             <Plus size={12} /> New Section
                            </button>
+                        </div>
+
+                        {(tableError || tableSuccess) && (
+                          <div className={`rounded-sm border px-4 py-3 flex items-start gap-3 ${tableError ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-700'}`}>
+                            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                            <p className="text-[10px] font-black uppercase tracking-widest">{tableError || tableSuccess}</p>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_220px_160px] gap-3 bg-white border border-slate-100 rounded-sm p-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Section Label</label>
+                            <input
+                              type="text"
+                              value={sectionForm.label}
+                              onChange={(e) => setSectionForm(prev => ({ ...prev, label: e.target.value }))}
+                              placeholder="e.g. Main Hall"
+                              className="w-full bg-slate-50 border border-slate-200 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Display Rank</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={sectionForm.rank}
+                              onChange={(e) => setSectionForm(prev => ({ ...prev, rank: e.target.value }))}
+                              className="w-full bg-slate-50 border border-slate-200 p-3 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                            />
+                          </div>
+                          <div className="flex items-end gap-2">
+                            <button
+                              onClick={saveSection}
+                              className="flex-1 bg-slate-900 text-white px-4 py-3 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                            >
+                              {sectionForm.id ? 'Update' : 'Create'}
+                            </button>
+                            {sectionForm.id && (
+                              <button
+                                onClick={() => {
+                                  clearTableMessages();
+                                  resetSectionForm();
+                                }}
+                                className="px-4 py-3 border border-slate-200 rounded-sm text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="flex flex-wrap gap-3">
+                          {sections.length === 0 && (
+                            <div className="w-full rounded-sm border border-dashed border-slate-200 bg-white px-4 py-6 text-center">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No dining sections created yet</p>
+                            </div>
+                          )}
+
                           {sections.map(sec => (
                             <button 
                               key={sec.id} 
-                              onClick={() => setActiveTableSection(sec._id)}
+                              onClick={() => {
+                                clearTableMessages();
+                                resetTableForm();
+                                setActiveTableSection(sec._id);
+                              }}
                               className={`px-4 py-2.5 rounded-sm border transition-all flex items-center gap-3 ${
                                 activeTableSection === sec._id 
                                   ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
@@ -815,13 +966,10 @@ export default function SystemSettings() {
                                <span className="text-[10px] font-black uppercase tracking-widest">{sec.label}</span>
                                <div className="flex items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
                                   <div 
-                                    onClick={async (e) => {
+                                    onClick={(e) => {
                                       e.stopPropagation();
-                                      const label = window.prompt('Edit section name:', sec.label);
-                                      if (label) {
-                                        const name = label.toLowerCase().replace(/\s/g, '-');
-                                        await updateSection(sec._id, { name, label });
-                                      }
+                                      clearTableMessages();
+                                      setSectionForm({ id: sec._id, label: sec.label, rank: sec.rank ?? 0 });
                                     }}
                                     className="p-1 hover:bg-white/10 rounded-sm"
                                   >
@@ -831,8 +979,14 @@ export default function SystemSettings() {
                                     onClick={async (e) => {
                                       e.stopPropagation();
                                       if (window.confirm(`Delete ${sec.label} and all its tables?`)) {
-                                         await deleteSection(sec._id);
-                                         if (activeTableSection === sec._id) setActiveTableSection(sections.find(s => s._id !== sec._id)?._id || '');
+                                         clearTableMessages();
+                                         try {
+                                           await deleteSection(sec._id);
+                                           if (activeTableSection === sec._id) setActiveTableSection(sections.find(s => s._id !== sec._id)?._id || '');
+                                           setTableSuccess('Section deleted successfully.');
+                                         } catch (error) {
+                                           setTableError(error.response?.data?.message || 'Unable to delete section.');
+                                         }
                                       }
                                     }}
                                     className="p-1 hover:bg-rose-500 rounded-sm"
@@ -849,20 +1003,79 @@ export default function SystemSettings() {
                       <div className="pt-8 border-t border-slate-50 space-y-6">
                         <div className="flex items-center justify-between">
                            <div>
-                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry — {sections.find(s => s._id === activeTableSection)?.label}</h4>
+                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry {selectedSection ? `- ${selectedSection.label}` : '- Select Section'}</h4>
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Configure individual table identifiers and statuses</p>
                            </div>
                            <button 
-                             onClick={async () => {
-                               const name = window.prompt(`Add new table to ${sections.find(s => s._id === activeTableSection)?.label}:`);
-                               if (name) {
-                                 await addTable({ name, section: activeTableSection, capacity: 4 });
-                               }
+                             onClick={() => {
+                               clearTableMessages();
+                               resetTableForm();
                              }}
-                             className="bg-[#E1261C] text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-rose-900/10"
+                             disabled={!selectedSection}
+                             className="bg-[#E1261C] text-white px-4 py-2 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-rose-900/10 disabled:opacity-50"
                            >
                              <Plus size={12} /> Add Table
                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_140px_180px_160px] gap-3 bg-white border border-slate-100 rounded-sm p-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Table Identifier</label>
+                            <input
+                              type="text"
+                              value={tableForm.name}
+                              onChange={(e) => setTableForm(prev => ({ ...prev, name: e.target.value.toUpperCase() }))}
+                              placeholder="e.g. T1 or AC12"
+                              className="w-full bg-slate-50 border border-slate-200 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                              disabled={!selectedSection}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Capacity</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={tableForm.capacity}
+                              onChange={(e) => setTableForm(prev => ({ ...prev, capacity: e.target.value }))}
+                              className="w-full bg-slate-50 border border-slate-200 p-3 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                              disabled={!selectedSection}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
+                            <select
+                              value={tableForm.status}
+                              onChange={(e) => setTableForm(prev => ({ ...prev, status: e.target.value }))}
+                              className="w-full bg-slate-50 border border-slate-200 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                              disabled={!selectedSection}
+                            >
+                              <option value="blank">Blank</option>
+                              <option value="on-hold">On Hold</option>
+                              <option value="running-kot">Running KOT</option>
+                              <option value="printed">Printed</option>
+                              <option value="paid">Paid</option>
+                            </select>
+                          </div>
+                          <div className="flex items-end gap-2">
+                            <button
+                              onClick={saveTable}
+                              disabled={!selectedSection}
+                              className="flex-1 bg-[#E1261C] text-white px-4 py-3 rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                            >
+                              {tableForm.id ? 'Update' : 'Create'}
+                            </button>
+                            {tableForm.id && (
+                              <button
+                                onClick={() => {
+                                  clearTableMessages();
+                                  resetTableForm();
+                                }}
+                                className="px-4 py-3 border border-slate-200 rounded-sm text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="bg-white border border-slate-100 rounded-sm overflow-hidden">
@@ -874,18 +1087,18 @@ export default function SystemSettings() {
 
                           <div className="divide-y divide-slate-50">
                             <AnimatePresence mode="popLayout" initial={false}>
-                              {tables.filter(t => t.sectionId === sections.find(s => s._id === activeTableSection)?.id).length === 0 ? (
+                              {tablesInActiveSection.length === 0 ? (
                                  <motion.div 
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     className="py-12 flex flex-col items-center justify-center gap-2 text-slate-200"
                                  >
                                     <Table size={32} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">No tables assigned to this section</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">{selectedSection ? 'No tables assigned to this section' : 'Select a section to manage tables'}</span>
                                  </motion.div>
-                              ) : tables.filter(t => t.sectionId === sections.find(s => s._id === activeTableSection)?.id).map((table, idx) => (
+                              ) : tablesInActiveSection.map((table, idx) => (
                                 <motion.div
-                                  key={table.id}
+                                  key={table._id}
                                   initial={{ opacity: 0, x: -10 }}
                                   animate={{ opacity: 1, x: 0 }}
                                   exit={{ opacity: 0, x: 10 }}
@@ -899,15 +1112,30 @@ export default function SystemSettings() {
                                     <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{table.name}</span>
                                   </div>
                                   <div>
-                                    <span className={`text-[8px] font-black px-2.5 py-1 rounded-sm border ${table.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                                      {table.status.toUpperCase()}
+                                    <span className={`text-[8px] font-black px-2.5 py-1 rounded-sm border ${
+                                      table.status === 'blank'
+                                        ? 'bg-slate-50 text-slate-500 border-slate-100'
+                                        : table.status === 'running-kot'
+                                        ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                        : table.status === 'printed'
+                                        ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                        : table.status === 'paid'
+                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                        : 'bg-rose-50 text-rose-600 border-rose-100'
+                                    }`}>
+                                      {table.status.replace('-', ' ').toUpperCase()}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2 opacity-20 group-hover:opacity-100 transition-all">
                                     <button 
-                                      onClick={async () => {
-                                        const name = window.prompt('Table Name:', table.name);
-                                        if (name) await updateTable(table._id, { name });
+                                      onClick={() => {
+                                        clearTableMessages();
+                                        setTableForm({
+                                          id: table._id,
+                                          name: table.name,
+                                          capacity: table.capacity || 4,
+                                          status: table.status || 'blank',
+                                        });
                                       }}
                                       className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-slate-900 hover:border-slate-300"
                                     >
@@ -916,7 +1144,13 @@ export default function SystemSettings() {
                                     <button 
                                       onClick={async () => {
                                          if (window.confirm(`Delete table ${table.name}?`)) {
-                                            await deleteTable(table._id);
+                                            clearTableMessages();
+                                            try {
+                                              await deleteTable(table._id);
+                                              setTableSuccess('Table deleted successfully.');
+                                            } catch (error) {
+                                              setTableError(error.response?.data?.message || 'Unable to delete table.');
+                                            }
                                          }
                                       }}
                                       className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-rose-600 hover:border-rose-100"

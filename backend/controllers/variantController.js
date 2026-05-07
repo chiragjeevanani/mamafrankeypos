@@ -12,7 +12,24 @@ const getVariantGroups = async (req, res) => {
 // @route   POST /api/menu/variants
 // @access  Private/Admin
 const createVariantGroup = async (req, res) => {
-  const { name, options, type } = req.body;
+  const name = String(req.body.name || '').trim();
+  const options = (req.body.options || [])
+    .filter((option) => String(option.name || '').trim() !== '')
+    .map((option) => ({
+      name: String(option.name || '').trim(),
+      price: Number(option.price ?? option.priceValue ?? 0) || 0,
+    }));
+  const type = req.body.type;
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Variant group name is required');
+  }
+
+  if (options.length === 0) {
+    res.status(400);
+    throw new Error('At least one variant option is required');
+  }
 
   const groupExists = await VariantGroup.findOne({ name });
 
@@ -37,9 +54,23 @@ const updateVariantGroup = async (req, res) => {
   const group = await VariantGroup.findById(req.params.id);
 
   if (group) {
-    group.name = req.body.name || group.name;
-    group.options = req.body.options || group.options;
-    group.type = req.body.type || group.type;
+    if (req.body.name !== undefined) group.name = String(req.body.name).trim() || group.name;
+    if (req.body.options !== undefined) {
+      const options = req.body.options
+        .filter((option) => String(option.name || '').trim() !== '')
+        .map((option) => ({
+          name: String(option.name || '').trim(),
+          price: Number(option.price ?? option.priceValue ?? 0) || 0,
+        }));
+
+      if (options.length === 0) {
+        res.status(400);
+        throw new Error('At least one variant option is required');
+      }
+
+      group.options = options;
+    }
+    if (req.body.type !== undefined) group.type = req.body.type;
 
     const updatedGroup = await group.save();
     res.json(updatedGroup);

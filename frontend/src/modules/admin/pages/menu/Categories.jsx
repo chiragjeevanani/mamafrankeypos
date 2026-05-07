@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Utensils, Search, Plus, Filter, MoreVertical, Edit2, Trash2, ChevronRight, Save } from 'lucide-react';
+import { Utensils, Search, Plus, Filter, Edit2, Trash2, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AdminModal from '../../components/ui/AdminModal';
 import { usePos } from '../../../pos/context/PosContext';
@@ -11,32 +11,41 @@ export default function Categories() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
-    status: 'Active',
-    icon: 'Utensils'
+    status: 'Active'
   });
 
   const handleOpenModal = (category = null) => {
+    setFormError('');
     if (category) {
       setEditingCategory(category);
-      setFormData({ name: category.name, status: category.status, icon: category.icon });
+      setFormData({ name: category.name, status: category.status });
     } else {
       setEditingCategory(null);
-      setFormData({ name: '', status: 'Active', icon: 'Utensils' });
+      setFormData({ name: '', status: 'Active' });
     }
     setIsModalOpen(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.name.trim()) {
+      setFormError('Category name is required.');
+      return;
+    }
+
     try {
       setIsSaving(true);
       const data = new FormData();
-      data.append('name', formData.name);
+      data.append('name', formData.name.trim());
       data.append('status', formData.status);
-      // icon is handled on frontend mostly, but could be saved as description or similar if needed
       
       if (editingCategory) {
         await updateCategory(editingCategory.id, data);
@@ -46,7 +55,7 @@ export default function Categories() {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error saving category:', error);
-      alert('Error saving category. Please check console.');
+      setFormError(error.response?.data?.message || 'Unable to save category.');
     } finally {
       setIsSaving(false);
     }
@@ -55,10 +64,11 @@ export default function Categories() {
   const handleDelete = async (id) => {
     if (window.confirm('PROTOCOL: Proceed with record termination?')) {
       try {
+        setError('');
         await deleteCategory(id);
       } catch (error) {
         console.error('Error deleting category:', error);
-        alert('Error deleting category.');
+        setError(error.response?.data?.message || 'Unable to delete category.');
       }
     }
   };
@@ -83,6 +93,13 @@ export default function Categories() {
         </button>
       </div>
 
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+          <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{error}</p>
+        </div>
+      )}
+
       <div className="bg-white border border-slate-100 rounded-sm p-2 flex flex-col md:flex-row items-center gap-4">
         <div className="relative flex-1 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors" size={14} />
@@ -101,6 +118,11 @@ export default function Categories() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {categories.filter(c => c.id !== 'fav' && c.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+          <div className="col-span-full bg-white border border-slate-100 rounded-sm p-12 text-center text-slate-400">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em]">No categories found</p>
+          </div>
+        )}
         {categories.filter(c => c.id !== 'fav' && c.name.toLowerCase().includes(searchQuery.toLowerCase())).map((cat) => (
           <motion.div 
             key={cat.id}
@@ -146,6 +168,12 @@ export default function Categories() {
         isSaving={isSaving}
       >
         <div className="space-y-4">
+          {formError && (
+            <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+              <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{formError}</p>
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Designation</label>
             <input 
@@ -167,19 +195,6 @@ export default function Categories() {
               >
                 <option value="Active">Operational</option>
                 <option value="Inactive">Decommissioned</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Icon Mapping</label>
-              <select 
-                className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
-                value={formData.icon}
-                onChange={(e) => setFormData({...formData, icon: e.target.value})}
-              >
-                <option value="Utensils">General Dining</option>
-                <option value="Beer">Beverages</option>
-                <option value="IceCream">Desserts</option>
-                <option value="Soup">Appetizers</option>
               </select>
             </div>
           </div>

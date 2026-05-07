@@ -12,7 +12,7 @@ import { getTableColor, getTableStatusText } from '../../utils/tableLifecycle';
 export default function TableView() {
   const navigate = useNavigate();
   const { 
-    orders, saveOrder, settleOrder, clearTable, carOrders, pickupOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
+    orders, saveOrder, settleOrder, holdOrder, clearTable, carOrders, pickupOrders,
     sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff
   } = usePos();
 
@@ -38,6 +38,8 @@ export default function TableView() {
   const [txnRef, setTxnRef] = useState('');
   const [showCashCalculator, setShowCashCalculator] = useState(false);
   const [cashTendered, setCashTendered] = useState('');
+  const [tableNotice, setTableNotice] = useState(null);
+  const [settlementNotice, setSettlementNotice] = useState('');
 
   const handleTableClick = (table) => {
     const isPickupOrder = table.isPickupOrder || table.sectionId === 'pickup';
@@ -60,13 +62,12 @@ export default function TableView() {
     setShowWaiterModal(true);
   };
 
-  const handleWaiterSelect = (waiter) => {
+  const handleWaiterSelect = async (waiter) => {
     playClickSound();
     setShowWaiterModal(false);
 
     // === NEW CAR flow: car number was entered, now create order and navigate ===
     if (pendingCarNumber) {
-      addCarOrder(pendingCarNumber, [], 0, waiter);
       const carId = pendingCarNumber;
       setPendingCarNumber(null);
       navigate(`/pos/order/${carId}`, { state: { waiter, fromCarService: true } });
@@ -75,21 +76,51 @@ export default function TableView() {
     
     // === EXISTING TABLE / CAR CARD flow ===
     // Set waiter in context immediately
-    if (selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service') {
-       // if it doesn't has an order yet, start one with the waiter
-       if (!carOrders[selectedTableForWaiter.id]) {
-          addCarOrder(selectedTableForWaiter.id, [], 0, waiter);
-       }
-    } else {
+    const isCarTable = selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service';
+    const isPickupOrder = selectedTableForWaiter.isPickupOrder || selectedTableForWaiter.sectionId === 'pickup';
+    const existingOrder = isPickupOrder
+      ? pickupOrders[selectedTableForWaiter.id]
+      : isCarTable
+      ? carOrders[selectedTableForWaiter.id]
+      : orders[selectedTableForWaiter.id];
+
+    if (!(selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service')) {
        setTableWaiter(selectedTableForWaiter.id, waiter);
     }
 
-    const isCarTable = selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service';
-    navigate(`/pos/order/${selectedTableForWaiter.id}`, { state: { waiter, fromCarService: isCarTable } });
+    if (existingOrder) {
+      try {
+        await holdOrder(selectedTableForWaiter.id, {
+          isCarOrder: isCarTable,
+          isPickupOrder,
+          staffId: waiter?._id || waiter?.id
+        });
+      } catch (error) {
+        setTableNotice({ type: 'error', text: error.response?.data?.message || 'Unable to save waiter assignment.' });
+      }
+    }
+
+    navigate(`/pos/order/${selectedTableForWaiter.id}`, {
+      state: {
+        waiter,
+        fromCarService: isCarTable,
+        fromPickup: isPickupOrder
+      }
+    });
   };
 
-  const handlePrintBill = (e, order, table, orderType = 'dine-in', options = {}) => {
+  const handlePrintBill = async (e, order, table, orderType = 'dine-in', options = {}) => {
     e.stopPropagation();
+    setTableNotice(null);
+    if (!order?.kots?.length) {
+      setTableNotice({ type: 'error', text: 'There is no active KOT to bill for this table.' });
+      return;
+    }
+    if (order.billPrinted) {
+      setTableNotice({ type: 'error', text: 'Bill is already generated for this order. Proceed to settlement.' });
+      return;
+    }
+
     const subTotal = order.kots?.reduce((sum, kot) => {
       if (kot.total) return sum + kot.total;
       return sum + (kot.items?.reduce((iSum, item) => iSum + (item.price * item.quantity), 0) || 0);
@@ -104,14 +135,19 @@ export default function TableView() {
       { total, subTotal, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal })) }
     );
 
-    saveOrder(order.id || order._id, { 
-      isCarOrder: options.isCarOrder,
-      isPickupOrder: options.isPickupOrder
-    });
+    try {
+      await saveOrder(order.id || order._id, { 
+        isCarOrder: options.isCarOrder,
+        isPickupOrder: options.isPickupOrder
+      });
+    } catch (error) {
+      setTableNotice({ type: 'error', text: error.response?.data?.message || 'Unable to mark this order as billed.' });
+    }
   };
 
   const handleOpenSettlement = (e, table, options = {}) => {
     e.stopPropagation();
+    setTableNotice(null);
     const isCarOrder = !!options.isCarOrder;
     const isPickupOrder = !!options.isPickupOrder;
     const order = isPickupOrder ? pickupOrders[table.id] : (isCarOrder ? carOrders[table.id] : orders[table.id]);
@@ -139,10 +175,11 @@ export default function TableView() {
     setCashTendered('');
     setCashlessType('Card');
     setTxnRef('');
+    setSettlementNotice('');
     setShowSettlementModal(true);
   };
 
-  const handleSettlement = (mode, subType = null) => {
+  const handleSettlement = async (mode, subType = null) => {
     if (!settlementTarget) return;
 
     if (mode === 'upi' && !showUpiQR) {
@@ -161,6 +198,26 @@ export default function TableView() {
       return;
     }
 
+    if (mode === 'upi') {
+      setSettlementNotice('');
+    }
+
+    if (mode === 'cashless') {
+      if (!String(subType || cashlessType || '').trim()) {
+        setSettlementNotice('Select a cashless payment method before settlement.');
+        return;
+      }
+      if (!String(txnRef || '').trim()) {
+        setSettlementNotice('Enter a reference or machine id before confirming cashless settlement.');
+        return;
+      }
+    }
+
+    if (mode === 'cash' && Number(cashTendered) < settlementTarget.total) {
+      setSettlementNotice('Cash received must be at least equal to the bill total.');
+      return;
+    }
+
     let paymentMethod = 'Cash';
     if (mode === 'upi') paymentMethod = 'UPI';
     else if (mode === 'cashless') {
@@ -169,27 +226,34 @@ export default function TableView() {
       paymentMethod = `Cash (Tendered: ₹${cashTendered})`;
     }
 
-    settleOrder(settlementTarget.id, paymentMethod, {
-      total: settlementTarget.total,
-      taxes: settlementTarget.appliedTaxes,
-      isCarOrder: settlementTarget.isCarOrder,
-      isPickupOrder: settlementTarget.isPickupOrder,
-    });
-    clearTable(settlementTarget.id, {
-      isCarOrder: settlementTarget.isCarOrder,
-      isPickupOrder: settlementTarget.isPickupOrder,
-    });
-    setShowSettlementModal(false);
-    setSettlementTarget(null);
-    setShowUpiQR(false);
-    setShowCashlessOptions(false);
-    setShowCashCalculator(false);
+    try {
+      await settleOrder(settlementTarget.id, paymentMethod, {
+        total: settlementTarget.total,
+        taxes: settlementTarget.appliedTaxes,
+        isCarOrder: settlementTarget.isCarOrder,
+        isPickupOrder: settlementTarget.isPickupOrder,
+      });
+      setShowSettlementModal(false);
+      setSettlementTarget(null);
+      setShowUpiQR(false);
+      setShowCashlessOptions(false);
+      setShowCashCalculator(false);
+      setSettlementNotice('');
+      setTableNotice({ type: 'success', text: `Settlement completed for ${settlementTarget.name}.` });
+    } catch (error) {
+      setSettlementNotice(error.response?.data?.message || 'Unable to settle this order.');
+    }
   };
 
-  const handleClearTable = (e, tableId) => {
+  const handleClearTable = async (e, tableId, options = {}) => {
     e.stopPropagation();
     if (window.confirm(`Clear ${tableId} and mark as empty?`)) {
-      clearTable(tableId);
+      try {
+        await clearTable(tableId, options);
+        setTableNotice({ type: 'success', text: `${tableId} cleared successfully.` });
+      } catch (error) {
+        setTableNotice({ type: 'error', text: error.response?.data?.message || 'Unable to clear this order.' });
+      }
     }
   };
 
@@ -238,6 +302,16 @@ export default function TableView() {
           </button>
         </div>
       </div>
+
+      {tableNotice && (
+        <div className={`mx-4 mt-3 rounded-xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest ${
+          tableNotice.type === 'error'
+            ? 'bg-rose-50 border-rose-100 text-rose-600'
+            : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+        }`}>
+          {tableNotice.text}
+        </div>
+      )}
 
       {/* Filter / Legend Bar */}
       <div className="bg-white px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-4">
@@ -838,6 +912,12 @@ export default function TableView() {
               </div>
 
               <div className="p-5 space-y-3">
+                {settlementNotice && (
+                  <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-rose-600">
+                    {settlementNotice}
+                  </div>
+                )}
+
                 {!showUpiQR && !showCashlessOptions && !showCashCalculator && (
                   <>
                     {[

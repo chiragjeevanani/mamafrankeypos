@@ -1,11 +1,23 @@
 const Staff = require('../models/Staff');
+const Role = require('../models/Role');
 const mongoose = require('mongoose');
+
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+const normalizePhone = (phone) => String(phone || '').trim();
+const normalizeRole = (role) => String(role || '').trim();
+const normalizeName = (name) => String(name || '').trim();
+const normalizePin = (pin) => String(pin || '').trim();
+
+const validateRoleExists = async (roleName) => {
+  const role = await Role.findOne({ name: roleName });
+  return !!role;
+};
 
 // @desc    Get all staff
 // @route   GET /api/staff
 // @access  Private/Admin
 const getStaff = async (req, res) => {
-  const staff = await Staff.find({});
+  const staff = await Staff.find({}).select('-password -pin');
   res.json(staff);
 };
 
@@ -13,7 +25,42 @@ const getStaff = async (req, res) => {
 // @route   POST /api/staff
 // @access  Private/Admin
 const registerStaff = async (req, res) => {
-  const { name, email, phone, password, pin, role } = req.body;
+  const name = normalizeName(req.body.name);
+  const email = normalizeEmail(req.body.email);
+  const phone = normalizePhone(req.body.phone);
+  const password = req.body.password;
+  const pin = normalizePin(req.body.pin);
+  const role = normalizeRole(req.body.role);
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Staff name is required');
+  }
+
+  if (!role) {
+    res.status(400);
+    throw new Error('Role is required');
+  }
+
+  if (!(await validateRoleExists(role))) {
+    res.status(400);
+    throw new Error('Selected role does not exist');
+  }
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400);
+    throw new Error('A valid email address is required');
+  }
+
+  if (pin && !/^\d{4}$/.test(pin)) {
+    res.status(400);
+    throw new Error('PIN must be exactly 4 digits');
+  }
+
+  if (role === 'Admin' && !password) {
+    res.status(400);
+    throw new Error('Password is required for admin staff');
+  }
 
   const staffExists = await Staff.findOne({ email });
 
@@ -36,6 +83,7 @@ const registerStaff = async (req, res) => {
       _id: staff._id,
       name: staff.name,
       email: staff.email,
+      phone: staff.phone,
       role: staff.role,
       status: staff.status,
     });
@@ -52,18 +100,53 @@ const updateStaff = async (req, res) => {
   const staff = await Staff.findById(req.params.id);
 
   if (staff) {
-    staff.name = req.body.name || staff.name;
-    staff.email = req.body.email || staff.email;
-    staff.phone = req.body.phone || staff.phone;
-    staff.role = req.body.role || staff.role;
-    staff.status = req.body.status || staff.status;
+    if (req.body.name !== undefined) staff.name = normalizeName(req.body.name) || staff.name;
+    if (req.body.email !== undefined) {
+      const email = normalizeEmail(req.body.email);
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400);
+        throw new Error('A valid email address is required');
+      }
+
+      const emailExists = await Staff.findOne({ email, _id: { $ne: staff._id } });
+      if (email && emailExists) {
+        res.status(400);
+        throw new Error('Another staff member already uses this email');
+      }
+
+      staff.email = email;
+    }
+    if (req.body.phone !== undefined) staff.phone = normalizePhone(req.body.phone);
+    if (req.body.role !== undefined) {
+      const role = normalizeRole(req.body.role);
+      if (!role) {
+        res.status(400);
+        throw new Error('Role is required');
+      }
+      if (!(await validateRoleExists(role))) {
+        res.status(400);
+        throw new Error('Selected role does not exist');
+      }
+      staff.role = role;
+    }
+    if (req.body.status !== undefined) staff.status = req.body.status;
 
     if (req.body.password) {
       staff.password = req.body.password;
     }
 
     if (req.body.pin) {
-      staff.pin = req.body.pin;
+      const pin = normalizePin(req.body.pin);
+      if (!/^\d{4}$/.test(pin)) {
+        res.status(400);
+        throw new Error('PIN must be exactly 4 digits');
+      }
+      staff.pin = pin;
+    }
+
+    if (staff.role === 'Admin' && !staff.password && !req.body.password) {
+      res.status(400);
+      throw new Error('Admin staff must have a password');
     }
 
     const updatedStaff = await staff.save();
@@ -72,6 +155,7 @@ const updateStaff = async (req, res) => {
       _id: updatedStaff._id,
       name: updatedStaff.name,
       email: updatedStaff.email,
+      phone: updatedStaff.phone,
       role: updatedStaff.role,
       status: updatedStaff.status,
     });

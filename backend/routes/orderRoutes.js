@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const {
   processOrder,
+  updateOrder,
   getActiveOrder,
   markKOTPrinted,
+  cancelKOTItem,
   billOrder,
   settleOrder,
   getOrders,
@@ -17,6 +19,9 @@ router.route('/')
   .get(protect, getOrders)
   .post(protect, processOrder);
 
+router.route('/:id')
+  .put(protect, updateOrder);
+
 router.route('/adjustment-audit')
   .get(protect, admin, getAdjustmentAudit);
 
@@ -29,6 +34,9 @@ router.route('/active/:identifier')
 router.route('/:id/kot/:kotId/print')
   .patch(protect, markKOTPrinted);
 
+router.route('/:id/kot/:kotId/items/:itemId/cancel')
+  .patch(protect, cancelKOTItem);
+
 router.route('/:id/bill')
   .post(protect, billOrder);
 
@@ -36,6 +44,6 @@ router.route('/:id/settle')
   .post(protect, settleOrder);
 
 router.route('/:id/cancel')
-  .post(protect, admin, cancelOrder);
+  .post(protect, cancelOrder);
 
 module.exports = router;

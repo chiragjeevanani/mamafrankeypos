@@ -12,7 +12,14 @@ const getRoles = async (req, res) => {
 // @route   POST /api/roles
 // @access  Private/Admin
 const createRole = async (req, res) => {
-  const { name, description, permissions } = req.body;
+  const name = String(req.body.name || '').trim();
+  const description = String(req.body.description || '').trim();
+  const permissions = req.body.permissions || {};
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Role name is required');
+  }
 
   const roleExists = await Role.findOne({ name });
   if (roleExists) {
@@ -36,9 +43,23 @@ const updateRole = async (req, res) => {
   const role = await Role.findById(req.params.id);
 
   if (role) {
-    role.name = req.body.name || role.name;
-    role.description = req.body.description || role.description;
-    role.permissions = req.body.permissions || role.permissions;
+    if (req.body.name !== undefined) {
+      const newName = String(req.body.name).trim();
+      if (!newName) {
+        res.status(400);
+        throw new Error('Role name is required');
+      }
+
+      const existingRole = await Role.findOne({ name: newName, _id: { $ne: role._id } });
+      if (existingRole) {
+        res.status(400);
+        throw new Error('Role already exists');
+      }
+
+      role.name = newName;
+    }
+    if (req.body.description !== undefined) role.description = String(req.body.description).trim();
+    if (req.body.permissions !== undefined) role.permissions = req.body.permissions;
 
     const updatedRole = await role.save();
     res.json(updatedRole);

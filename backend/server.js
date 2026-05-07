@@ -2,13 +2,16 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const initSystem = require('./utils/initSystem');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 // Load env vars
 dotenv.config();
 
 // Connect to database
-connectDB();
+connectDB().then(() => {
+  initSystem();
+});
 
 const app = express();
 

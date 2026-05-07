@@ -17,6 +17,9 @@ const normalizeSectionKey = (value = '') =>
     .replace(/^-+|-+$/g, '');
 
 const getSectionKind = (sectionLike = {}) => {
+  if (sectionLike.type === 'PICKUP') return 'pickup';
+  if (sectionLike.type === 'CAR-SERVICE') return 'car';
+
   const candidates = [
     sectionLike.sectionId,
     sectionLike.id,
@@ -1207,7 +1210,7 @@ export default function TableView() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
             >
-              <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+               <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                 <h3 className="font-bold text-gray-800 uppercase flex items-center gap-2">
                   <Users size={18} className="text-[#E1261C]" />
                   Select Waiter / Staff
@@ -1217,7 +1220,9 @@ export default function TableView() {
                 </button>
               </div>
               <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto">
-                {(staff || []).map((waiter) => (
+                {(staff || [])
+                  .filter(s => s.status === 'Active' && s.role?.toLowerCase() === 'waiter')
+                  .map((waiter) => (
                   <button 
                     key={waiter.id || waiter._id}
                     onClick={() => handleWaiterSelect(waiter)}
@@ -1245,6 +1250,7 @@ export default function TableView() {
           </div>
         )}
       </AnimatePresence>
+
       {/* Add Table Modal */}
       <AnimatePresence>
         {showAddTable && (
@@ -1279,7 +1285,7 @@ export default function TableView() {
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">1. Select Section</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {sections.map(section => (
+                    {sections.filter(s => getSectionKind(s) === 'standard').map(section => (
                       <button
                         key={section.id}
                         onClick={() => {

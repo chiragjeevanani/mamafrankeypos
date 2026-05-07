@@ -236,7 +236,9 @@ export function PosProvider({ children }) {
         label: sec.label,
         _id: sec._id,
         rank: sec.rank ?? 0,
-        status: sec.status || 'Active'
+        status: sec.status || 'Active',
+        isSystem: sec.isSystem || false,
+        type: sec.type || 'DINE-IN'
       }));
 
       const formattedTables = tabRes.data.map(tab => ({

@@ -92,6 +92,11 @@ const createTable = async (req, res) => {
     throw new Error('Selected section does not exist');
   }
 
+  if (sectionExists.type === 'CAR-SERVICE') {
+    res.status(400);
+    throw new Error('Tables cannot be added to the Car Service section. It operates strictly by car numbers.');
+  }
+
   const duplicateTable = await Table.findOne({ name, section });
   if (duplicateTable) {
     res.status(400);
@@ -132,6 +137,18 @@ const updateTableStatus = async (req, res) => {
 const updateSection = async (req, res) => {
   const section = await Section.findById(req.params.id);
   if (section) {
+    if (section.isSystem) {
+      // Prevent changing core identity of system sections
+      if (req.body.name !== undefined && req.body.name !== section.name) {
+        res.status(400);
+        throw new Error('Cannot change the system name of a protected section');
+      }
+      if (req.body.type !== undefined && req.body.type !== section.type) {
+        res.status(400);
+        throw new Error('Cannot change the type of a protected section');
+      }
+    }
+
     if (req.body.label !== undefined) {
       const label = String(req.body.label).trim();
       if (!label) {
@@ -155,6 +172,8 @@ const updateSection = async (req, res) => {
     }
     section.rank = req.body.rank !== undefined ? req.body.rank : section.rank;
     if (req.body.status !== undefined) section.status = req.body.status;
+    if (req.body.type !== undefined) section.type = req.body.type;
+    
     const updatedSection = await section.save();
     res.json(updatedSection);
   } else {
@@ -169,6 +188,10 @@ const updateSection = async (req, res) => {
 const deleteSection = async (req, res) => {
   const section = await Section.findById(req.params.id);
   if (section) {
+    if (section.isSystem) {
+      res.status(400);
+      throw new Error('This is a dedicated system section and cannot be removed.');
+    }
     // Also delete tables in this section
     await Table.deleteMany({ section: section._id });
     await section.deleteOne();

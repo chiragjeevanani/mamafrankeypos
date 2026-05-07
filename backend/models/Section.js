@@ -15,6 +15,15 @@ const sectionSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isSystem: {
+      type: Boolean,
+      default: false,
+    },
+    type: {
+      type: String,
+      enum: ['DINE-IN', 'CAR-SERVICE', 'PICKUP'],
+      default: 'DINE-IN',
+    },
     status: {
       type: String,
       enum: ['Active', 'Inactive'],

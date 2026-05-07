@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Store, Utensils, Box, Users, 
   ShoppingCart, BarChart3, Settings, LogOut, 
   ChevronLeft, ChevronRight, Truck, CreditCard,
-  ShieldCheck, Bell, History, Sliders, Printer, Eye
+  ShieldCheck, Bell, History, Sliders, Printer, Eye, Table
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../../pos/utils/sounds';
@@ -42,6 +42,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
     {
       label: 'Operations',
       items: [
+        { label: 'Table Management', path: '/admin/tables', icon: Table },
         { 
           label: 'Order Management', 
           path: '/admin/orders', 

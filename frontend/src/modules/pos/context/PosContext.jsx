@@ -55,10 +55,17 @@ const normalizeCombo = (combo) => ({
   active: combo.active
 });
 
+const getLifecycleStatusForOrder = (order, fallbackStatus = 'running-kot') => {
+  if (order?.orderStatus === 'BILLED') return 'printed';
+  if (order?.orderStatus === 'COMPLETED') return 'paid';
+  if (order?.orderStatus === 'RUNNING') return order?.table?.status || fallbackStatus;
+  return fallbackStatus;
+};
+
 const normalizeOrder = (order, fallbackStatus) => normalizeTableLifecycle({
   ...order,
   id: order._id,
-  status: fallbackStatus,
+  status: getLifecycleStatusForOrder(order, fallbackStatus),
 });
 
 export function PosProvider({ children }) {
@@ -194,12 +201,18 @@ export function PosProvider({ children }) {
 
       const carMap = {};
       activeCarOrders.forEach(order => {
-        carMap[order.carNumber] = normalizeOrder(order, 'running-kot');
+        const orderKey = order?.table?.name || order?.carNumber || order?._id;
+        if (orderKey) {
+          carMap[orderKey] = normalizeOrder(order, 'running-kot');
+        }
       });
 
       const pickupMap = {};
       activePickupOrders.forEach(order => {
-        pickupMap[order._id] = normalizeOrder(order, 'running-kot');
+        const orderKey = order?.table?.name || order?._id;
+        if (orderKey) {
+          pickupMap[orderKey] = normalizeOrder(order, 'running-kot');
+        }
       });
 
       setOrders(tableMap);

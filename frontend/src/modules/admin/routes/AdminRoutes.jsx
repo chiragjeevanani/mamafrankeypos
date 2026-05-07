@@ -72,6 +72,7 @@ export default function AdminRoutes() {
         
         {/* Misc & Settings */}
         <Route path="customers" element={<CustomerManagement />} />
+        <Route path="tables" element={<Navigate to="/admin/settings/tables" replace />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
         <Route path="audit" element={<AuditLogs />} />
         <Route path="finance" element={<FinancialManagement />} />

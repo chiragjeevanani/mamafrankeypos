@@ -9,6 +9,57 @@ import { printBillReceipt } from '../../utils/printBill';
 import { playClickSound } from '../../utils/sounds';
 import { getTableColor, getTableStatusText } from '../../utils/tableLifecycle';
 
+const normalizeSectionKey = (value = '') =>
+  String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+const getSectionKind = (sectionLike = {}) => {
+  const candidates = [
+    sectionLike.sectionId,
+    sectionLike.id,
+    sectionLike.name,
+    sectionLike.label,
+  ]
+    .filter(Boolean)
+    .map(normalizeSectionKey);
+
+  if (candidates.some((value) => ['pickup', 'pick-up', 'takeaway', 'take-away'].includes(value) || value.includes('pickup'))) {
+    return 'pickup';
+  }
+
+  if (candidates.some((value) => ['car-service', 'car', 'drive-thru', 'drive-through'].includes(value) || value.includes('car'))) {
+    return 'car';
+  }
+
+  return 'standard';
+};
+
+const getSectionTablePrefix = (section) => {
+  const sectionKey = normalizeSectionKey(section?.id || section?.name || section?.label);
+
+  const explicitPrefixes = {
+    ac: 'AC',
+    garden: 'G',
+    'non-ac': 'NAC',
+    rooftops: 'R',
+    'second-floor': 'SF',
+  };
+
+  if (explicitPrefixes[sectionKey]) {
+    return explicitPrefixes[sectionKey];
+  }
+
+  return String(section?.label || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
+};
+
 export default function TableView() {
   const navigate = useNavigate();
   const { 
@@ -41,9 +92,18 @@ export default function TableView() {
   const [tableNotice, setTableNotice] = useState(null);
   const [settlementNotice, setSettlementNotice] = useState('');
 
+  const carSections = sections.filter((section) => getSectionKind(section) === 'car');
+  const pickupSections = sections.filter((section) => getSectionKind(section) === 'pickup');
+  const hasCarSection = carSections.length > 0;
+  const hasPickupSection = pickupSections.length > 0;
+  const carSectionIds = carSections.map((section) => section.id);
+  const untabledCarOrders = Object.values(carOrders).filter((order) => order?.carNumber && !order?.table?.name);
+  const untabledPickupOrders = Object.values(pickupOrders).filter((order) => !order?.table?.name);
+
   const handleTableClick = (table) => {
-    const isPickupOrder = table.isPickupOrder || table.sectionId === 'pickup';
-    const isCarOrder = (table.type === 'CAR' || table.sectionId === 'car-service');
+    const sectionKind = getSectionKind(table);
+    const isPickupOrder = table.isPickupOrder || sectionKind === 'pickup';
+    const isCarOrder = table.type === 'CAR' || sectionKind === 'car';
     
     const existingOrder = isPickupOrder ? pickupOrders[table.id] : isCarOrder ? carOrders[table.id] : orders[table.id];
 
@@ -76,15 +136,16 @@ export default function TableView() {
     
     // === EXISTING TABLE / CAR CARD flow ===
     // Set waiter in context immediately
-    const isCarTable = selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service';
-    const isPickupOrder = selectedTableForWaiter.isPickupOrder || selectedTableForWaiter.sectionId === 'pickup';
+    const selectedKind = getSectionKind(selectedTableForWaiter || {});
+    const isCarTable = selectedTableForWaiter.type === 'CAR' || selectedKind === 'car';
+    const isPickupOrder = selectedTableForWaiter.isPickupOrder || selectedKind === 'pickup';
     const existingOrder = isPickupOrder
       ? pickupOrders[selectedTableForWaiter.id]
       : isCarTable
       ? carOrders[selectedTableForWaiter.id]
       : orders[selectedTableForWaiter.id];
 
-    if (!(selectedTableForWaiter.type === 'CAR' || selectedTableForWaiter.sectionId === 'car-service')) {
+    if (!isCarTable) {
        setTableWaiter(selectedTableForWaiter.id, waiter);
     }
 
@@ -276,21 +337,25 @@ export default function TableView() {
             <RefreshCw size={18} className="text-gray-500" />
           </button>
           <div className="h-4 w-px bg-gray-200 mx-1" />
-          <button 
-            onClick={() => setShowAddCar(true)}
-            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95 flex items-center gap-1.5"
-          >
-            <Car size={14} /> Car Service
-          </button>
-          <button
-            onClick={() => {
-              const puId = `PU-${Date.now().toString().slice(-6)}`;
-              navigate(`/pos/order/${puId}`, { state: { fromPickup: true } });
-            }}
-            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95"
-          >
-            Pick Up
-          </button>
+          {hasCarSection && (
+            <button 
+              onClick={() => setShowAddCar(true)}
+              className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95 flex items-center gap-1.5"
+            >
+              <Car size={14} /> Car Service
+            </button>
+          )}
+          {hasPickupSection && (
+            <button
+              onClick={() => {
+                const puId = `PU-${Date.now().toString().slice(-6)}`;
+                navigate(`/pos/order/${puId}`, { state: { fromPickup: true } });
+              }}
+              className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95"
+            >
+              Pick Up
+            </button>
+          )}
           <button 
             onClick={() => {
               if (sections.length > 0) setSelectedSectionId(sections[0].id);
@@ -350,7 +415,7 @@ export default function TableView() {
 
       {/* Main Content - Tables Grid */}
       <div className="flex-1 overflow-y-auto p-2 md:p-3 flex flex-col gap-4 bg-white">
-        {sections.filter(s => s.id !== 'car-service').map((section) => (
+        {sections.map((section) => (
           <div key={section.id} className="space-y-1.5">
             <h2 className="text-[#E1261C] font-black text-[9px] uppercase tracking-[0.2em] px-1 opacity-70">
               {section.label}
@@ -358,7 +423,13 @@ export default function TableView() {
             
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2 md:gap-3">
               {tables.filter(t => t.sectionId === section.id).map((table) => {
-                const order = orders[table.id];
+                const sectionKind = getSectionKind(section);
+                const order =
+                  sectionKind === 'pickup'
+                    ? pickupOrders[table.id]
+                    : sectionKind === 'car'
+                    ? carOrders[table.id]
+                    : orders[table.id];
                 const tableLifecycle = order ? { ...table, ...order } : table;
                 const statusConfig = getTableColor(tableLifecycle);
                 const statusLabel = getTableStatusText(tableLifecycle);
@@ -411,7 +482,12 @@ export default function TableView() {
                          <div className="w-full flex items-center justify-center gap-1 opacity-90 pb-0 flex-shrink-0 min-h-[30px]">
                             {!showSettlement && order.kotPrinted && (
                               <button 
-                                onClick={(e) => handlePrintBill(e, order, table)}
+                                onClick={(e) =>
+                                  handlePrintBill(e, order, table, sectionKind === 'pickup' ? 'pickup' : sectionKind === 'car' ? 'car-service' : 'dine-in', {
+                                    isPickupOrder: sectionKind === 'pickup',
+                                    isCarOrder: sectionKind === 'car',
+                                  })
+                                }
                                 className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-[#E1261C] hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
                               >
                                  <Printer size={10} strokeWidth={2.5} />
@@ -420,7 +496,12 @@ export default function TableView() {
                             )}
                             {showSettlement && (
                               <button
-                                onClick={(e) => handleOpenSettlement(e, table)}
+                                onClick={(e) =>
+                                  handleOpenSettlement(e, table, {
+                                    isPickupOrder: sectionKind === 'pickup',
+                                    isCarOrder: sectionKind === 'car',
+                                  })
+                                }
                                 className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm text-emerald-700 hover:bg-white transition-all active:scale-90 text-[7px] font-black uppercase tracking-wide flex items-center gap-0.5"
                               >
                                 <Wallet size={10} strokeWidth={2.5} />
@@ -446,13 +527,14 @@ export default function TableView() {
         ))}
 
         {/* ===== 🚗 CAR SERVICE SECTION ===== */}
+        {untabledCarOrders.length > 0 && (
         <div className="space-y-2 mt-2">
           {/* Section header */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#E1261C] opacity-70">🚗 Car Service</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#E1261C] opacity-70">🚗 Active Car Orders</span>
               <span className="bg-[#E1261C]/10 text-[#E1261C] text-[8px] font-black px-1.5 py-0.5 rounded-full">
-                {Object.keys(carOrders).length} active
+                {untabledCarOrders.length} active
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -486,7 +568,7 @@ export default function TableView() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2 md:gap-3">
 
             {/* ── Admin-configured car tables ── */}
-            {tables.filter(t => t.sectionId === 'car-service').map((car) => {
+            {false && tables.filter(t => carSectionIds.includes(t.sectionId)).map((car) => {
               const order = carOrders[car.id];
               const carLifecycle = order ? { ...car, ...order } : car;
               const statusConfig = getTableColor(carLifecycle);
@@ -500,7 +582,7 @@ export default function TableView() {
                   key={car.id}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => handleTableClick({ id: car.id, name: car.name, sectionId: 'car-service' })}
+                  onClick={() => handleTableClick({ id: car.id, name: car.name, sectionId: car.sectionId })}
                   className="aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 pb-1 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                   style={{
                     borderStyle: statusConfig.borderStyle,
@@ -570,7 +652,7 @@ export default function TableView() {
             })}
 
             <AnimatePresence mode="popLayout">
-              {Object.values(carOrders)
+              {untabledCarOrders
                 .filter(car =>
                   car && car.carNumber && (
                     carSearch === '' ||
@@ -593,7 +675,7 @@ export default function TableView() {
                       exit={{ opacity: 0, scale: 0.7 }}
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => handleTableClick({ id: car.carNumber, sectionId: 'car-service' })}
+                      onClick={() => handleTableClick({ id: car.carNumber, sectionId: carSections[0]?.id || 'car-service' })}
                       className="aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 pb-1 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                       style={{
                         borderStyle: statusConfig.borderStyle,
@@ -665,7 +747,7 @@ export default function TableView() {
             </AnimatePresence>
 
             {/* Empty state */}
-            {Object.keys(carOrders).length === 0 && (
+            {untabledCarOrders.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-6 opacity-30">
                 <Car size={28} strokeWidth={1.5} className="text-gray-400 mb-1" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">No Active Car Orders</span>
@@ -673,9 +755,11 @@ export default function TableView() {
             )}
           </div>
         </div>
+        )}
         {/* ===== END CAR SERVICE SECTION ===== */}
         
         {/* ===== PICK UP SECTION ===== */}
+        {untabledPickupOrders.length > 0 && (
         <div className="bg-white border-t border-gray-200">
           <div className="p-3 bg-gray-50 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -693,7 +777,7 @@ export default function TableView() {
               <div className="flex items-center gap-1.5 px-2 py-1 bg-[#FFD600] rounded-lg border border-yellow-400 shadow-sm">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#E1261C] animate-pulse" />
                 <span className="text-[9px] font-black text-gray-800 uppercase tracking-wider">
-                  {Object.keys(pickupOrders).length} Active
+                  {untabledPickupOrders.length} Active
                 </span>
               </div>
             </div>
@@ -701,7 +785,8 @@ export default function TableView() {
 
           <div className="p-3 grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
             <AnimatePresence mode="popLayout">
-              {Object.entries(pickupOrders).map(([puId, order]) => {
+              {untabledPickupOrders.map((order) => {
+                const puId = order.id || order._id;
                 const statusConfig = getTableColor(order);
                 const statusLabel = getTableStatusText(order);
                 const totalAmount = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
@@ -717,7 +802,7 @@ export default function TableView() {
                     exit={{ opacity: 0, scale: 0.7 }}
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => handleTableClick({ id: puId, name: puId, sectionId: 'pickup', isPickupOrder: true })}
+                    onClick={() => handleTableClick({ id: puId, name: puId, sectionId: pickupSections[0]?.id || 'pickup', isPickupOrder: true })}
                     className="aspect-square rounded-xl flex flex-col items-center justify-between p-1.5 pb-1 relative transition-all duration-300 border shadow-sm cursor-pointer overflow-hidden"
                     style={{
                       borderStyle: statusConfig.borderStyle,
@@ -784,7 +869,7 @@ export default function TableView() {
               })}
             </AnimatePresence>
 
-            {Object.keys(pickupOrders).length === 0 && (
+            {untabledPickupOrders.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-6 opacity-30">
                 <ShoppingBag size={28} strokeWidth={1.5} className="text-gray-400 mb-1" />
                 <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">No Active Pickups</span>
@@ -792,6 +877,7 @@ export default function TableView() {
             )}
           </div>
         </div>
+        )}
         {/* ===== END PICK UP SECTION ===== */}
       </div>
 
@@ -1193,7 +1279,7 @@ export default function TableView() {
                 <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">1. Select Section</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {sections.filter(s => s.id !== 'car-service').map(section => (
+                    {sections.map(section => (
                       <button
                         key={section.id}
                         onClick={() => {
@@ -1219,16 +1305,8 @@ export default function TableView() {
                     {newTableNumber && (
                       <span className="text-[10px] font-black text-[#E1261C] uppercase bg-[#E1261C]/10 px-2 py-0.5 rounded-md">
                         Selected: {(() => {
-                           let prefix = '';
-                           if (selectedSectionId === 'ac') prefix = 'AC';
-                           else if (selectedSectionId === 'garden') prefix = 'G';
-                           else if (selectedSectionId === 'non-ac') prefix = 'NAC';
-                           else if (selectedSectionId === 'rooftops') prefix = 'R';
-                           else if (selectedSectionId === 'second-floor') prefix = 'SF';
-                           else {
-                             const section = sections.find(s => s.id === selectedSectionId);
-                             prefix = section ? section.label.split(' ').map(w => w[0]).join('').toUpperCase() : '';
-                           }
+                           const section = sections.find(s => s.id === selectedSectionId);
+                           const prefix = getSectionTablePrefix(section);
                            return `${prefix}${newTableNumber}`;
                         })()}
                       </span>
@@ -1238,16 +1316,8 @@ export default function TableView() {
                   <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3">
                     <div className="grid grid-cols-5 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
                       {Array.from({ length: 100 }, (_, i) => i + 1).map(num => {
-                        let prefix = '';
-                        if (selectedSectionId === 'ac') prefix = 'AC';
-                        else if (selectedSectionId === 'garden') prefix = 'G';
-                        else if (selectedSectionId === 'non-ac') prefix = 'NAC';
-                        else if (selectedSectionId === 'rooftops') prefix = 'R';
-                        else if (selectedSectionId === 'second-floor') prefix = 'SF';
-                        else {
-                          const section = sections.find(s => s.id === selectedSectionId);
-                          prefix = section ? section.label.split(' ').map(w => w[0]).join('').toUpperCase() : '';
-                        }
+                        const section = sections.find(s => s.id === selectedSectionId);
+                        const prefix = getSectionTablePrefix(section);
                         
                         const tableName = `${prefix}${num}`;
                         const exists = tables.some(t => t.sectionId === selectedSectionId && t.name === tableName);
@@ -1284,17 +1354,8 @@ export default function TableView() {
                   onClick={() => {
                     if (!selectedSectionId || !newTableNumber) return;
                     
-                    let prefix = '';
-                    if (selectedSectionId === 'ac') prefix = 'AC';
-                    else if (selectedSectionId === 'garden') prefix = 'G';
-                    else if (selectedSectionId === 'non-ac') prefix = 'NAC';
-                    else if (selectedSectionId === 'rooftops') prefix = 'R';
-                    else if (selectedSectionId === 'second-floor') prefix = 'SF';
-                    else {
-                      const section = sections.find(s => s.id === selectedSectionId);
-                      prefix = section ? section.label.split(' ').map(w => w[0]).join('').toUpperCase() : '';
-                    }
-                    
+                    const section = sections.find(s => s.id === selectedSectionId);
+                    const prefix = getSectionTablePrefix(section);
                     const tableName = `${prefix}${newTableNumber}`;
                     addPosTable(selectedSectionId, tableName);
                     setNewTableNumber('');

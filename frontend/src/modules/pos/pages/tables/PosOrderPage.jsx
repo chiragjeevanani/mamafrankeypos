@@ -217,7 +217,9 @@ export default function PosOrderPage() {
     playClickSound();
     
     // Check if dish has variants assigned
-    const assignedVariantGroups = dishVariants[item.id] || [];
+    const assignedVariantGroups = (item.variantGroups && item.variantGroups.length > 0) 
+      ? item.variantGroups 
+      : (dishVariants[item.id] || []);
     if (assignedVariantGroups.length > 0) {
       setVariantModalItem(item);
       setSelectedVariants({});
@@ -236,11 +238,13 @@ export default function PosOrderPage() {
   const confirmVariantSelection = () => {
     if (!variantModalItem) return;
     
-    const assignedMapping = dishVariants[variantModalItem.id] || [];
+    const assignedMapping = (variantModalItem.variantGroups && variantModalItem.variantGroups.length > 0)
+      ? variantModalItem.variantGroups.map(g => ({ groupId: g._id || g.id, ...g }))
+      : (dishVariants[variantModalItem.id] || []);
     const missingRequired = assignedMapping.find(m => m.required && !selectedVariants[m.groupId]);
     
     if (missingRequired) {
-       const groupName = variantGroups.find(g => g.id === missingRequired.groupId)?.name;
+       const groupName = variantModalItem.variantGroups?.find(g => (g._id || g.id) === missingRequired.groupId)?.name || variantGroups.find(g => g.id === missingRequired.groupId)?.name;
        window.alert(`Please select a ${groupName}`);
        return;
     }
@@ -249,19 +253,19 @@ export default function PosOrderPage() {
     const selectedVariantDetails = [];
 
     Object.entries(selectedVariants).forEach(([groupId, optionId]) => {
-       const group = variantGroups.find(g => g.id === groupId);
-       const option = group?.options.find(o => o.id === optionId);
+       const group = variantModalItem.variantGroups?.find(g => (g._id || g.id) === groupId) || variantGroups.find(g => g.id === groupId);
+       const option = group?.options.find(o => (o._id || o.id) === optionId);
        if (option) {
           if (option.priceType === 'fixed') {
-             finalPrice = option.priceValue;
+             finalPrice = (option.priceValue !== undefined ? option.priceValue : (option.price || 0));
           } else {
-             finalPrice += option.priceValue;
+             finalPrice += (option.priceValue !== undefined ? option.priceValue : (option.price || 0));
           }
           selectedVariantDetails.push({
              groupName: group.name,
              optionName: option.name,
-             price: option.priceValue,
-             type: option.priceType
+             price: (option.priceValue !== undefined ? option.priceValue : (option.price || 0)),
+             type: option.priceType || 'add-on'
           });
        }
     });
@@ -1286,12 +1290,12 @@ export default function PosOrderPage() {
                   </div>
 
                   <div className="p-8 space-y-8 overflow-y-auto no-scrollbar max-h-[60vh]">
-                     {(dishVariants[variantModalItem.id] || []).map(mapping => {
-                        const group = variantGroups.find(g => g.id === mapping.groupId);
+                     {(variantModalItem.variantGroups?.length > 0 ? variantModalItem.variantGroups.map(g => ({ groupId: g._id || g.id, ...g })) : (dishVariants[variantModalItem.id] || [])).map(mapping => {
+                        const group = variantModalItem.variantGroups?.find(g => (g._id || g.id) === mapping.groupId) || variantGroups.find(g => g.id === mapping.groupId);
                         if (!group) return null;
                         
                         return (
-                           <div key={group.id} className="space-y-4">
+                           <div key={group._id || group.id} className="space-y-4">
                               <div className="flex items-center justify-between px-1">
                                  <h5 className="text-[11px] font-black uppercase text-stone-900 tracking-widest flex items-center gap-2">
                                     {group.name}
@@ -1300,14 +1304,14 @@ export default function PosOrderPage() {
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                  {group.options.map(opt => {
-                                    const isSelected = selectedVariants[group.id] === opt.id;
+                                    const isSelected = selectedVariants[group._id || group.id] === (opt._id || opt.id);
                                     return (
                                        <button 
-                                          key={opt.id}
+                                         key={opt._id || opt.id}
                                           type="button"
                                           onClick={() => {
                                              playClickSound();
-                                             setSelectedVariants(prev => ({ ...prev, [group.id]: opt.id }));
+                                             setSelectedVariants(prev => ({ ...prev, [group._id || group.id]: (opt._id || opt.id) }));
                                           }}
                                           className={`group relative p-4 rounded-2xl border-2 transition-all text-left ${
                                              isSelected 
@@ -1318,7 +1322,7 @@ export default function PosOrderPage() {
                                           <div className="flex flex-col gap-1">
                                              <span className="text-[10px] font-black uppercase tracking-tight">{opt.name}</span>
                                              <span className={`text-[9px] font-bold ${isSelected ? 'text-[#E1261C]' : 'text-stone-400'}`}>
-                                                {opt.priceType === 'fixed' ? `₹${opt.priceValue}` : `+₹${opt.priceValue}`}
+                                                {opt.priceType === 'fixed' ? `₹${opt.priceValue}` : `+₹${(opt.priceValue !== undefined ? opt.priceValue : opt.price)}`}
                                              </span>
                                           </div>
                                           {isSelected && (
@@ -1342,11 +1346,11 @@ export default function PosOrderPage() {
                            ₹{(() => {
                               let p = variantModalItem.price;
                               Object.entries(selectedVariants).forEach(([gid, oid]) => {
-                                 const g = variantGroups.find(vg => vg.id === gid);
-                                 const o = g?.options.find(vo => vo.id === oid);
+                                 const g = variantModalItem.variantGroups?.find(vg => (vg._id || vg.id) === gid) || variantGroups.find(vg => vg.id === gid);
+                                 const o = g?.options.find(vo => (vo._id || vo.id) === oid);
                                  if (o) {
-                                    if (o.priceType === 'fixed') p = o.priceValue;
-                                    else p += o.priceValue;
+                                    if (o.priceType === 'fixed') p = (o.priceValue !== undefined ? o.priceValue : (o.price || 0));
+                                    else p += (o.priceValue !== undefined ? o.priceValue : (o.price || 0));
                                  }
                               });
                               return p;

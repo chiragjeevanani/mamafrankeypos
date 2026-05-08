@@ -37,10 +37,19 @@ const storeSettingsSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    targetOutlet: {
+      type: String,
+      default: 'Main Outlet (Sadar)'
+    },
+    protocolPriceRange: {
+      type: String,
+      default: 'Price Range: Standard'
+    },
     itemReplacements: [
       {
         originalItem: String,
         replacedWith: String,
+        replacedPrice: { type: Number, default: 0 }
       }
     ],
     taxes: [

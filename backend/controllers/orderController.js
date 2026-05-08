@@ -401,7 +401,7 @@ const getSalesSummary = async (req, res) => {
 // @access  Private/Admin
 const getAdjustmentAudit = async (req, res) => {
   try {
-    const { startDate, endDate, paymentMode, orderType, billNo, itemName } = req.query;
+    const { startDate, endDate, paymentMode, orderType, billNo, itemName, outlet, priceRange } = req.query;
     
     let query = { orderStatus: 'COMPLETED' };
 
@@ -422,7 +422,8 @@ const getAdjustmentAudit = async (req, res) => {
     if (orderType && orderType !== '--All Types--') {
       const typeMap = {
         'TABLE BILL': 'DINE-IN',
-        'TAKE WAY': 'PICKUP'
+        'TAKE WAY': 'PICKUP',
+        'CAR SERVICE': 'CAR-SERVICE'
       };
       query.orderType = typeMap[orderType] || orderType;
     }
@@ -435,6 +436,20 @@ const getAdjustmentAudit = async (req, res) => {
     // 5. Item Name Filter
     if (itemName && itemName !== '--Replace this item--') {
       query['kots.items.name'] = { $regex: itemName, $options: 'i' };
+    }
+
+    // 6. Outlet Filter
+    if (outlet && outlet !== '--All Outlets--') {
+      query.outlet = outlet;
+    }
+
+    // 7. Price Range Filter
+    if (priceRange) {
+       if (priceRange.includes('Premium')) {
+          query.totalAmount = { $gt: 1000 };
+       } else if (priceRange.includes('Economy')) {
+          query.totalAmount = { $lt: 300 };
+       }
     }
 
     const orders = await Order.find(query)

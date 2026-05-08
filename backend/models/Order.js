@@ -116,6 +116,10 @@ const orderSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Counter',
     },
+    outlet: {
+      type: String,
+      default: 'Main Outlet (Sadar)'
+    },
   },
   {
     timestamps: true,

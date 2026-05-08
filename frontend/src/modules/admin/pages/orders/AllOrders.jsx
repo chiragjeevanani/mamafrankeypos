@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Search, Filter, Clock, CheckCircle, XCircle, ChevronRight, Eye, Edit2, Trash2, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { maskQuantity, maskCurrency } from '../../utils/dataMask';
+import { maskQuantity, maskCurrency, calculateMaskedOrderTotal, getReplacedName } from '../../utils/dataMask';
 import AdminModal from '../../components/ui/AdminModal';
 import api from '../../../../utils/api';
 
@@ -121,11 +121,11 @@ export default function AllOrders() {
                 </td>
                 <td className="px-6 py-4 underline decoration-transparent">
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest tracking-tighter underline decoration-transparent">
-                    {order.orderType} ({order.kots.reduce((acc, k) => acc + k.items.length, 0)} Items)
+                    {order.orderType} ({maskQuantity(order.kots.reduce((acc, k) => acc + k.items.length, 0))} Items)
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right underline decoration-transparent">
-                  <span className="text-xs font-black text-slate-900 tracking-tighter underline decoration-transparent">₹{order.totalAmount.toFixed(2)}</span>
+                  <span className="text-xs font-black text-slate-900 tracking-tighter underline decoration-transparent">₹{calculateMaskedOrderTotal(order).toFixed(2)}</span>
                 </td>
                 <td className="px-6 py-4 underline decoration-transparent">
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${getStatusColor(order.orderStatus)} underline decoration-transparent`}>
@@ -165,7 +165,7 @@ export default function AllOrders() {
             <div className="grid grid-cols-2 gap-4 underline decoration-transparent">
               <div className="bg-slate-50 p-4 border border-slate-100 rounded-sm underline decoration-transparent">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-transparent">Customer Entity</label>
-                <div className="text-xs font-black text-slate-900 uppercase underline decoration-transparent">{viewingOrder.customer?.name || viewingOrder.carNumber || 'N/A'}</div>
+                <div className="text-xs font-black text-slate-900 uppercase underline decoration-transparent">{getReplacedName(viewingOrder.customer?.name || viewingOrder.carNumber || 'N/A')}</div>
               </div>
               <div className="bg-slate-50 p-4 border border-slate-100 rounded-sm underline decoration-transparent">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-transparent">Channel</label>
@@ -197,21 +197,21 @@ export default function AllOrders() {
               <div className="flex justify-between items-center mb-4 underline decoration-transparent">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 underline decoration-transparent">Manifest Data</span>
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 underline decoration-transparent">
-                  {viewingOrder.kots.reduce((acc, k) => acc + k.items.length, 0)} Elements
+                  {maskQuantity(viewingOrder.kots.reduce((acc, k) => acc + k.items.length, 0))} Elements
                 </span>
               </div>
               <div className="space-y-2 underline decoration-transparent">
                 <div className="flex justify-between text-xs underline decoration-transparent">
                   <span className="text-slate-500 font-bold uppercase underline decoration-transparent">Subtotal Protocol</span>
-                  <span className="text-slate-900 font-black underline decoration-transparent">₹{viewingOrder.subtotal.toFixed(2)}</span>
+                  <span className="text-slate-900 font-black underline decoration-transparent">₹{maskCurrency(viewingOrder.subtotal).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs underline decoration-transparent">
                   <span className="text-slate-500 font-bold uppercase underline decoration-transparent">Surcharge/Tax</span>
-                  <span className="text-slate-900 font-black underline decoration-transparent">₹{(viewingOrder.totalAmount - viewingOrder.subtotal).toFixed(2)}</span>
+                  <span className="text-slate-900 font-black underline decoration-transparent">₹{maskCurrency(viewingOrder.totalAmount - viewingOrder.subtotal).toFixed(2)}</span>
                 </div>
                 <div className="pt-2 border-t border-slate-50 flex justify-between text-sm underline decoration-transparent">
                   <span className="text-slate-900 font-black uppercase underline decoration-transparent">Fiscal Total</span>
-                  <span className="text-blue-600 font-black underline decoration-transparent">₹{viewingOrder.totalAmount.toFixed(2)}</span>
+                  <span className="text-blue-600 font-black underline decoration-transparent">₹{calculateMaskedOrderTotal(viewingOrder).toFixed(2)}</span>
                 </div>
               </div>
             </div>

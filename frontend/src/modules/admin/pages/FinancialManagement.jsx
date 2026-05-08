@@ -6,6 +6,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { maskCurrency, calculateMaskedOrderTotal } from '../utils/dataMask';
 import api from '../../../utils/api';
 
 export default function FinancialManagement() {
@@ -94,7 +95,7 @@ export default function FinancialManagement() {
             <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50/50 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-110" />
             <IndianRupee className="text-blue-500 mb-4" size={24} />
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Sales (MTD)</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-1">₹{salesSummary.mtd.total.toLocaleString()}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">₹{maskCurrency(salesSummary.mtd.total).toLocaleString() || 0}</h3>
             <div className="flex items-center gap-1 mt-2">
                <TrendingUp size={10} className="text-emerald-500" />
                <span className="text-[9px] font-black text-emerald-500 uppercase">+15.2% from prev.</span>
@@ -111,14 +112,14 @@ export default function FinancialManagement() {
             <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50/50 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-110" />
             <Activity className="text-emerald-500 mb-4" size={24} />
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Net Profit Margin</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-1">{((salesSummary.mtd.total - totalExpenseValue) / (salesSummary.mtd.total || 1) * 100).toFixed(1)}%</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{((maskCurrency(salesSummary.mtd.total) - totalExpenseValue) / (maskCurrency(salesSummary.mtd.total) || 1) * 100).toFixed(1)}%</h3>
             <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-2 inline-block">Highly Optimized</span>
          </div>
          <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-16 h-16 bg-slate-900/5 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-110" />
             <FileText className="text-slate-900 mb-4" size={24} />
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Today's Revenue</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-1">₹{salesSummary.today.total.toLocaleString()}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">₹{maskCurrency(salesSummary.today.total).toLocaleString() || 0}</h3>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-2 inline-block">{salesSummary.today.count} Orders Processed</span>
          </div>
       </div>

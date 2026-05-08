@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, ShoppingBag, Clock, CheckCircle2, 
   ArrowUpRight, ArrowDownRight, Utensils, Users,
-  Table, ChefHat, CreditCard, AlertCircle, BarChart3
+  Table, ChefHat, CreditCard, AlertCircle, BarChart3,
+  Package, Truck, ChevronRight
 } from 'lucide-react';
 import { ADMIN_STATS_HISTORY } from '../data/adminData';
-import { maskCurrency, maskQuantity } from '../utils/dataMask';
+import { maskCurrency, maskQuantity, calculateMaskedOrderTotal } from '../utils/dataMask';
 import api from '../../../utils/api';
 
 
@@ -65,12 +66,12 @@ export default function AdminDashboard() {
 
   const stats = [
     { 
-      label: "Today's Revenue", value: `₹${dashboardData.sales.today.total.toLocaleString()}`, trend: "Live", isUp: true, 
+      label: "Today's Revenue", value: `₹${maskCurrency(dashboardData.sales.today.total).toLocaleString()}`, trend: "Live", isUp: true, 
       icon: TrendingUp, accent: "border-amber-500", iconBg: "bg-amber-50", iconColor: "text-amber-600",
       trendBg: "bg-emerald-50 text-emerald-600"
     },
     { 
-      label: "MTD Sales", value: `₹${dashboardData.sales.month.total.toLocaleString()}`, trend: "MTD", isUp: true, 
+      label: "MTD Sales", value: `₹${maskCurrency(dashboardData.sales.month.total).toLocaleString()}`, trend: "MTD", isUp: true, 
       icon: ShoppingBag, accent: "border-blue-500", iconBg: "bg-blue-50", iconColor: "text-blue-600",
       trendBg: "bg-emerald-50 text-emerald-600"
     },
@@ -87,8 +88,8 @@ export default function AdminDashboard() {
   ];
 
   const quickStats = [
-    { label: 'Today Orders', value: `${dashboardData.sales.today.count} Units`, icon: ShoppingBag, color: 'text-[#E1261C]' },
-    { label: 'Weekly Performance', value: `₹${dashboardData.sales.week.total.toLocaleString()}`, icon: ChefHat, color: 'text-orange-600' },
+    { label: 'Today Orders', value: `${maskQuantity(dashboardData.sales.today.count)} Units`, icon: ShoppingBag, color: 'text-[#E1261C]' },
+    { label: 'Weekly Performance', value: `₹${maskCurrency(dashboardData.sales.week.total).toLocaleString()}`, icon: ChefHat, color: 'text-orange-600' },
     { label: 'Top Item', value: dashboardData.topItems[0]?._id || 'N/A', icon: CreditCard, color: 'text-blue-600' },
     { label: 'Customer Base', value: `${dashboardData.customers} Total`, icon: Users, color: 'text-emerald-600' },
   ];
@@ -192,7 +193,7 @@ export default function AdminDashboard() {
                         transition={{ duration: 1 }}
                         d={`M 0 100 ${dashboardData.hourlySales.map((item, i) => {
                           const x = (i / (dashboardData.hourlySales.length - 1)) * 100;
-                          const y = 98 - (item.total / maxRevenue) * 90; 
+                          const y = 98 - (maskCurrency(item.total) / maskCurrency(maxRevenue)) * 90; 
                           return `L ${x} ${y}`;
                         }).join(' ')} L 100 100 Z`}
                         fill="url(#lineGlow)" stroke="none"
@@ -203,7 +204,7 @@ export default function AdminDashboard() {
                         transition={{ duration: 2, ease: "easeInOut" }}
                         d={`M 0 100 ${dashboardData.hourlySales.map((item, i) => {
                           const x = (i / (dashboardData.hourlySales.length - 1)) * 100;
-                          const y = 98 - (item.total / maxRevenue) * 90;
+                          const y = 98 - (maskCurrency(item.total) / maskCurrency(maxRevenue)) * 90;
                           return `L ${x} ${y}`;
                         }).join(' ')}`}
                         fill="none" stroke="#E1261C" strokeWidth="2.5"
@@ -232,7 +233,7 @@ export default function AdminDashboard() {
                         style={{ top: `calc(${yPos}% - 38px)` }}
                       >
                         <div className="bg-stone-800 text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                          ₹{item.total.toLocaleString()}
+                          ₹{maskCurrency(item.total).toLocaleString()}
                         </div>
                       </div>
                       <div className="mt-auto pt-2 w-full h-10 flex items-center justify-center">
@@ -266,7 +267,7 @@ export default function AdminDashboard() {
                     {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {order.paymentMethod}
                   </p>
                 </div>
-                <span className="text-[11px] font-black text-stone-800">₹{order.totalAmount.toFixed(0)}</span>
+                <span className="text-[11px] font-black text-stone-800">₹{calculateMaskedOrderTotal(order).toFixed(0)}</span>
               </div>
             ))}
           </div>

@@ -144,6 +144,12 @@ const updateStoreSettings = async (req, res) => {
     if (req.body.itemReplacements !== undefined) {
       settings.itemReplacements = req.body.itemReplacements;
     }
+    if (req.body.targetOutlet !== undefined) {
+      settings.targetOutlet = req.body.targetOutlet;
+    }
+    if (req.body.protocolPriceRange !== undefined) {
+      settings.protocolPriceRange = req.body.protocolPriceRange;
+    }
     
     await settings.save();
 

@@ -324,26 +324,26 @@ export default function PosOrderPage() {
 
     const sTotal = allItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) - bDiscount;
     
-    // Calculate Dynamic Taxes
+    // Calculate Dynamic Taxes (Reverse calculation)
     const taxesArr = calculateTaxes(sTotal);
     const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     
-    // Intermediate Total
-    const iTotal = (sTotal + taxVal) - Number(discount);
+    // Grand Total is simply sTotal - discount (since sTotal is already inclusive)
+    const grandTotalVal = sTotal - Number(discount);
     
     // Automatic Rounding
-    const fTotalWhole = Math.round(iTotal);
-    const rOff = Number((fTotalWhole - iTotal).toFixed(2));
+    const fTotalWhole = Math.round(grandTotalVal);
+    const rOff = Number((fTotalWhole - grandTotalVal).toFixed(2));
     
     // Change to return
     const cToReturn = Math.max(0, Number(customerPaid) - fTotalWhole);
     
     return { 
       total: fTotalWhole, 
-      subTotal: sTotal + bDiscount, 
+      subTotal: sTotal - taxVal, // Base price before tax
       totalItemCount: count, 
       tax: taxVal, 
-      appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal })),
+      appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal - taxVal })),
       roundOff: rOff, 
       changeToReturn: cToReturn,
       bogoDiscount: bDiscount
@@ -352,10 +352,9 @@ export default function PosOrderPage() {
 
   const cartTotal = useMemo(() => {
     const sTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const taxesArr = calculateTaxes(sTotal);
-    const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
-    return Math.round(sTotal + taxVal);
-  }, [cart, calculateTaxes]);
+    // For inclusive tax, the total is just the sTotal (rounded)
+    return Math.round(sTotal);
+  }, [cart]);
 
   // Sync manual return amount with calculated change
   useEffect(() => {

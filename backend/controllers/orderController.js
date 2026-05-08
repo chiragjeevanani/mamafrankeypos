@@ -1,6 +1,7 @@
 const Order = require('../models/Order');
 const Table = require('../models/Table');
 const Counter = require('../models/Counter');
+const StoreSettings = require('../models/StoreSettings');
 const logAudit = require('../utils/auditLogger');
 
 const ORDER_TYPE_QUERY_MAP = {
@@ -81,7 +82,7 @@ const processOrder = async (req, res) => {
     const kotTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const newKOT = {
       items: items.map(item => ({
-        menuItem: item.id,
+        menuItem: item.baseId || item.id,
         name: item.name,
         quantity: item.quantity,
         price: item.price,
@@ -227,6 +228,27 @@ const billOrder = async (req, res) => {
 
     if (order) {
       applyOrderMetadata(order, req.body);
+      
+      // --- Inclusive Tax Reverse Calculation ---
+      const settings = await StoreSettings.findOne();
+      const activeTaxes = settings?.taxes?.filter(t => t.active) || [];
+      
+      if (activeTaxes.length > 0) {
+        const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
+        // Base = Inclusive / (1 + (Rate/100))
+        const baseAmount = order.totalAmount / (1 + (totalTaxRate / 100));
+        
+        order.subtotal = Number(baseAmount.toFixed(2));
+        order.taxes = activeTaxes.map(t => ({
+          name: t.name,
+          rate: t.percentage,
+          amount: Number((baseAmount * (t.percentage / 100)).toFixed(2))
+        }));
+      } else {
+        order.subtotal = order.totalAmount;
+        order.taxes = [];
+      }
+
       order.orderStatus = 'BILLED';
       order.billedAt = new Date();
       await order.save();

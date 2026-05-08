@@ -523,7 +523,15 @@ export default function SystemSettings() {
   const handleCommit = async () => {
     try {
       setIsSaving(true);
-      await api.put('/settings/store', config);
+      const payload = {
+        ...config,
+        taxes: appliedTaxes.map(t => ({
+          name: t.name,
+          percentage: Number(t.percentage || t.rate || 0),
+          active: t.active !== undefined ? t.active : (t.enabled !== undefined ? t.enabled : true)
+        }))
+      };
+      await api.put('/settings/store', payload);
       setIsSaving(false);
       window.alert('CONFIGURATION SUCCESS: Store settings updated successfully.');
     } catch (error) {

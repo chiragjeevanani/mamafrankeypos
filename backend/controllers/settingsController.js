@@ -151,6 +151,15 @@ const updateStoreSettings = async (req, res) => {
       settings.protocolPriceRange = req.body.protocolPriceRange;
     }
     
+    // Taxes
+    if (req.body.taxes !== undefined) {
+      settings.taxes = req.body.taxes.map(t => ({
+        name: t.name,
+        percentage: Number(t.percentage || t.rate || 0),
+        active: t.active !== undefined ? t.active : (t.enabled !== undefined ? t.enabled : true)
+      }));
+    }
+    
     await settings.save();
 
     // Log the adjustment protocol update

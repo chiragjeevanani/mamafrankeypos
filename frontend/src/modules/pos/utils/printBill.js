@@ -85,8 +85,12 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
     
     // Position price section at the same Y as the first line of multi-line name
     doc.text(`${item.quantity}`, 45, y, { align: 'right' });
-    doc.text(`${item.price.toFixed(2)}`, 60, y, { align: 'right' });
-    doc.text(`${(item.price * item.quantity).toFixed(2)}`, 75, y, { align: 'right' });
+    // Calculate base price for inclusive breakdown
+    const totalTaxRate = appliedTaxes?.reduce((sum, t) => sum + (t.rate || t.percentage), 0) || 0;
+    const basePrice = item.price / (1 + (totalTaxRate / 100));
+    
+    doc.text(`${basePrice.toFixed(2)}`, 60, y, { align: 'right' });
+    doc.text(`${(basePrice * item.quantity).toFixed(2)}`, 75, y, { align: 'right' });
     
     y += (splitName.length * 4.5);
 

@@ -191,12 +191,12 @@ export default function TableView() {
     }, 0) || 0;
     const taxesArr = calculateTaxes(subTotal);
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
-    const total = Math.round(subTotal + tax);
+    const total = Math.round(subTotal);
     
     printBillReceipt(
       order, 
       { name: table.name }, 
-      { total, subTotal, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal })) }
+      { total, subTotal: subTotal - tax, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal - tax })) }
     );
 
     try {
@@ -223,7 +223,7 @@ export default function TableView() {
     
     const taxesArr = calculateTaxes ? calculateTaxes(subTotal) : [];
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
-    const total = Math.round(subTotal + tax);
+    const total = Math.round(subTotal);
 
     setSettlementTarget({
       id: order.id || order._id, // USE ORDER ID
@@ -231,7 +231,7 @@ export default function TableView() {
       isCarOrder,
       isPickupOrder,
       total,
-      appliedTaxes: taxesArr, // STORE TAXES
+      appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal - tax })), // STORE TAXES
     });
     setShowUpiQR(false);
     setShowCashlessOptions(false);

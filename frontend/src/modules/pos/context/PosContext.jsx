@@ -657,17 +657,6 @@ export function PosProvider({ children }) {
     return staffMember;
   };
 
-  const addTax = async (tax) => {
-     // logic
-  };
-
-  const updateTax = async (id, tax) => {
-    // logic
-  };
-
-  const deleteTax = async (id) => {
-    // logic
-  };
 
   const addCarOrder = async (carNumber, items, total, waiter) => {
     try {
@@ -788,6 +777,7 @@ export function PosProvider({ children }) {
     }
   };
 
+
   const [storeSettings, setStoreSettings] = useState(null);
 
   const fetchStoreSettings = async () => {
@@ -803,16 +793,49 @@ export function PosProvider({ children }) {
     fetchStoreSettings();
   }, []);
 
-  const calculateTaxes = (amount) => {
-    if (!storeSettings || !storeSettings.taxes) return [];
-    
-    return storeSettings.taxes
-      .filter(t => t.active)
-      .map(t => ({
+  const [appliedTaxes, setAppliedTaxes] = useState([]);
+
+  useEffect(() => {
+    if (storeSettings?.taxes) {
+      setAppliedTaxes(storeSettings.taxes.map(t => ({
+        id: t._id || Date.now() + Math.random(),
         name: t.name,
+        rate: t.percentage,
         percentage: t.percentage,
-        amount: (amount * t.percentage) / 100
-      }));
+        enabled: t.active,
+        active: t.active
+      })));
+    }
+  }, [storeSettings]);
+
+  const addTax = (name, rate) => {
+    const newTax = { id: Date.now(), name, percentage: Number(rate), rate: Number(rate), active: true, enabled: true };
+    setAppliedTaxes(prev => [...prev, newTax]);
+  };
+
+  const updateTax = (id, updates) => {
+    setAppliedTaxes(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const deleteTax = (id) => {
+    setAppliedTaxes(prev => prev.filter(t => t.id !== id));
+  };
+
+  const calculateTaxes = (inclusiveAmount) => {
+    if (!inclusiveAmount) return [];
+    const activeTaxes = (storeSettings?.taxes || []).filter(t => t.active);
+    if (activeTaxes.length === 0) return [];
+    
+    const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
+    // Base = Inclusive / (1 + (Rate/100))
+    const baseAmount = inclusiveAmount / (1 + (totalTaxRate / 100));
+    
+    return activeTaxes.map(t => ({
+      name: t.name,
+      percentage: t.percentage,
+      rate: t.percentage,
+      amount: (baseAmount * t.percentage) / 100
+    }));
   };
 
   return (
@@ -831,7 +854,7 @@ export function PosProvider({ children }) {
       combos, addCombo, updateCombo, deleteCombo,
       staff,
       dishVariants, assignVariantsToDish,
-      user, login, logout, currentCounter, appliedTaxes: [], addTax, updateTax, deleteTax, calculateTaxes,
+      user, login, logout, currentCounter, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       orders, refreshMenu: fetchMenu
     }}>
       {children}

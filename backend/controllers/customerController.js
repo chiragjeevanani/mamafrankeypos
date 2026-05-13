@@ -51,14 +51,22 @@ const upsertCustomer = async (req, res) => {
 // @access  Private
 const updateCustomerStats = async (req, res) => {
   const { amount } = req.body;
-  const customer = await Customer.findById(req.params.id);
+  const incrementAmount = Number(amount) || 0;
+
+  const customer = await Customer.findByIdAndUpdate(
+    req.params.id,
+    {
+      $inc: {
+        totalVisits: 1,
+        totalSpent: incrementAmount,
+        loyaltyPoints: Math.floor(incrementAmount / 100)
+      },
+      $set: { lastVisit: new Date() }
+    },
+    { new: true }
+  );
 
   if (customer) {
-    customer.totalVisits += 1;
-    customer.totalSpent += Number(amount);
-    customer.lastVisit = new Date();
-    customer.loyaltyPoints += Math.floor(Number(amount) / 100); // 1 point per 100 spent
-    await customer.save();
     res.json(customer);
   } else {
     res.status(404);

@@ -11,16 +11,15 @@ const {
   getOrders,
   getSalesSummary,
   getAdjustmentAudit,
-  cancelOrder
+  cancelOrder,
+  applyDiscount,
+  applyItemDiscount
 } = require('../controllers/orderController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 router.route('/')
   .get(protect, getOrders)
   .post(protect, processOrder);
-
-router.route('/:id')
-  .put(protect, updateOrder);
 
 router.route('/adjustment-audit')
   .get(protect, admin, getAdjustmentAudit);
@@ -30,6 +29,9 @@ router.route('/summary')
 
 router.route('/active/:identifier')
   .get(protect, getActiveOrder);
+
+router.route('/:id')
+  .put(protect, updateOrder);
 
 router.route('/:id/kot/:kotId/print')
   .patch(protect, markKOTPrinted);
@@ -43,7 +45,8 @@ router.route('/:id/bill')
 router.route('/:id/settle')
   .post(protect, settleOrder);
 
-router.route('/:id/cancel')
-  .post(protect, cancelOrder);
+router.post('/:id/discount', protect, applyDiscount);
+router.patch('/:id/kot/:kotId/item/:itemId/discount', protect, applyItemDiscount);
+router.post('/:id/cancel', protect, admin, cancelOrder);
 
 module.exports = router;

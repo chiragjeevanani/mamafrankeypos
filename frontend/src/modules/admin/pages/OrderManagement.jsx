@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePos } from '../../pos/context/PosContext';
+import api from '../../../utils/api';
 
 export default function OrderManagement() {
   const { orders } = usePos();

@@ -579,6 +579,21 @@ export function PosProvider({ children }) {
     }
   };
 
+  const applyOrderDiscount = async (identifier, discountData, details = {}) => {
+    try {
+      const order = resolveOrderFromIdentifier(identifier, details);
+      if (!order) throw new Error('Order not found');
+      
+      const { data } = await api.post(`/orders/${order.id || order._id}/discount`, discountData);
+      await fetchOrders();
+      await fetchTables();
+      return data;
+    } catch (error) {
+      console.error("Discount error:", error);
+      throw error;
+    }
+  };
+
   const clearTable = async (identifier, details = {}) => {
     try {
       const order = resolveOrderFromIdentifier(identifier, details);
@@ -842,7 +857,7 @@ export function PosProvider({ children }) {
     <PosContext.Provider value={{
       isSidebarOpen, toggleSidebar, closeSidebar,
       isCustomerSectionOpen, toggleCustomerSection,
-      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, setTableWaiter,
+      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, applyOrderDiscount, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       pickupOrders,
       sections, addSection, updateSection, deleteSection,
@@ -854,7 +869,7 @@ export function PosProvider({ children }) {
       combos, addCombo, updateCombo, deleteCombo,
       staff,
       dishVariants, assignVariantsToDish,
-      user, login, logout, currentCounter, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
+      user, login, logout, currentCounter, storeSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       orders, refreshMenu: fetchMenu
     }}>
       {children}

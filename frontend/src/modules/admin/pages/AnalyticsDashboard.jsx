@@ -1,135 +1,167 @@
-
-import React from 'react';
-import { 
-  BarChart3, TrendingUp, TrendingDown, Users, 
-  MapPin, ShoppingBag, Clock, DollarSign,
-  PieChart, Activity, Globe, Zap,
-  Download, Calendar, Filter, ChevronRight
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Activity, BarChart3, Download, DollarSign, RefreshCw,
+  ShoppingBag, TrendingUp, Users, Zap
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import api from '../../../utils/api';
+
+const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
 export default function AnalyticsDashboard() {
+  const [stats, setStats] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const [statsRes, ordersRes] = await Promise.all([
+        api.get('/dashboard/stats'),
+        api.get('/orders')
+      ]);
+      setStats(statsRes.data);
+      setOrders(ordersRes.data || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const derived = useMemo(() => {
+    const completed = orders.filter((order) => order.orderStatus === 'COMPLETED');
+    const cancelled = orders.filter((order) => order.orderStatus === 'CANCELLED');
+    const totalRevenue = stats?.sales?.month?.total || 0;
+    const orderCount = stats?.sales?.month?.count || completed.length;
+    const avgTicket = orderCount ? totalRevenue / orderCount : 0;
+    const efficiency = orders.length ? Math.round((completed.length / (completed.length + cancelled.length || 1)) * 100) : 0;
+    return { completed, cancelled, totalRevenue, orderCount, avgTicket, efficiency };
+  }, [orders, stats]);
+
+  const exportCsv = () => {
+    const rows = [
+      ['Metric', 'Value'],
+      ['Monthly Revenue', derived.totalRevenue],
+      ['Monthly Orders', derived.orderCount],
+      ['Average Ticket', Math.round(derived.avgTicket)],
+      ['Completion Efficiency', `${derived.efficiency}%`],
+      ['Customers', stats?.customers || 0]
+    ];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `analytics_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500 overflow-y-auto no-scrollbar">
-       {/* Intelligence Header */}
-       <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-           <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Intelligence & Frameworks</h1>
-           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Deep visual analysis of business units and market protocols</p>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Intelligence & Frameworks</h1>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Live business analysis from orders, sales, customers, and expenses</p>
         </div>
         <div className="flex items-center gap-3">
-           <div className="flex bg-white p-1 border border-slate-200 rounded-sm">
-              <button className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white shadow-sm rounded-sm">Period View</button>
-              <button className="px-4 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all">Matrix View</button>
-           </div>
-           <button className="h-9 px-4 bg-white border border-slate-200 text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all">
-              <Download size={14} />
-              Export Intelligence
-           </button>
+          <button
+            onClick={fetchAnalytics}
+            className="h-9 px-4 bg-white border border-slate-200 text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+          <button
+            onClick={exportCsv}
+            className="h-9 px-4 bg-white border border-slate-200 text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all"
+          >
+            <Download size={14} />
+            Export
+          </button>
         </div>
       </div>
 
-      {/* Primary KPI Matrix */}
+      {error && <div className="rounded border border-rose-100 bg-rose-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-rose-600">{error}</div>}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         {[
-            { label: 'Network Revenue', val: '₹42.8L', trend: '+24%', color: 'blue', icon: DollarSign },
-            { label: 'Customer Retention', val: '68.2%', trend: '+4.1%', color: 'emerald', icon: Users },
-            { label: 'Avg Ticket Size', val: '₹1,420', trend: '-2.5%', color: 'amber', icon: ShoppingBag },
-            { label: 'Protocol Efficiency', val: '94.8%', trend: '+0.4%', color: 'purple', icon: Zap },
-         ].map((kpi, idx) => (
-            <div key={idx} className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm relative overflow-hidden group">
-               <div className={`absolute top-0 right-0 w-24 h-24 bg-${kpi.color}-50/50 rounded-bl-full -mr-8 -mt-8 transition-all group-hover:scale-110`} />
-               <kpi.icon size={20} className={`text-${kpi.color}-500 mb-4`} />
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{kpi.label}</p>
-               <h3 className="text-2xl font-black text-slate-900">{kpi.val}</h3>
-               <div className="flex items-center gap-1 mt-2">
-                  <span className={`text-[9px] font-black uppercase ${kpi.trend.startsWith('+') ? 'text-emerald-500' : 'text-rose-500'}`}>
-                     {kpi.trend} vs Prev Period
-                  </span>
-               </div>
+        {[
+          { label: 'Month Revenue', value: formatMoney(derived.totalRevenue), icon: DollarSign, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Customers', value: (stats?.customers || 0).toLocaleString(), icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+          { label: 'Avg Ticket Size', value: formatMoney(derived.avgTicket), icon: ShoppingBag, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Completion Rate', value: `${derived.efficiency}%`, icon: Zap, color: 'text-slate-500', bg: 'bg-slate-50' }
+        ].map((kpi) => (
+          <div key={kpi.label} className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm relative overflow-hidden group">
+            <div className={`w-10 h-10 ${kpi.bg} ${kpi.color} rounded-sm flex items-center justify-center mb-4`}>
+              <kpi.icon size={20} />
             </div>
-         ))}
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{kpi.label}</p>
+            <h3 className="text-2xl font-black text-slate-900">{loading && !stats ? '...' : kpi.value}</h3>
+          </div>
+        ))}
       </div>
 
-      {/* Visual Analytics Hub */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         {/* Sales Velocity */}
-         <div className="bg-white border border-slate-100 rounded-sm shadow-sm p-8 space-y-6">
-            <div className="flex items-center justify-between mb-4">
-               <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Velocity Mapping</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Growth progression across 12-month window</p>
-               </div>
-               <BarChart3 size={20} className="text-slate-200" />
+        <div className="bg-white border border-slate-100 rounded-sm shadow-sm p-8 space-y-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Hourly Sales</h3>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Today revenue by hour</p>
             </div>
-            
-            <div className="h-64 flex items-end justify-between gap-3 px-2">
-               {[40, 65, 52, 85, 45, 95, 70, 55, 80, 60, 40, 90].map((h, i) => (
-                  <div key={i} className="flex-1 group relative flex flex-col items-center h-full justify-end">
-                     <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                        <div className="bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded-sm shadow-xl">
-                           UNIT {h}
-                        </div>
-                     </div>
-                     <motion.div 
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ delay: i * 0.05 }}
-                        className="w-full bg-slate-100 rounded-t-sm group-hover:bg-slate-900 transition-colors"
-                     />
-                  </div>
-               ))}
-            </div>
-            <div className="flex items-center justify-between px-2 pt-4 border-t border-slate-50">
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Q1 PROTOCOL</span>
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Q2 PROTOCOL</span>
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Q3 PROTOCOL</span>
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Q4 PROTOCOL</span>
-            </div>
-         </div>
+            <BarChart3 size={20} className="text-slate-200" />
+          </div>
+          <div className="h-64 flex items-end justify-between gap-3 px-2">
+            {(stats?.hourlySales || []).length === 0 ? (
+              <div className="h-full w-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">No hourly sales yet</div>
+            ) : (stats.hourlySales || []).map((item) => {
+              const max = Math.max(...stats.hourlySales.map((entry) => entry.total || 0), 1);
+              return (
+                <div key={item._id} className="flex-1 group relative flex flex-col items-center h-full justify-end">
+                  <div className="w-full bg-slate-900 rounded-t-sm transition-colors" style={{ height: `${Math.max(6, ((item.total || 0) / max) * 100)}%` }} />
+                  <span className="mt-2 text-[8px] font-black text-slate-400">{item._id}:00</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-         {/* Distribution Radar */}
-         <div className="bg-white border border-slate-100 rounded-sm shadow-sm p-8 space-y-6">
-            <div className="flex items-center justify-between mb-4">
-               <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Demographic Distribution</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Personnel and Revenue density per region</p>
-               </div>
-               <PieChart size={20} className="text-slate-200" />
+        <div className="bg-white border border-slate-100 rounded-sm shadow-sm p-8 space-y-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Top Items</h3>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Monthly item velocity</p>
             </div>
-
-            <div className="space-y-6 flex-1 py-4">
-               {[
-                  { label: 'Secondary Metros', val: 45, color: 'blue' },
-                  { label: 'Global Network', val: 32, color: 'emerald' },
-                  { label: 'Strategic Hubs', val: 18, color: 'amber' },
-                  { label: 'Protocol Nodes', val: 5, color: 'slate' },
-               ].map((item, idx) => (
-                  <div key={idx} className="space-y-2">
-                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase text-slate-900 tracking-tight">{item.label}</span>
-                        <span className="text-[10px] font-black text-slate-400">{item.val}%</span>
-                     </div>
-                     <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                        <motion.div 
-                           initial={{ width: 0 }}
-                           animate={{ width: `${item.val}%` }}
-                           transition={{ delay: 0.5 + idx * 0.1 }}
-                           className={`h-full bg-${item.color}-500`}
-                        />
-                     </div>
+            <TrendingUp size={20} className="text-slate-200" />
+          </div>
+          <div className="space-y-5">
+            {(stats?.topItems || []).length === 0 ? (
+              <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">No completed item sales yet</div>
+            ) : (stats.topItems || []).map((item) => {
+              const max = Math.max(...stats.topItems.map((entry) => entry.count || 0), 1);
+              return (
+                <div key={item._id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-slate-900 tracking-tight">{item._id}</span>
+                    <span className="text-[10px] font-black text-slate-400">{item.count} sold</span>
                   </div>
-               ))}
+                  <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                    <div className="h-full bg-slate-900" style={{ width: `${((item.count || 0) / max) * 100}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="bg-slate-900 p-4 rounded-sm flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Activity size={16} className="text-emerald-400" />
+              <span className="text-[9px] font-black text-white uppercase tracking-widest">Live analytics synchronized</span>
             </div>
-            
-            <div className="bg-slate-900 p-4 rounded-sm flex items-center justify-between">
-               <div className="flex items-center gap-3">
-                  <Activity size={16} className="text-emerald-400" />
-                  <span className="text-[9px] font-black text-white uppercase tracking-widest">Global Synchronization Successful</span>
-               </div>
-               <ChevronRight size={14} className="text-slate-500" />
-            </div>
-         </div>
+          </div>
+        </div>
       </div>
     </div>
   );

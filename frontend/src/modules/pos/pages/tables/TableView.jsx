@@ -67,7 +67,7 @@ export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, saveOrder, settleOrder, holdOrder, clearTable, carOrders, pickupOrders,
-    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff
+    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff, storeSettings
   } = usePos();
 
   // --- Car Service state ---
@@ -185,18 +185,25 @@ export default function TableView() {
       return;
     }
 
-    const subTotal = order.kots?.reduce((sum, kot) => {
-      if (kot.total) return sum + kot.total;
-      return sum + (kot.items?.reduce((iSum, item) => iSum + (item.price * item.quantity), 0) || 0);
-    }, 0) || 0;
+    const subTotal = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
     const taxesArr = calculateTaxes(subTotal);
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
-    const total = Math.round(subTotal);
+    const orderDiscount = order.discount?.amount || 0;
+    const total = Math.round(subTotal - orderDiscount);
     
     printBillReceipt(
       order, 
       { name: table.name }, 
-      { total, subTotal: subTotal - tax, tax, discount: 0, orderType, billerName: user?.name, appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal - tax })) }
+      { 
+        total, 
+        subTotal: subTotal - tax, 
+        tax, 
+        discount: orderDiscount, 
+        orderType, 
+        billerName: user?.name, 
+        appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal - tax })),
+        storeInfo: storeSettings
+      }
     );
 
     try {
@@ -571,7 +578,7 @@ export default function TableView() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2 md:gap-3">
 
             {/* ── Admin-configured car tables ── */}
-            {false && tables.filter(t => carSectionIds.includes(t.sectionId)).map((car) => {
+            {tables.filter(t => carSectionIds.includes(t.sectionId)).map((car) => {
               const order = carOrders[car.id];
               const carLifecycle = order ? { ...car, ...order } : car;
               const statusConfig = getTableColor(carLifecycle);

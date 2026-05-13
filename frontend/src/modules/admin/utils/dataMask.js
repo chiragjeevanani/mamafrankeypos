@@ -62,7 +62,9 @@ export const getReplacedName = (originalName) => {
       const match = replacements.find(r => r.originalItem.toLowerCase() === originalName.toLowerCase());
       return match ? match.replacedWith : originalName;
     }
-  } catch (e) {}
+  } catch {
+    return originalName;
+  }
   return originalName;
 };
 

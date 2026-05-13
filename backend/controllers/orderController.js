@@ -96,24 +96,37 @@ const processOrder = async (req, res) => {
     };
 
     if (order) {
-      // Add KOT to existing order
-      applyOrderMetadata(order, { staffId, orderType, customer });
-      order.kots.push(newKOT);
-      order.subtotal += kotTotal;
-      order.totalAmount += kotTotal; // Simplified for now, taxes re-calculated at billing
-      await order.save();
+      // Add KOT to existing order ATOMICALLY
+      const updatePayload = {
+        $push: { kots: newKOT },
+        $inc: { subtotal: kotTotal, totalAmount: kotTotal }
+      };
+
+      // Handle metadata updates if provided
+      if (orderType) updatePayload.orderType = orderType;
+      if (staffId) updatePayload.waiter = staffId;
+      if (customer) updatePayload.customer = normalizeCustomerPayload(customer);
+
+      order = await Order.findByIdAndUpdate(
+        order._id,
+        updatePayload,
+        { new: true }
+      ).populate('table waiter');
     } else {
       // Create new order
-      // 1. Get Counter and increment number
-      const counter = await Counter.findById(counterId);
+      // 1. Get Counter and increment number ATOMICALLY
+      const counter = await Counter.findByIdAndUpdate(
+        counterId,
+        { $inc: { currentNum: 1 } },
+        { new: false } // Get value BEFORE increment
+      );
+
       if (!counter) {
         res.status(400);
         throw new Error('Invalid Counter ID');
       }
 
       const orderNumber = `${counter.prefix}-${String(counter.currentNum).padStart(3, '0')}`;
-      counter.currentNum += 1;
-      await counter.save();
 
       order = await Order.create({
         orderNumber,
@@ -123,8 +136,8 @@ const processOrder = async (req, res) => {
         waiter: staffId,
         customer: normalizeCustomerPayload(customer),
         kots: [newKOT],
-        subtotal: total,
-        totalAmount: total,
+        subtotal: kotTotal,
+        totalAmount: kotTotal,
         counter: counterId,
         orderStatus: 'RUNNING'
       });
@@ -225,69 +238,84 @@ const markKOTPrinted = async (req, res) => {
 const billOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-
-    if (order) {
-      applyOrderMetadata(order, req.body);
-      
-      // --- Inclusive Tax Reverse Calculation ---
-      const settings = await StoreSettings.findOne();
-      const activeTaxes = settings?.taxes?.filter(t => t.active) || [];
-      
-      if (activeTaxes.length > 0) {
-        const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
-        // Base = Inclusive / (1 + (Rate/100))
-        const baseAmount = order.totalAmount / (1 + (totalTaxRate / 100));
-        
-        order.subtotal = Number(baseAmount.toFixed(2));
-        order.taxes = activeTaxes.map(t => ({
-          name: t.name,
-          rate: t.percentage,
-          amount: Number((baseAmount * (t.percentage / 100)).toFixed(2))
-        }));
-      } else {
-        order.subtotal = order.totalAmount;
-        order.taxes = [];
-      }
-
-      order.orderStatus = 'BILLED';
-      order.billedAt = new Date();
-      await order.save();
-
-      // Update table status to printed
-      if (order.table) {
-        await Table.findByIdAndUpdate(order.table, { status: 'printed' });
-      }
-
-      res.json(order);
-    } else {
+    if (!order) {
       res.status(404).json({ message: 'Order not found' });
+      return;
     }
+
+    // --- Inclusive Tax Reverse Calculation ---
+    const settings = await StoreSettings.findOne();
+    const activeTaxes = settings?.taxes?.filter(t => t.active) || [];
+    
+    let subtotal = order.totalAmount;
+    let taxes = [];
+
+    if (activeTaxes.length > 0) {
+      const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
+      const baseAmount = order.totalAmount / (1 + (totalTaxRate / 100));
+      subtotal = Number(baseAmount.toFixed(2));
+      taxes = activeTaxes.map(t => ({
+        name: t.name,
+        rate: t.percentage,
+        amount: Number((baseAmount * (t.percentage / 100)).toFixed(2))
+      }));
+    }
+
+    // Atomic update with condition: only update if totalAmount hasn't changed 
+    // since we read it for the calculation. This prevents "lost updates".
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: req.params.id, totalAmount: order.totalAmount },
+      {
+        $set: {
+          subtotal,
+          taxes,
+          orderStatus: 'BILLED',
+          billedAt: new Date()
+        }
+      },
+      { new: true }
+    ).populate('table waiter');
+
+    if (!updatedOrder) {
+      res.status(409).json({ message: 'Order total changed during billing. Please retry.' });
+      return;
+    }
+
+    if (updatedOrder.table) {
+      await Table.findByIdAndUpdate(updatedOrder.table, { status: 'printed' });
+    }
+
+    res.json(updatedOrder);
   } catch (error) {
     console.error("Billing error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Settle Order
-// @route   POST /api/orders/:id/settle
-// @access  Private
 const settleOrder = async (req, res) => {
   try {
     const { paymentMethod, taxes, totalAmount } = req.body;
-    const order = await Order.findById(req.params.id);
+
+    // Use findOneAndUpdate with status check to prevent double settlement
+    const order = await Order.findOneAndUpdate(
+      { 
+        _id: req.params.id, 
+        orderStatus: { $ne: 'COMPLETED' } 
+      },
+      {
+        $set: {
+          paymentMethod,
+          taxes,
+          totalAmount,
+          paymentStatus: 'PAID',
+          orderStatus: 'COMPLETED',
+          completedAt: new Date()
+        }
+      },
+      { new: true }
+    ).populate('table waiter');
 
     if (order) {
-      applyOrderMetadata(order, req.body);
-      order.paymentMethod = paymentMethod;
-      order.taxes = taxes;
-      order.totalAmount = totalAmount;
-      order.paymentStatus = 'PAID';
-      order.orderStatus = 'COMPLETED';
-      order.completedAt = new Date();
-      
-      await order.save();
-
-      // Free the table
       if (order.table) {
         await Table.findByIdAndUpdate(order.table, { status: 'blank', currentOrder: null });
       }
@@ -302,8 +330,7 @@ const settleOrder = async (req, res) => {
 
       res.json(order);
     } else {
-      res.status(404);
-      throw new Error('Order not found');
+      res.status(404).json({ message: 'Order not found or already completed' });
     }
   } catch (error) {
     console.error("Settlement error:", error);
@@ -316,48 +343,48 @@ const settleOrder = async (req, res) => {
 // @access  Private
 const cancelKOTItem = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const { reason } = req.body;
+    const { id, kotId, itemId } = req.params;
 
+    const order = await Order.findById(id);
     if (!order) {
       res.status(404);
       throw new Error('Order not found');
     }
 
-    if (order.orderStatus === 'COMPLETED' || order.orderStatus === 'CANCELLED') {
-      res.status(400);
-      throw new Error(`Cannot cancel items for an order in ${order.orderStatus} state`);
-    }
+    const kot = order.kots.id(kotId);
+    const item = kot?.items?.id(itemId);
 
-    const kot = order.kots.id(req.params.kotId);
-    if (!kot) {
+    if (!kot || !item) {
       res.status(404);
-      throw new Error('KOT not found');
-    }
-
-    const item = kot.items.id(req.params.itemId);
-    if (!item) {
-      res.status(404);
-      throw new Error('KOT item not found');
+      throw new Error('KOT or Item not found');
     }
 
     if (item.status === 'cancelled') {
       res.status(400);
-      throw new Error('KOT item is already cancelled');
+      throw new Error('Item already cancelled');
     }
 
-    item.status = 'cancelled';
+    const reduction = item.price * item.quantity;
 
-    const lineTotal = Number(item.price || 0) * Number(item.quantity || 0);
-    kot.total = Math.max(0, Number(kot.total || 0) - lineTotal);
-    order.subtotal = Math.max(0, Number(order.subtotal || 0) - lineTotal);
-    order.totalAmount = Math.max(0, Number(order.totalAmount || 0) - lineTotal);
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: id, "kots._id": kotId, "kots.items._id": itemId },
+      {
+        $set: { 
+          "kots.$[k].items.$[i].status": 'cancelled',
+          "kots.$[k].items.$[i].cancellationReason": reason || 'No reason provided'
+        },
+        $inc: { subtotal: -reduction, totalAmount: -reduction }
+      },
+      {
+        arrayFilters: [{ "k._id": kotId }, { "i._id": itemId }],
+        new: true
+      }
+    ).populate('table waiter');
 
-    await order.save();
-
-    res.json(order);
+    res.json(updatedOrder);
   } catch (error) {
-    console.error('Cancel KOT item error:', error);
-    res.status(res.statusCode && res.statusCode !== 200 ? res.statusCode : 500).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -491,40 +518,169 @@ const getAdjustmentAudit = async (req, res) => {
 const cancelOrder = async (req, res) => {
   try {
     const { reason } = req.body;
+    
+    // Use findOneAndUpdate to ensure we only cancel if NOT already completed/cancelled
+    const order = await Order.findOneAndUpdate(
+      { 
+        _id: req.params.id, 
+        orderStatus: { $nin: ['COMPLETED', 'CANCELLED'] } 
+      },
+      {
+        $set: {
+          orderStatus: 'CANCELLED',
+          cancellationReason: reason || 'Cancelled by Administrator',
+          cancelledAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
+    if (!order) {
+      // Check if it exists at all to give better error
+      const exists = await Order.findById(req.params.id);
+      if (!exists) {
+        res.status(404);
+        throw new Error('Order not found');
+      }
+      res.status(400);
+      throw new Error(`Order cannot be cancelled. Current status: ${exists.orderStatus}`);
+    }
+
+    // Free the table if it was running
+    if (order.table) {
+      await Table.findByIdAndUpdate(order.table, { status: 'blank', currentOrder: null });
+    }
+
+    await logAudit(
+      req.user?._id || '000000000000000000000000',
+      'ORDER_CANCELLED',
+      'ORDERS',
+      `Order ${order.orderNumber} cancelled. Reason: ${reason || 'N/A'}`,
+      req.ip
+    );
+
+    res.json({ message: 'Order cancelled successfully', order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Apply discount to order
+// @route   POST /api/orders/:id/discount
+// @access  Private
+const applyDiscount = async (req, res) => {
+  try {
+    const { type, value, reason, couponCode } = req.body;
     const order = await Order.findById(req.params.id);
 
-    if (order) {
-      if (order.orderStatus === 'COMPLETED' || order.orderStatus === 'CANCELLED') {
-        res.status(400);
-        throw new Error(`Order cannot be cancelled. Current status: ${order.orderStatus}`);
-      }
-
-      const oldStatus = order.orderStatus;
-      order.orderStatus = 'CANCELLED';
-      order.cancellationReason = reason || 'Cancelled by Administrator';
-      order.cancelledAt = new Date();
-      await order.save();
-
-      // Free the table if it was running
-      if (order.table) {
-        await Table.findByIdAndUpdate(order.table, { status: 'blank', currentOrder: null });
-      }
-
-      await logAudit(
-        req.user?._id || '000000000000000000000000',
-        'ORDER_CANCELLED',
-        'ORDERS',
-        `Order ${order.orderNumber} (was ${oldStatus}) cancelled. Reason: ${reason || 'N/A'}`,
-        req.ip
-      );
-
-      res.json({ message: 'Order cancelled successfully', order });
-    } else {
-      res.status(404);
-      throw new Error('Order not found');
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
     }
+
+    if (order.orderStatus === 'COMPLETED' || order.orderStatus === 'CANCELLED') {
+      res.status(400).json({ message: 'Cannot apply discount to finalized order' });
+      return;
+    }
+
+    let discountAmount = 0;
+    if (type === 'PERCENTAGE') {
+      discountAmount = (order.subtotal * value) / 100;
+    } else {
+      discountAmount = value;
+    }
+
+    // Prevent negative billing
+    if (discountAmount > order.subtotal) {
+      discountAmount = order.subtotal;
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          'discount.type': type,
+          'discount.value': value,
+          'discount.amount': Math.round(discountAmount),
+          'discount.reason': reason,
+          'discount.couponCode': couponCode,
+          'discount.appliedBy': req.user?._id,
+          totalAmount: Math.round(order.subtotal - discountAmount)
+        }
+      },
+      { new: true }
+    ).populate('table waiter');
+
+    await logAudit(
+      req.user?._id || '000000000000000000000000',
+      'ORDER_DISCOUNT_APPLIED',
+      'ORDERS',
+      `Applied ${value}${type === 'PERCENTAGE' ? '%' : ' FLAT'} discount to Order ${order.orderNumber}.${couponCode ? ' Coupon: ' + couponCode : ''} Reason: ${reason || 'N/A'}`,
+      req.ip
+    );
+
+    res.json(updatedOrder);
   } catch (error) {
-    console.error("Cancellation error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Apply discount to specific item in KOT
+// @route   PATCH /api/orders/:id/kot/:kotId/item/:itemId/discount
+// @access  Private
+const applyItemDiscount = async (req, res) => {
+  try {
+    const { type, value } = req.body;
+    const { id, kotId, itemId } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    const kot = order.kots.id(kotId);
+    if (!kot) return res.status(404).json({ message: 'KOT not found' });
+
+    const item = kot.items.id(itemId);
+    if (!item) return res.status(404).json({ message: 'Item not found' });
+
+    if (item.status === 'cancelled') return res.status(400).json({ message: 'Cannot discount cancelled item' });
+
+    const itemPrice = item.price * item.quantity;
+    let oldDiscountAmt = item.discount?.amount || 0;
+    
+    let newDiscountAmt = 0;
+    if (type === 'PERCENTAGE') {
+      newDiscountAmt = (itemPrice * value) / 100;
+    } else {
+      newDiscountAmt = value;
+    }
+
+    // Prevent negative price
+    if (newDiscountAmt > itemPrice) newDiscountAmt = itemPrice;
+
+    item.discount = {
+      type,
+      value,
+      amount: Math.round(newDiscountAmt)
+    };
+
+    // Adjust order totals
+    const diff = Math.round(newDiscountAmt - oldDiscountAmt);
+    kot.total -= diff;
+    order.subtotal -= diff;
+    order.totalAmount -= diff;
+
+    await order.save();
+
+    await logAudit(
+      req.user?._id,
+      'ITEM_DISCOUNT_APPLIED',
+      'ORDERS',
+      `Applied ${value}${type === 'PERCENTAGE' ? '%' : ' FLAT'} discount to ${item.name} in Order ${order.orderNumber}`,
+      req.ip
+    );
+
+    res.json(order);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
@@ -540,5 +696,7 @@ module.exports = {
   cancelOrder,
   getOrders,
   getSalesSummary,
-  getAdjustmentAudit
+  getAdjustmentAudit,
+  applyDiscount,
+  applyItemDiscount
 };

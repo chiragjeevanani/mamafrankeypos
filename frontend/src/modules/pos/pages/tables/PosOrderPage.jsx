@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Search, Plus, Minus, Trash2, Receipt, ArrowLeft, 
-  ChevronDown, User, Users, Edit3, Bell, 
+import {
+  Search, Plus, Minus, Trash2, Receipt, ArrowLeft,
+  ChevronDown, User, Users, Edit3, Bell,
   ChevronUp, Star, Wine, Soup, Apple, Zap, RefreshCw,
-  Save, Printer, FileText, Send, PauseCircle, Split, 
+  Save, Printer, FileText, Send, PauseCircle, Split,
   Ticket, Wallet, CheckCircle2, ShoppingBag, Truck, X, Check, ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,12 +19,12 @@ export default function PosOrderPage() {
   const { tableId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { 
-    placeKOT, markKOTPrinted, saveOrder, holdOrder, clearTable, cancelKOTItem,
-    orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes,
+  const {
+    placeKOT, markKOTPrinted, saveOrder, holdOrder, clearTable, cancelKOTItem, applyOrderDiscount,
+    orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes, storeSettings,
     variantGroups, dishVariants, categories, menuItems, tables, sections, staff
   } = usePos();
-  
+
   const [selectedCategory, setSelectedCategory] = useState('fav');
   const [searchQuery, setSearchQuery] = useState('');
   const [shortCode, setShortCode] = useState('');
@@ -35,7 +35,7 @@ export default function PosOrderPage() {
       setSelectedCategory(categories[0].id);
     }
   }, [categories]);
-  
+
   const isPickupMode = location.state?.fromPickup === true || tableId?.startsWith('PU-');
   const isCarServiceMode = location.state?.fromCarService === true;
   const [orderType, setOrderType] = useState(
@@ -45,7 +45,7 @@ export default function PosOrderPage() {
   // Initialize cart from existing order if any
   const activeOrder = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
   const [cart, setCart] = useState([]);
-  
+
   // States for interactive checkboxes/radios
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [isBogoActive, setIsBogoActive] = useState(false);
@@ -53,7 +53,7 @@ export default function PosOrderPage() {
   const [isSalesReturn, setIsSalesReturn] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [isLoyalty, setIsLoyalty] = useState(true);
-  
+
   const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
@@ -70,7 +70,7 @@ export default function PosOrderPage() {
 
   const [discountReason, setDiscountReason] = useState('');
   const [couponCode, setCouponCode] = useState('');
-  
+
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [containerCharge, setContainerCharge] = useState(0);
   const [serviceCharge, setServiceCharge] = useState(0);
@@ -195,18 +195,18 @@ export default function PosOrderPage() {
     return (menuItems || []).filter(item => {
       const query = searchQuery.toLowerCase();
       const codeQuery = shortCode.toLowerCase();
-      
-      const matchesSearch = (item.name || '').toLowerCase().includes(query) || 
+
+      const matchesSearch = (item.name || '').toLowerCase().includes(query) ||
                            (item.code || '').toLowerCase().includes(query);
-      
-      const matchesShortCode = shortCode === '' || 
+
+      const matchesShortCode = shortCode === '' ||
                               (item.code || '').toLowerCase() === codeQuery ||
                               (item.shortcut || '').toLowerCase() === codeQuery;
-      
-      const matchesCategory = (shortCode !== '' || searchQuery !== '') 
-        ? true 
-        : (String(selectedCategory).toLowerCase() === 'fav' 
-            ? true 
+
+      const matchesCategory = (shortCode !== '' || searchQuery !== '')
+        ? true
+        : (String(selectedCategory).toLowerCase() === 'fav'
+            ? true
             : String(item.catId).toLowerCase() === String(selectedCategory).toLowerCase());
 
       return matchesCategory && matchesSearch && matchesShortCode;
@@ -215,10 +215,10 @@ export default function PosOrderPage() {
 
   const addToCart = (item) => {
     playClickSound();
-    
+
     // Check if dish has variants assigned
-    const assignedVariantGroups = (item.variantGroups && item.variantGroups.length > 0) 
-      ? item.variantGroups 
+    const assignedVariantGroups = (item.variantGroups && item.variantGroups.length > 0)
+      ? item.variantGroups
       : (dishVariants[item.id] || []);
     if (assignedVariantGroups.length > 0) {
       setVariantModalItem(item);
@@ -237,12 +237,12 @@ export default function PosOrderPage() {
 
   const confirmVariantSelection = () => {
     if (!variantModalItem) return;
-    
+
     const assignedMapping = (variantModalItem.variantGroups && variantModalItem.variantGroups.length > 0)
       ? variantModalItem.variantGroups.map(g => ({ groupId: g._id || g.id, ...g }))
       : (dishVariants[variantModalItem.id] || []);
     const missingRequired = assignedMapping.find(m => m.required && !selectedVariants[m.groupId]);
-    
+
     if (missingRequired) {
        const groupName = variantModalItem.variantGroups?.find(g => (g._id || g.id) === missingRequired.groupId)?.name || variantGroups.find(g => g.id === missingRequired.groupId)?.name;
        window.alert(`Please select a ${groupName}`);
@@ -307,13 +307,13 @@ export default function PosOrderPage() {
     }));
   };
 
-  const { total, subTotal, totalItemCount, tax, appliedTaxes, roundOff, changeToReturn, bogoDiscount } = useMemo(() => {
+  const { total, subTotal, totalItemCount, tax, appliedTaxes, roundOff, changeToReturn, bogoDiscount, effectiveDiscount } = useMemo(() => {
     const cartItems = cart || [];
     const kotItems = activeOrder?.kots?.flatMap(kot => kot.items.filter(item => item.status !== 'cancelled')) || [];
     const allItems = [...cartItems, ...kotItems];
-    
+
     const count = allItems.reduce((sum, item) => sum + item.quantity, 0);
-    
+
     // BOGO LOGIC: Buy 1 Get 1
     let bDiscount = 0;
     if (isBogoActive) {
@@ -322,31 +322,41 @@ export default function PosOrderPage() {
       });
     }
 
-    const sTotal = allItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) - bDiscount;
-    
+    const sTotal = allItems.reduce((sum, item) => {
+      const itemPrice = (item.price * item.quantity);
+      const itemDiscount = item.discount?.type === 'PERCENTAGE' 
+        ? (itemPrice * (item.discount.value || 0)) / 100 
+        : (item.discount?.amount || 0);
+      return sum + (itemPrice - itemDiscount);
+    }, 0) - bDiscount;
+
     // Calculate Dynamic Taxes (Reverse calculation)
     const taxesArr = calculateTaxes(sTotal);
     const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
-    
-    // Grand Total is simply sTotal - discount (since sTotal is already inclusive)
-    const grandTotalVal = sTotal - Number(discount);
-    
+
+    // Effective discount from order level
+    const orderDiscountAmt = activeOrder?.discount?.amount || Number(discount) || 0;
+
+    // Grand Total is sTotal - orderDiscountAmt
+    const grandTotalVal = Math.max(0, sTotal - orderDiscountAmt);
+
     // Automatic Rounding
     const fTotalWhole = Math.round(grandTotalVal);
     const rOff = Number((fTotalWhole - grandTotalVal).toFixed(2));
-    
+
     // Change to return
     const cToReturn = Math.max(0, Number(customerPaid) - fTotalWhole);
-    
-    return { 
-      total: fTotalWhole, 
+
+    return {
+      total: fTotalWhole,
       subTotal: sTotal - taxVal, // Base price before tax
-      totalItemCount: count, 
-      tax: taxVal, 
+      totalItemCount: count,
+      tax: taxVal,
       appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal - taxVal })),
-      roundOff: rOff, 
+      roundOff: rOff,
       changeToReturn: cToReturn,
-      bogoDiscount: bDiscount
+      bogoDiscount: bDiscount,
+      effectiveDiscount: orderDiscountAmt
     };
   }, [cart, activeOrder, deliveryCharge, containerCharge, serviceCharge, discount, customerPaid, isBogoActive, calculateTaxes]);
 
@@ -364,10 +374,10 @@ export default function PosOrderPage() {
   const handleShortCodeSubmit = (e) => {
     if (e.key === 'Enter') {
       const code = shortCode.toUpperCase();
-      const item = menuItems.find(i => 
+      const item = menuItems.find(i =>
         i.code.toUpperCase() === code || i.shortcut.toUpperCase() === code
       );
-      
+
       if (item) {
         addToCart(item);
         setShortCode(''); // Clear input
@@ -393,14 +403,14 @@ export default function PosOrderPage() {
        return;
     }
     try {
-      const savedOrder = await placeKOT(tableId, cart, selectedWaiter, { 
+      const savedOrder = await placeKOT(tableId, cart, selectedWaiter, {
         isCarOrder: orderType === 'car-service',
         isPickupOrder: orderType === 'pickup',
         customer: buildCustomerPayload()
       });
       if (isPrint) {
       printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
-      await markKOTPrinted(savedOrder?._id || savedOrder?.id || tableId, { 
+      await markKOTPrinted(savedOrder?._id || savedOrder?.id || tableId, {
         isCarOrder: orderType === 'car-service',
         isPickupOrder: orderType === 'pickup'
       });
@@ -409,7 +419,7 @@ export default function PosOrderPage() {
       setCart([]);
       clearDraft();
       setTimeout(() => {
-        navigate('/pos/tables'); 
+        navigate('/pos/tables');
       }, 1500);
     } catch (error) {
       setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to place KOT.' });
@@ -424,7 +434,7 @@ export default function PosOrderPage() {
       setOrderNotice({ type: 'error', text: 'Bill reprint is available only after the bill has been generated.' });
       return;
     }
-    
+
     // Calculate totals for existing KOTs (excluding current cart)
     const sTotal = orderData.kots.reduce((sum, kot) => sum + (kot.total || 0), 0);
     const taxesArr = calculateTaxes(sTotal);
@@ -432,16 +442,16 @@ export default function PosOrderPage() {
     const fTotal = Math.round(sTotal + taxVal);
 
     printBillReceipt(
-      orderData, 
-      { name: tableInfo.name }, 
-      { 
-        total: fTotal, 
-        subTotal: sTotal, 
-        tax: taxVal, 
-        discount: 0, 
-        orderType, 
+      orderData,
+      { name: tableInfo.name },
+      {
+        total: fTotal,
+        subTotal: sTotal,
+        tax: taxVal,
+        discount: effectiveDiscount,
+        orderType,
         billerName: user?.name,
-        appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal }))
+        appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal })), storeInfo: storeSettings
       }
     );
   };
@@ -466,7 +476,7 @@ export default function PosOrderPage() {
     playClickSound();
     if (window.confirm(`Are you sure you want to cancel the order for ${tableInfo.name}?`)) {
       try {
-        await clearTable(tableId, { 
+        await clearTable(tableId, {
           isCarOrder: isCarServiceMode,
           isPickupOrder: isPickupMode
         });
@@ -477,7 +487,7 @@ export default function PosOrderPage() {
       }
     }
   };
-  
+
   const handleDownloadBillAndKOT = async () => {
     playClickSound();
     setOrderNotice(null);
@@ -511,8 +521,8 @@ export default function PosOrderPage() {
     }
 
     downloadBillAndKOT(
-      { ...orderData, cart }, 
-      { name: tableInfo.name }, 
+      { ...orderData, cart },
+      { name: tableInfo.name },
       { total, subTotal, tax, discount, orderType, billerName: user?.name }
     );
 
@@ -538,7 +548,7 @@ export default function PosOrderPage() {
             <span>{categories.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
             <ChevronDown size={14} />
           </button>
-          
+
           <div className="flex-1 overflow-y-auto">
             {categories.map(cat => (
               <button
@@ -548,8 +558,8 @@ export default function PosOrderPage() {
                    setSelectedCategory(cat.id);
                 }}
                 className={`w-full p-4 text-left font-bold text-[11px] uppercase tracking-wider border-b border-white/10 transition-all ${
-                  selectedCategory === cat.id 
-                    ? 'bg-white text-gray-800 border-r-4 border-r-[#E1261C]' 
+                  selectedCategory === cat.id
+                    ? 'bg-white text-gray-800 border-r-4 border-r-[#E1261C]'
                     : 'text-white hover:bg-white/5'
                 }`}
               >
@@ -565,7 +575,7 @@ export default function PosOrderPage() {
           <div className="p-2 flex gap-2 shrink-0">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
+              <input
                 type="text"
                 placeholder="Search Item"
                 value={searchQuery}
@@ -574,7 +584,7 @@ export default function PosOrderPage() {
               />
             </div>
             <div className="w-[40%]">
-              <input 
+              <input
                 type="text"
                 placeholder="Short Code"
                 value={shortCode}
@@ -599,7 +609,7 @@ export default function PosOrderPage() {
                       isSoldOut ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:shadow-md'
                     }`}
                   >
-                    <div 
+                    <div
                       className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
                       style={{ backgroundColor: categories.find(c => c.id === item.catId)?.color || (isSoldOut ? '#9ca3af' : '#4CAF50') }}
                     />
@@ -623,7 +633,7 @@ export default function PosOrderPage() {
           <div className="flex h-12 shrink-0">
             {/* Dine In - hidden in pickup mode and car service mode */}
             {!isPickupMode && !isCarServiceMode && (
-              <button 
+              <button
                 onClick={() => setOrderType('dine-in')}
                 className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'dine-in' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
               >
@@ -632,7 +642,7 @@ export default function PosOrderPage() {
             )}
             {/* Car Service - only shown in car service mode */}
             {isCarServiceMode && (
-              <button 
+              <button
                 onClick={() => setOrderType('car-service')}
                 className={`flex-1 font-bold text-sm flex items-center justify-center transition-all border-x border-white/10 ${orderType === 'car-service' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
               >
@@ -641,7 +651,7 @@ export default function PosOrderPage() {
             )}
             {/* Pick Up - only in pickup mode */}
             {isPickupMode && (
-              <button 
+              <button
                 onClick={() => setOrderType('pickup')}
                 className={`flex-1 font-bold text-sm flex items-center justify-center transition-all ${orderType === 'pickup' ? 'bg-[#E1261C] text-white' : 'bg-[#424242] text-white opacity-60'}`}
               >
@@ -700,11 +710,11 @@ export default function PosOrderPage() {
                    {/* Row: Mobile */}
                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black uppercase text-gray-500 w-16 text-right">Mobile:</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={customer.mobile}
                         onChange={(e) => { playClickSound(); setCustomer({...customer, mobile: e.target.value}); }}
-                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none w-1/3" 
+                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none w-1/3"
                         placeholder="..."
                       />
                    </div>
@@ -713,11 +723,11 @@ export default function PosOrderPage() {
                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black uppercase text-gray-500 w-16 text-right">Name:</span>
                       <div className="flex-1 flex items-center gap-3">
-                         <input 
-                           type="text" 
+                         <input
+                           type="text"
                            value={customer.name}
                            onChange={(e) => { playClickSound(); setCustomer({...customer, name: e.target.value}); }}
-                           className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
+                           className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none"
                          />
                          <div className="flex items-center gap-1.5 opacity-60">
                             <FileText size={16} className="text-gray-400 hover:text-[#E1261C] cursor-pointer" onClick={playClickSound} />
@@ -744,11 +754,11 @@ export default function PosOrderPage() {
                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black uppercase text-gray-500 w-16 text-right">Add:</span>
                       <div className="flex-1 relative">
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={customer.address}
                           onChange={(e) => { playClickSound(); setCustomer({...customer, address: e.target.value}); }}
-                          className="w-full p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
+                          className="w-full p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none"
                         />
                         {customer.address && <X size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 cursor-pointer" onClick={() => { playClickSound(); setCustomer({...customer, address: ''}); }} />}
                       </div>
@@ -757,22 +767,22 @@ export default function PosOrderPage() {
                    {/* Row: Locality */}
                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black uppercase text-gray-500 w-16 text-right">Locality:</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={customer.locality}
                         onChange={(e) => { playClickSound(); setCustomer({...customer, locality: e.target.value}); }}
-                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
+                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none"
                       />
                    </div>
 
                    {/* Row: Extra Information */}
                    <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black uppercase text-gray-500 w-16 text-right">Extra Info:</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={customer.extra}
                         onChange={(e) => { playClickSound(); setCustomer({...customer, extra: e.target.value}); }}
-                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none" 
+                        className="flex-1 p-1 bg-white border border-gray-200 rounded text-xs font-bold focus:border-[#E1261C] outline-none"
                       />
                    </div>
                 </div>
@@ -807,10 +817,10 @@ export default function PosOrderPage() {
                     <span>KOT - {(kot._id || kot.id)} Time - {kot.time}</span>
                  </div>
                   {kot.items.filter(item => item.status !== 'cancelled').map(item => (
-                    <CartItem 
-                      key={`${(kot._id || kot.id)}-${(item._id || item.id)}`} 
-                      item={item} 
-                      isPlaced={true} 
+                    <CartItem
+                      key={`${(kot._id || kot.id)}-${(item._id || item.id)}`}
+                      item={item}
+                      isPlaced={true}
                       onCancel={async () => {
                         if (window.confirm(`Are you sure you want to cancel ${item.name} from this KOT?`)) {
                           try {
@@ -832,10 +842,10 @@ export default function PosOrderPage() {
                     NEW KOT
                  </div>
                  {cart.map(item => (
-                   <CartItem 
-                     key={`new-${item.id}`} 
-                     item={item} 
-                     isPlaced={false} 
+                   <CartItem
+                     key={`new-${item.id}`}
+                     item={item}
+                     isPlaced={false}
                      onRemove={() => removeFromCart(item.id)}
                      onUpdateQty={(delta) => updateQuantity(item.id, delta)}
                    />
@@ -859,7 +869,7 @@ export default function PosOrderPage() {
           <div className="bg-[#424242] shrink-0 flex flex-col relative">
             {/* Arrow Extender Tab (hidden in pickup mode) */}
             {!isPickupMode && (
-              <button 
+              <button
                 onClick={() => { playClickSound(); setIsExtraMenuOpen(!isExtraMenuOpen); }}
                 className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#424242] text-white p-1 rounded-t-md border-t border-x border-white/10 hover:brightness-125 transition-all shadow-lg z-20 flex items-center justify-center w-8 h-4"
               >
@@ -870,7 +880,7 @@ export default function PosOrderPage() {
             {/* Extra Menu (Summary Panel Revealed by Extender) - hidden in pickup mode */}
             <AnimatePresence>
               {!isPickupMode && isExtraMenuOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -888,8 +898,8 @@ export default function PosOrderPage() {
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <span className="text-gray-400">Discount</span>
-                        <button 
-                          onClick={() => { playClickSound(); setIsDiscountModalOpen(true); }} 
+                        <button
+                          onClick={() => { playClickSound(); setIsDiscountModalOpen(true); }}
                           className="text-[#00BCD4] underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
                         >
                           More
@@ -901,8 +911,8 @@ export default function PosOrderPage() {
                     {/* Delivery Charge */}
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <span className="text-gray-400">Car Service Charge</span>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={deliveryCharge || ''}
                         placeholder="0"
                         onChange={(e) => setDeliveryCharge(e.target.value)}
@@ -916,8 +926,8 @@ export default function PosOrderPage() {
                         <Plus size={12} className="text-gray-500 border border-gray-500 rounded-full p-0.5" />
                         <span className="text-gray-400">Container Charges</span>
                       </div>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={containerCharge || ''}
                         placeholder="0"
                         onChange={(e) => setContainerCharge(e.target.value)}
@@ -931,8 +941,8 @@ export default function PosOrderPage() {
                          <div className="rotate-45 text-gray-400"><RefreshCw size={12} strokeWidth={3} /></div>
                          <span className="text-gray-400">Service Charge</span>
                       </div>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={serviceCharge || ''}
                         placeholder="0"
                         onChange={(e) => setServiceCharge(e.target.value)}
@@ -940,12 +950,28 @@ export default function PosOrderPage() {
                       />
                     </div>
 
+                    {/* Discount */}
+                    {(discount > 0 || activeOrder?.discount?.amount > 0) && (
+                      <div className="flex items-center justify-between px-4 py-2.5 group">
+                        <div className="flex items-center gap-2">
+                           <span className="text-gray-400">Discount</span>
+                           <button
+                             onClick={() => { playClickSound(); setIsDiscountModalOpen(true); }}
+                             className="text-yellow-400 underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
+                           >
+                             Modify
+                           </button>
+                        </div>
+                        <span className="text-red-400 tabular-nums">-{Math.max(discount, activeOrder?.discount?.amount || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+
                     {/* Tax */}
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <div className="flex items-center gap-2">
                          <span className="text-gray-400">Tax</span>
-                          <button 
-                            onClick={() => { playClickSound(); setIsTaxModalOpen(true); }} 
+                          <button
+                            onClick={() => { playClickSound(); setIsTaxModalOpen(true); }}
                             className="text-[#00BCD4] underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
                           >
                             More
@@ -963,8 +989,8 @@ export default function PosOrderPage() {
                     {/* Customer Paid */}
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <span className="text-gray-400">Customer Paid</span>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={customerPaid || ''}
                         placeholder="0"
                         onChange={(e) => setCustomerPaid(e.target.value)}
@@ -975,8 +1001,8 @@ export default function PosOrderPage() {
                     {/* Return to Customer */}
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <span className="text-gray-400">Return to Customer</span>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={manualReturnAmount || ''}
                         placeholder="0.00"
                         onChange={(e) => setManualReturnAmount(e.target.value)}
@@ -987,8 +1013,8 @@ export default function PosOrderPage() {
                     {/* Tip */}
                     <div className="flex items-center justify-between px-4 py-2.5">
                       <span className="text-gray-400">Tip</span>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={tipAmount || ''}
                         placeholder="0.00"
                         onChange={(e) => setTipAmount(e.target.value)}
@@ -1029,14 +1055,14 @@ export default function PosOrderPage() {
                        <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
                           <div className={`w-full h-full rounded-full ${paymentMode === method ? 'bg-white' : 'group-hover:bg-white/10'}`} />
                        </div>
-                       <input 
-                         type="radio" 
-                         className="hidden" 
-                         name="payment" 
-                         value={method} 
+                       <input
+                         type="radio"
+                         className="hidden"
+                         name="payment"
+                         value={method}
                          checked={paymentMode === method}
-                         onChange={() => { 
-                           playClickSound(); 
+                         onChange={() => {
+                           playClickSound();
                            setPaymentMode(method);
                            if (method === 'Other') setIsOtherPaymentModalOpen(true);
                          }}
@@ -1050,19 +1076,20 @@ export default function PosOrderPage() {
 
             {/* Always Visible Action Buttons (Row 4) */}
             {!isPickupMode && (
-              <div className="grid grid-cols-3 gap-2 p-2 border-t border-white/5">
+              <div className="grid grid-cols-4 gap-2 p-2 border-t border-white/5">
                 <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" disabled={!canPlaceKot} />
                 <ActionButton onClick={handleReprint} label="REPRINT" color="bg-[#555555]" textColor="text-white" disabled={!canReprint} />
+                <ActionButton onClick={() => setIsDiscountModalOpen(true)} label="DISCOUNT" color="bg-[#FFD600]" textColor="text-gray-900" />
                 <ActionButton onClick={handleSave} label="HOLD" color="bg-[#00BCD4]" textColor="text-white" disabled={!canHoldDraft} />
               </div>
             )}
             {/* Download Bill + KOT - only shown in pickup mode */}
             {isPickupMode && (
               <div className="grid grid-cols-1 gap-1 p-2 border-t border-white/5">
-                <ActionButton 
-                  onClick={handleDownloadBillAndKOT} 
-                  label="Download Bill + KOT" 
-                  color="bg-[#00BCD4]" 
+                <ActionButton
+                  onClick={handleDownloadBillAndKOT}
+                  label="Download Bill + KOT"
+                  color="bg-[#00BCD4]"
                   disabled={!canDownloadPickup}
                 />
               </div>
@@ -1070,12 +1097,12 @@ export default function PosOrderPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Waiter Selection Modal */}
       <AnimatePresence>
         {isWaiterModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1091,7 +1118,7 @@ export default function PosOrderPage() {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <span className="text-sm font-black text-gray-700 uppercase tracking-wide">Assign to</span>
-                <button 
+                <button
                   onClick={() => { playClickSound(); setIsWaiterModalOpen(false); }}
                   className="text-gray-400 hover:text-gray-600 transition-colors p-1"
                 >
@@ -1121,13 +1148,13 @@ export default function PosOrderPage() {
 
               {/* Footer */}
               <div className="p-4 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100 mt-2">
-                <button 
+                <button
                   onClick={() => { playClickSound(); setIsWaiterModalOpen(false); }}
                   className="px-5 py-2 text-sm font-bold border border-gray-200 rounded text-gray-600 hover:bg-gray-100 transition-colors bg-white shadow-sm"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={async () => {
                     playClickSound();
                     try {
@@ -1151,13 +1178,27 @@ export default function PosOrderPage() {
       {/* Discount Modal */}
       <AnimatePresence>
         {isDiscountModalOpen && (
-          <AppliedDiscountModal 
+          <AppliedDiscountModal
             onClose={() => setIsDiscountModalOpen(false)}
-            onSave={(val, type, reason) => {
-               setDiscount(Number(val));
-               setDiscountType(type);
-               setDiscountReason(reason);
-               setIsDiscountModalOpen(false);
+            onSave={async (val, type, reason) => {
+               try {
+                  setOrderNotice(null);
+                  await applyOrderDiscount(tableId, {
+                    type: type.toUpperCase(),
+                    value: Number(val),
+                    reason: reason
+                  }, {
+                    isCarOrder: isCarServiceMode,
+                    isPickupOrder: isPickupMode
+                  });
+                  
+                  setDiscount(Number(val));
+                  setDiscountType(type);
+                  setDiscountReason(reason);
+                  setIsDiscountModalOpen(false);
+               } catch (err) {
+                  setOrderNotice({ type: 'error', text: err.response?.data?.message || 'Failed to apply discount' });
+               }
             }}
             currentVal={discount}
             currentType={discountType}
@@ -1169,7 +1210,7 @@ export default function PosOrderPage() {
       {/* Split Modal */}
       <AnimatePresence>
         {isSplitModalOpen && (
-          <SplitBillModal 
+          <SplitBillModal
             onClose={() => setIsSplitModalOpen(false)}
             total={total}
             currentPayments={splitPayments}
@@ -1185,7 +1226,7 @@ export default function PosOrderPage() {
       {/* Other Payment Type Modal */}
       <AnimatePresence>
         {isOtherPaymentModalOpen && (
-          <OtherPaymentModal 
+          <OtherPaymentModal
             onClose={() => setIsOtherPaymentModalOpen(false)}
             onSave={(details) => {
               setOtherPaymentDetails(details);
@@ -1200,7 +1241,7 @@ export default function PosOrderPage() {
       <AnimatePresence>
         {isTaxModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 text-gray-800">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1216,7 +1257,7 @@ export default function PosOrderPage() {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <span className="text-sm font-black text-gray-700 uppercase tracking-wide">Applied Tax</span>
-                <button 
+                <button
                   onClick={() => { playClickSound(); setIsTaxModalOpen(false); }}
                   className="text-gray-400 hover:text-gray-600 transition-colors p-1"
                 >
@@ -1251,7 +1292,7 @@ export default function PosOrderPage() {
 
               {/* Footer */}
               <div className="p-4 flex justify-end bg-gray-50/50">
-                 <button 
+                 <button
                    onClick={() => setIsTaxModalOpen(false)}
                    className="px-6 py-2 border border-gray-300 rounded text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-white hover:shadow-sm active:scale-95 transition-all outline-none"
                  >
@@ -1267,14 +1308,14 @@ export default function PosOrderPage() {
       <AnimatePresence>
          {variantModalItem && (
             <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-               <motion.div 
+               <motion.div
                  initial={{ opacity: 0 }}
                  animate={{ opacity: 1 }}
                  exit={{ opacity: 0 }}
                  onClick={() => setVariantModalItem(null)}
                  className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
                />
-               <motion.div 
+               <motion.div
                  initial={{ opacity: 0, scale: 0.9, y: 30 }}
                  animate={{ opacity: 1, scale: 1, y: 0 }}
                  exit={{ opacity: 0, scale: 0.9, y: 30 }}
@@ -1292,7 +1333,7 @@ export default function PosOrderPage() {
                      {(variantModalItem.variantGroups?.length > 0 ? variantModalItem.variantGroups.map(g => ({ groupId: g._id || g.id, ...g })) : (dishVariants[variantModalItem.id] || [])).map(mapping => {
                         const group = variantModalItem.variantGroups?.find(g => (g._id || g.id) === mapping.groupId) || variantGroups.find(g => g.id === mapping.groupId);
                         if (!group) return null;
-                        
+
                         return (
                            <div key={group._id || group.id} className="space-y-4">
                               <div className="flex items-center justify-between px-1">
@@ -1305,7 +1346,7 @@ export default function PosOrderPage() {
                                  {group.options.map(opt => {
                                     const isSelected = selectedVariants[group._id || group.id] === (opt._id || opt.id);
                                     return (
-                                       <button 
+                                       <button
                                          key={opt._id || opt.id}
                                           type="button"
                                           onClick={() => {
@@ -1313,8 +1354,8 @@ export default function PosOrderPage() {
                                              setSelectedVariants(prev => ({ ...prev, [group._id || group.id]: (opt._id || opt.id) }));
                                           }}
                                           className={`group relative p-4 rounded-2xl border-2 transition-all text-left ${
-                                             isSelected 
-                                                ? 'border-[#E1261C] bg-rose-50 text-[#E1261C] shadow-lg shadow-rose-900/10' 
+                                             isSelected
+                                                ? 'border-[#E1261C] bg-rose-50 text-[#E1261C] shadow-lg shadow-rose-900/10'
                                                 : 'border-stone-100 bg-stone-50 text-stone-500 hover:border-stone-300'
                                           }`}
                                        >
@@ -1356,7 +1397,7 @@ export default function PosOrderPage() {
                            })()}
                         </span>
                      </div>
-                     <button 
+                     <button
                         type="button"
                         onClick={() => { playClickSound(); confirmVariantSelection(); }}
                         className="px-10 py-4 bg-[#E1261C] text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-stone-900 transition-all shadow-xl shadow-rose-900/20 active:scale-95 flex items-center gap-2"
@@ -1379,14 +1420,14 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
     <div className={`px-3 py-2 border-b border-gray-100 flex items-center text-[11px] font-bold animate-in fade-in slide-in-from-right-2 duration-200 group ${isPlaced ? 'bg-gray-50/50' : 'bg-white'}`}>
       <div className="w-5 mr-2 shrink-0">
         {!isPlaced ? (
-          <button 
+          <button
             onClick={onRemove}
             className="w-5 h-5 rounded-full bg-[#E1261C] text-white flex items-center justify-center hover:scale-110 transition-transform shadow-sm"
           >
             <Plus size={12} className="rotate-45" strokeWidth={4} />
           </button>
         ) : (
-          <button 
+          <button
             onClick={onCancel}
             className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"
             title="Cancel Item"
@@ -1409,7 +1450,7 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
 
       <div className="w-[45%] flex items-center justify-center gap-2">
         {!isPlaced && (
-          <button 
+          <button
             onClick={() => onUpdateQty(-1)}
             className="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded shadow-sm text-gray-600 hover:bg-gray-50 active:scale-90 transition-all font-black"
           >
@@ -1420,7 +1461,7 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
           <span className="text-[11px] font-bold">{item.quantity}</span>
         </div>
         {!isPlaced && (
-          <button 
+          <button
             onClick={() => onUpdateQty(1)}
             className="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded shadow-sm text-gray-600 hover:bg-gray-50 active:scale-90 transition-all font-black"
           >
@@ -1464,7 +1505,7 @@ function AppliedDiscountModal({ onClose, onSave, currentVal, currentType, curren
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -1490,8 +1531,8 @@ function AppliedDiscountModal({ onClose, onSave, currentVal, currentType, curren
                 <span className="text-[11px] font-black text-gray-500 uppercase tracking-tight">Custom Discount</span>
                 <button className="text-[10px] font-bold text-red-500">Add More</button>
              </div>
-             <input 
-               type="text" 
+             <input
+               type="text"
                placeholder="Reason"
                value={reason}
                onChange={(e) => setReason(e.target.value)}
@@ -1502,19 +1543,19 @@ function AppliedDiscountModal({ onClose, onSave, currentVal, currentType, curren
                    <button onClick={() => setType('percentage')} className={`text-xs font-bold ${type === 'percentage' ? 'text-gray-900 underline underline-offset-4' : 'text-gray-400'}`}>Percentage</button>
                    <button onClick={() => setType('fixed')} className={`text-xs font-bold ${type === 'fixed' ? 'text-gray-900 underline underline-offset-4' : 'text-gray-400'}`}>Fixed</button>
                 </div>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   value={val || ''}
                   onChange={(e) => setVal(Number(e.target.value))}
-                  className="w-16 p-2 text-right border border-gray-200 rounded text-xs font-black" 
+                  className="w-16 p-2 text-right border border-gray-200 rounded text-xs font-black"
                 />
              </div>
           </div>
           <div className="space-y-3">
              <span className="text-[11px] font-black text-gray-500 uppercase tracking-tight">Coupon Code</span>
              <div className="flex items-center gap-2">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={coupon}
                   onChange={(e) => setCoupon(e.target.value)}
                   className="flex-1 text-xs p-2 border border-gray-200 rounded"
@@ -1539,7 +1580,7 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
   const [amountInput, setAmountInput] = useState('');
 
   const methods = ['Cash', 'Card', 'UPI', 'Wallet', 'Other'];
-  
+
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const remaining = total - totalPaid;
 
@@ -1547,7 +1588,7 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
     playClickSound();
     const amt = Number(amountInput);
     if (!amt || amt <= 0) return;
-    
+
     setPayments([...payments, { method: selectedMethod, amount: amt }]);
     setAmountInput('');
   };
@@ -1559,9 +1600,9 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
@@ -1591,21 +1632,21 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
 
           <div className="space-y-4">
              <div className="flex gap-2">
-                <select 
+                <select
                   value={selectedMethod}
                   onChange={(e) => setSelectedMethod(e.target.value)}
                   className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E1261C] transition-all"
                 >
                    {methods.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
-                <input 
+                <input
                   type="number"
                   placeholder="Amount"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
                   className="w-32 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-[#E1261C] transition-all text-right"
                 />
-                <button 
+                <button
                   onClick={addPayment}
                   className="bg-gray-800 text-white p-2 rounded-lg hover:bg-black transition-all"
                 >
@@ -1635,13 +1676,13 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
         </div>
 
         <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-           <button 
+           <button
              onClick={() => { playClickSound(); onConfirm([]); }}
              className="flex-1 py-3 text-sm font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
            >
              Reset All
            </button>
-           <button 
+           <button
              disabled={remaining !== 0}
              onClick={() => { playClickSound(); onConfirm(payments); }}
              className={`flex-1 py-3 rounded-lg text-sm font-black uppercase tracking-widest shadow-md transition-all ${remaining === 0 ? 'bg-[#2EB886] text-white shadow-green-100 hover:brightness-105 active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
@@ -1656,10 +1697,10 @@ function SplitBillModal({ onClose, total, onConfirm, currentPayments }) {
 
 function OtherPaymentModal({ onClose, onSave, currentDetails }) {
   const [details, setDetails] = useState(currentDetails);
-  
+
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -1675,7 +1716,7 @@ function OtherPaymentModal({ onClose, onSave, currentDetails }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <span className="text-[13px] font-black text-gray-700 uppercase tracking-wide">Other Payment Type</span>
-          <button 
+          <button
             onClick={() => { playClickSound(); onClose(); }}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1"
           >
@@ -1687,7 +1728,7 @@ function OtherPaymentModal({ onClose, onSave, currentDetails }) {
         <div className="p-6 space-y-5">
            <div className="space-y-2">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">Other Payment Type</label>
-              <select 
+              <select
                 value={details.type}
                 onChange={(e) => setDetails({ ...details, type: e.target.value })}
                 className="w-full bg-white border border-gray-200 rounded p-2.5 text-xs font-black text-gray-700 outline-none focus:ring-1 focus:ring-[#E1261C]"
@@ -1701,7 +1742,7 @@ function OtherPaymentModal({ onClose, onSave, currentDetails }) {
            </div>
 
            <div className="space-y-2">
-              <textarea 
+              <textarea
                 rows={3}
                 placeholder="Details (Optional)"
                 value={details.note}
@@ -1713,13 +1754,13 @@ function OtherPaymentModal({ onClose, onSave, currentDetails }) {
 
         {/* Footer */}
         <div className="p-4 flex justify-end gap-3 border-t border-gray-50">
-           <button 
+           <button
              onClick={onClose}
              className="px-6 py-2.5 border border-gray-200 rounded text-[11px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 active:scale-95 transition-all outline-none"
            >
               No
            </button>
-           <button 
+           <button
              onClick={() => { playClickSound(); onSave(details); }}
              className="px-8 py-2.5 bg-[#C62828] text-white rounded text-[11px] font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-md"
            >

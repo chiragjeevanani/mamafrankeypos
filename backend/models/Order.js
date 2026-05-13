@@ -26,6 +26,11 @@ const kotItemSchema = mongoose.Schema({
     type: String,
     enum: ['pending', 'prepared', 'served', 'cancelled'],
     default: 'pending',
+  },
+  discount: {
+    type: { type: String, enum: ['PERCENTAGE', 'FLAT'], default: 'FLAT' },
+    value: { type: Number, default: 0 },
+    amount: { type: Number, default: 0 },
   }
 });
 
@@ -109,6 +114,17 @@ const orderSchema = mongoose.Schema(
       type: String,
       enum: ['RUNNING', 'BILLED', 'COMPLETED', 'CANCELLED'],
       default: 'RUNNING',
+    },
+    discount: {
+      type: { type: String, enum: ['PERCENTAGE', 'FLAT'], default: 'FLAT' },
+      value: { type: Number, default: 0 },
+      amount: { type: Number, default: 0 },
+      reason: String,
+      couponCode: String,
+      appliedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Staff'
+      }
     },
     billedAt: Date,
     completedAt: Date,

@@ -33,6 +33,7 @@ const expenseRoutes = require('./routes/expenseRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const roleRoutes = require('./routes/roleRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -46,6 +47,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/roles', roleRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Error handling
 app.use(notFound);

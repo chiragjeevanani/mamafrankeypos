@@ -1,5 +1,20 @@
-const Tax = require('../models/Tax');
 const Counter = require('../models/Counter');
+const StoreSettings = require('../models/StoreSettings');
+const logAudit = require('../utils/auditLogger');
+
+const getOrCreateStoreSettings = async () => {
+  let settings = await StoreSettings.findOne();
+  if (!settings) {
+    settings = await StoreSettings.create({});
+  }
+  return settings;
+};
+
+const normalizeTax = (tax = {}) => ({
+  name: String(tax.name || '').trim(),
+  percentage: Number(tax.percentage ?? tax.rate ?? 0),
+  active: tax.active !== undefined ? tax.active : (tax.enabled !== undefined ? tax.enabled : true),
+});
 
 // --- Tax Controllers ---
 
@@ -7,48 +22,90 @@ const Counter = require('../models/Counter');
 // @route   GET /api/settings/taxes
 // @access  Public
 const getTaxes = async (req, res) => {
-  const taxes = await Tax.find({});
-  res.json(taxes);
+  const settings = await getOrCreateStoreSettings();
+  res.json(settings.taxes || []);
 };
 
 // @desc    Create tax
 // @route   POST /api/settings/taxes
 // @access  Private/Admin
 const createTax = async (req, res) => {
-  const { name, rate, enabled } = req.body;
-  const tax = await Tax.create({ name, rate, enabled });
-  res.status(201).json(tax);
+  const settings = await getOrCreateStoreSettings();
+  const tax = normalizeTax(req.body);
+
+  if (!tax.name) {
+    res.status(400);
+    throw new Error('Tax name is required');
+  }
+
+  if (!Number.isFinite(tax.percentage) || tax.percentage < 0) {
+    res.status(400);
+    throw new Error('Tax percentage must be a valid non-negative number');
+  }
+
+  if (settings.taxes.some((existing) => existing.name.toLowerCase() === tax.name.toLowerCase())) {
+    res.status(400);
+    throw new Error('Tax already exists');
+  }
+
+  settings.taxes.push(tax);
+  await settings.save();
+  res.status(201).json(settings.taxes[settings.taxes.length - 1]);
 };
 
 // @desc    Update tax
 // @route   PUT /api/settings/taxes/:id
 // @access  Private/Admin
 const updateTax = async (req, res) => {
-  const tax = await Tax.findById(req.params.id);
-  if (tax) {
-    tax.name = req.body.name || tax.name;
-    tax.rate = req.body.rate !== undefined ? req.body.rate : tax.rate;
-    tax.enabled = req.body.enabled !== undefined ? req.body.enabled : tax.enabled;
-    const updatedTax = await tax.save();
-    res.json(updatedTax);
-  } else {
+  const settings = await getOrCreateStoreSettings();
+  const tax = settings.taxes.id(req.params.id);
+
+  if (!tax) {
     res.status(404);
     throw new Error('Tax not found');
   }
+
+  const updates = normalizeTax({ ...tax.toObject(), ...req.body });
+  if (!updates.name) {
+    res.status(400);
+    throw new Error('Tax name is required');
+  }
+  if (!Number.isFinite(updates.percentage) || updates.percentage < 0) {
+    res.status(400);
+    throw new Error('Tax percentage must be a valid non-negative number');
+  }
+
+  const duplicate = settings.taxes.find((existing) =>
+    String(existing._id) !== String(tax._id) &&
+    existing.name.toLowerCase() === updates.name.toLowerCase()
+  );
+  if (duplicate) {
+    res.status(400);
+    throw new Error('Tax already exists');
+  }
+
+  tax.name = updates.name;
+  tax.percentage = updates.percentage;
+  tax.active = updates.active;
+  await settings.save();
+  res.json(tax);
 };
 
 // @desc    Delete tax
 // @route   DELETE /api/settings/taxes/:id
 // @access  Private/Admin
 const deleteTax = async (req, res) => {
-  const tax = await Tax.findById(req.params.id);
-  if (tax) {
-    await tax.deleteOne();
-    res.json({ message: 'Tax removed' });
-  } else {
+  const settings = await getOrCreateStoreSettings();
+  const tax = settings.taxes.id(req.params.id);
+
+  if (!tax) {
     res.status(404);
     throw new Error('Tax not found');
   }
+
+  tax.deleteOne();
+  await settings.save();
+  res.json({ message: 'Tax removed' });
 };
 
 // --- Counter Controllers ---
@@ -102,19 +159,13 @@ const deleteCounter = async (req, res) => {
   }
 };
 
-const StoreSettings = require('../models/StoreSettings');
-const logAudit = require('../utils/auditLogger');
-
 // --- Store Settings Controllers ---
 
 // @desc    Get store settings
 // @route   GET /api/settings/store
 // @access  Public
 const getStoreSettings = async (req, res) => {
-  let settings = await StoreSettings.findOne();
-  if (!settings) {
-    settings = await StoreSettings.create({});
-  }
+  const settings = await getOrCreateStoreSettings();
   res.json(settings);
 };
 

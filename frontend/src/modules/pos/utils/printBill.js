@@ -21,28 +21,45 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   const dateStr = now.toLocaleDateString('en-GB'); // dd/mm/yy style
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   const cashierName = waiter?.name || billingDetails?.billerName || 'Biller';
-  const billNo = Math.floor(200000 + Math.random() * 90000);
-  const tokenNo = Math.floor(100 + Math.random() * 900);
-  const { subTotal, tax, discount, total, orderType, appliedTaxes } = billingDetails;
+  const billNo = orderData.orderNumber || billingDetails?.orderNumber || `T-${Math.floor(1000 + Math.random() * 9000)}`;
+  const tokenNo = orderData.tokenNo || billingDetails?.tokenNo || '-';
+  const { subTotal, tax, discount, total, orderType, appliedTaxes, storeInfo } = billingDetails;
 
-  // Header Section - Restaurant Info (Centered as per image)
+  // Header Section - Restaurant Info
   doc.setFont('courier', 'normal');
   doc.setFontSize(8);
   doc.text('RETAIL INVOICE', 40, 8, { align: 'center' });
   
   doc.setFont('courier', 'bold');
   doc.setFontSize(11);
-  doc.text('MAMA CHICKEN MAMA', 40, 13, { align: 'center' });
-  doc.text('FRANKY HOUSE', 40, 17, { align: 'center' });
+  // Dynamic Store Name
+  const storeName = storeInfo?.name || 'MAMA FRANKY HOUSE';
+  doc.text(storeName.toUpperCase(), 40, 13, { align: 'center' });
   
   doc.setFont('courier', 'normal');
   doc.setFontSize(8);
-  doc.text('(M/S TIME TO EAT)', 40, 21, { align: 'center' });
-  doc.text('A - 17, Shopping Arcade, Sadar', 40, 25, { align: 'center' });
-  doc.text('Bazar, Agra Cantt, U. P. - 282001', 40, 29, { align: 'center' });
-  doc.text('Ph. No.. : +91 88991-99999', 40, 33, { align: 'center' });
-  doc.text('GSTIN : 09AAFFT9378RIZW', 40, 37, { align: 'center' });
-  doc.text('FSSAI NO. : 12715001000797', 40, 41, { align: 'center' });
+  if (storeInfo?.legalName) {
+    doc.text(`(${storeInfo.legalName})`, 40, 17, { align: 'center' });
+  }
+
+  // Dynamic Address
+  const address = storeInfo?.address || 'A - 17, Shopping Arcade, Sadar Bazar';
+  const city = storeInfo?.city ? `${storeInfo.city}, ${storeInfo.state || ''} - ${storeInfo.pincode || ''}` : 'Agra Cantt, U. P. - 282001';
+  doc.text(address, 40, 21, { align: 'center' });
+  doc.text(city, 40, 25, { align: 'center' });
+  
+  if (storeInfo?.phone) {
+    doc.text(`Ph. No.. : +91 ${storeInfo.phone}`, 40, 29, { align: 'center' });
+  } else {
+    doc.text('Ph. No.. : +91 88991-99999', 40, 29, { align: 'center' });
+  }
+
+  const gstin = storeInfo?.gstin || '09AAFFT9378RIZW';
+  doc.text(`GSTIN : ${gstin}`, 40, 33, { align: 'center' });
+  
+  if (storeInfo?.fssai) {
+    doc.text(`FSSAI NO. : ${storeInfo.fssai}`, 40, 37, { align: 'center' });
+  }
 
   // Double Solid Divider
   doc.setLineWidth(0.5);
@@ -85,14 +102,23 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
     
     // Position price section at the same Y as the first line of multi-line name
     doc.text(`${item.quantity}`, 45, y, { align: 'right' });
-    // Calculate base price for inclusive breakdown
+    // Calculate base price for inclusive breakdown (subtract item discount first)
+    const itemDiscount = item.discount?.amount || 0;
+    const itemTotalInclusive = (item.price * item.quantity) - itemDiscount;
     const totalTaxRate = appliedTaxes?.reduce((sum, t) => sum + (t.rate || t.percentage), 0) || 0;
-    const basePrice = item.price / (1 + (totalTaxRate / 100));
+    const basePriceTotal = itemTotalInclusive / (1 + (totalTaxRate / 100));
     
-    doc.text(`${basePrice.toFixed(2)}`, 60, y, { align: 'right' });
-    doc.text(`${(basePrice * item.quantity).toFixed(2)}`, 75, y, { align: 'right' });
+    doc.text(`${item.price.toFixed(2)}`, 60, y, { align: 'right' });
+    doc.text(`${basePriceTotal.toFixed(2)}`, 75, y, { align: 'right' });
     
     y += (splitName.length * 4.5);
+
+    if (itemDiscount > 0) {
+       doc.setFontSize(7);
+       doc.text(`(Item Disc: -${itemDiscount.toFixed(2)})`, 8, y - 1);
+       y += 3.5;
+       doc.setFontSize(8);
+    }
 
     // Print Variants if exist
     if (item.variantLabel) {
@@ -126,7 +152,8 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   y += 4;
 
   if (discount > 0) {
-    doc.text('Discount:', 40, y);
+    const coupon = orderData.discount?.couponCode;
+    doc.text(`Discount:${coupon ? ' ('+coupon+')' : ''}`, 40, y);
     doc.text(`-${discount.toFixed(2)}`, 75, y, { align: 'right' });
     y += 4;
   }

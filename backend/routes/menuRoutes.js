@@ -50,11 +50,11 @@ router.route('/items')
   .get(getMenuItems)
   .post(protect, admin, upload.single('image'), createMenuItem);
 
+router.post('/items/bulk-update', protect, admin, bulkUpdateMenuItems);
+
 router.route('/items/:id')
   .put(protect, admin, upload.single('image'), updateMenuItem)
   .delete(protect, admin, deleteMenuItem);
-
-router.post('/items/bulk-update', protect, admin, bulkUpdateMenuItems);
 
 // Bulk Upload (uses local disk temporarily for CSV parsing)
 router.post('/bulk-upload', protect, admin, localUpload.single('file'), bulkUploadMenu);

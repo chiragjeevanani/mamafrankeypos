@@ -1,17 +1,19 @@
 const VariantGroup = require('../models/VariantGroup');
+const mongoose = require('mongoose');
+const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Get all variant groups
 // @route   GET /api/menu/variants
 // @access  Public
-const getVariantGroups = async (req, res) => {
+const getVariantGroups = asyncHandler(async (req, res) => {
   const groups = await VariantGroup.find({});
   res.json(groups);
-};
+});
 
 // @desc    Create variant group
 // @route   POST /api/menu/variants
 // @access  Private/Admin
-const createVariantGroup = async (req, res) => {
+const createVariantGroup = asyncHandler(async (req, res) => {
   const name = String(req.body.name || '').trim();
   const options = (req.body.options || [])
     .filter((option) => String(option.name || '').trim() !== '')
@@ -31,7 +33,9 @@ const createVariantGroup = async (req, res) => {
     throw new Error('At least one variant option is required');
   }
 
-  const groupExists = await VariantGroup.findOne({ name });
+  const groupExists = await VariantGroup.findOne({
+    name: { $regex: new RegExp(`^${name}$`, 'i') }
+  });
 
   if (groupExists) {
     res.status(400);
@@ -45,12 +49,17 @@ const createVariantGroup = async (req, res) => {
   });
 
   res.status(201).json(group);
-};
+});
 
 // @desc    Update variant group
 // @route   PUT /api/menu/variants/:id
 // @access  Private/Admin
-const updateVariantGroup = async (req, res) => {
+const updateVariantGroup = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Variant Group ID format');
+  }
+
   const group = await VariantGroup.findById(req.params.id);
 
   if (group) {
@@ -78,12 +87,17 @@ const updateVariantGroup = async (req, res) => {
     res.status(404);
     throw new Error('Variant group not found');
   }
-};
+});
 
 // @desc    Delete variant group
 // @route   DELETE /api/menu/variants/:id
 // @access  Private/Admin
-const deleteVariantGroup = async (req, res) => {
+const deleteVariantGroup = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Variant Group ID format');
+  }
+
   const group = await VariantGroup.findById(req.params.id);
   if (group) {
     await group.deleteOne();
@@ -92,7 +106,7 @@ const deleteVariantGroup = async (req, res) => {
     res.status(404);
     throw new Error('Variant group not found');
   }
-};
+});
 
 module.exports = {
   getVariantGroups,

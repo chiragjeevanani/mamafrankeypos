@@ -378,7 +378,9 @@ export default function DataAdjustmentProtocol() {
                            <td className="px-3 py-3 font-bold uppercase text-slate-500">{bill.paymentMethod || 'N/A'}</td>
                            <td className="px-3 py-3 font-bold uppercase text-slate-500">{bill.orderType}</td>
                            <td className="px-3 py-3 font-bold uppercase text-slate-600">{bill.waiter?.name || 'SYSTEM'}</td>
-                           <td className="px-3 py-3 text-center font-bold text-slate-500">{bill.table?.name || 'CAR'}</td>
+                           <td className="px-3 py-3 text-center font-bold text-slate-500">
+                              {bill.orderType === 'PICKUP' ? 'PICKUP' : (bill.table?.name || bill.carNumber || 'CAR')}
+                            </td>
                            <td className="px-3 py-3 text-center font-black text-slate-800">
                              {isDecreaseQty 
                                ? maskQuantity(bill.kots.reduce((s, k) => s + k.items.reduce((si, i) => si + i.quantity, 0), 0))
@@ -412,12 +414,12 @@ export default function DataAdjustmentProtocol() {
                </div>
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50 relative overflow-hidden">
                   <div className="absolute right-0 top-0 bottom-0 w-1 bg-[#E1261C]" />
-                  <span className="text-[8px] font-black text-[#E1261C] uppercase tracking-[0.15em]">Aggregate Fiscal</span>
-                  <span className="text-sm font-black text-white tabular-nums">₹{aggregateTotal.toLocaleString()}</span>
+                  <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Aggregate Fiscal</span>
+                  <span className="text-sm font-black text-white tabular-nums" style={{ fontFamily: "system-ui, sans-serif" }}>₹{aggregateTotal.toLocaleString()}</span>
                </div>
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50">
-                  <span className="text-[8px] font-black text-[#E1261C] uppercase tracking-[0.15em]">Selection Total</span>
-                  <span className="text-sm font-black text-white tabular-nums">
+                  <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Selection Total</span>
+                  <span className="text-sm font-black text-white tabular-nums" style={{ fontFamily: "system-ui, sans-serif" }}>
                     ₹{records.filter(r => selectedBills.includes(r._id)).reduce((s, b) => s + calculateMaskedTotal(b), 0).toLocaleString()}
                   </span>
                </div>

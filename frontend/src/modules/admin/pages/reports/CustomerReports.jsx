@@ -1,8 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Heart, Search, UserPlus, Users, Zap } from 'lucide-react';
 import api from '../../../../utils/api';
+import { getReplacedName, maskCurrency, maskQuantity } from '../../utils/dataMask';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
+
+const maskPhone = (phone) => {
+  if (!phone) return '';
+  const str = String(phone).trim();
+  if (str.length <= 4) return '******' + str.slice(-2);
+  return str.slice(0, 2) + '******' + str.slice(-2);
+};
+
+const maskEmail = (email) => {
+  if (!email) return '';
+  const str = String(email).trim();
+  const atIdx = str.indexOf('@');
+  if (atIdx <= 2) return '***@***.com';
+  return str.slice(0, 2) + '****' + str.slice(atIdx);
+};
 
 export default function CustomerReports() {
   const [customers, setCustomers] = useState([]);
@@ -56,11 +72,11 @@ export default function CustomerReports() {
     const rows = [
       ['Name', 'Phone', 'Email', 'Visits', 'Total Spent', 'Loyalty Points', 'Last Visit'],
       ...filteredCustomers.map((customer) => [
-        customer.name || '',
-        customer.phone || '',
-        customer.email || '',
+        getReplacedName(customer.name) || '',
+        maskPhone(customer.phone) || '',
+        maskEmail(customer.email) || '',
         customer.totalVisits || 0,
-        customer.totalSpent || 0,
+        maskCurrency(customer.totalSpent) || 0,
         customer.loyaltyPoints || 0,
         customer.lastVisit || ''
       ])
@@ -103,9 +119,9 @@ export default function CustomerReports() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Known Customers', value: stats.totalCustomers.toLocaleString(), icon: UserPlus, classes: 'bg-blue-50 text-blue-600' },
+          { label: 'Known Customers', value: maskQuantity(stats.totalCustomers).toLocaleString(), icon: UserPlus, classes: 'bg-blue-50 text-blue-600' },
           { label: 'Retention Ratio', value: `${stats.repeatRate}%`, icon: Heart, classes: 'bg-rose-50 text-rose-600' },
-          { label: 'Average LTV', value: formatMoney(stats.avgLtv), icon: Zap, classes: 'bg-amber-50 text-amber-600' }
+          { label: 'Average LTV', value: formatMoney(maskCurrency(stats.avgLtv)), icon: Zap, classes: 'bg-amber-50 text-amber-600' }
         ].map((card) => (
           <div key={card.label} className="bg-white border border-slate-100 p-6 rounded-sm flex items-center gap-4 group">
             <div className={`w-12 h-12 ${card.classes} rounded-sm flex items-center justify-center transition-colors`}>
@@ -144,14 +160,19 @@ export default function CustomerReports() {
               .map((customer) => (
                 <tr key={customer._id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-tight">{customer.name || 'Unnamed Customer'}</span>
-                    <p className="text-[9px] font-bold text-slate-400 mt-1">{customer.phone || customer.email || 'No contact saved'}</p>
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-tight">{getReplacedName(customer.name) || 'Unnamed Customer'}</span>
+                    <p className="text-[9px] font-bold text-slate-400 mt-1">
+                      {customer.phone && `${maskPhone(customer.phone)}`}
+                      {customer.phone && customer.email && ' | '}
+                      {customer.email && `${maskEmail(customer.email)}`}
+                      {!customer.phone && !customer.email && 'No contact saved'}
+                    </p>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-xs font-bold text-slate-500 tracking-tighter">{customer.totalVisits || 0} interactions</span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className="text-xs font-black text-slate-900">{formatMoney(customer.totalSpent)}</span>
+                    <span className="text-xs font-black text-slate-900">{formatMoney(maskCurrency(customer.totalSpent))}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="px-2 py-0.5 rounded-sm text-[8px] font-black uppercase tracking-widest bg-slate-100 text-slate-600">

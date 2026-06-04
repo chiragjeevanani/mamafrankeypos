@@ -1,17 +1,19 @@
 const Combo = require('../models/Combo');
+const mongoose = require('mongoose');
+const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Get all combos
 // @route   GET /api/menu/combos
 // @access  Public
-const getCombos = async (req, res) => {
+const getCombos = asyncHandler(async (req, res) => {
   const combos = await Combo.find({}).populate('elements.item');
   res.json(combos);
-};
+});
 
 // @desc    Create combo
 // @route   POST /api/menu/combos
 // @access  Private/Admin
-const createCombo = async (req, res) => {
+const createCombo = asyncHandler(async (req, res) => {
   const name = String(req.body.name || '').trim();
   const price = Number(req.body.price);
   const code = String(req.body.code || '').trim().toUpperCase();
@@ -33,6 +35,13 @@ const createCombo = async (req, res) => {
     throw new Error('At least one combo item is required');
   }
 
+  for (const element of elements) {
+    if (!mongoose.Types.ObjectId.isValid(element.item)) {
+      res.status(400);
+      throw new Error(`Invalid item ID in combo elements: ${element.item}`);
+    }
+  }
+
   const combo = await Combo.create({
     name,
     price,
@@ -42,12 +51,17 @@ const createCombo = async (req, res) => {
   });
 
   res.status(201).json(combo);
-};
+});
 
 // @desc    Update combo
 // @route   PUT /api/menu/combos/:id
 // @access  Private/Admin
-const updateCombo = async (req, res) => {
+const updateCombo = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Combo ID format');
+  }
+
   const combo = await Combo.findById(req.params.id);
 
   if (combo) {
@@ -67,6 +81,12 @@ const updateCombo = async (req, res) => {
         res.status(400);
         throw new Error('At least one combo item is required');
       }
+      for (const element of elements) {
+        if (!mongoose.Types.ObjectId.isValid(element.item)) {
+          res.status(400);
+          throw new Error(`Invalid item ID in combo elements: ${element.item}`);
+        }
+      }
       combo.elements = elements;
     }
     combo.active = req.body.active !== undefined ? req.body.active : combo.active;
@@ -77,12 +97,17 @@ const updateCombo = async (req, res) => {
     res.status(404);
     throw new Error('Combo not found');
   }
-};
+});
 
 // @desc    Delete combo
 // @route   DELETE /api/menu/combos/:id
 // @access  Private/Admin
-const deleteCombo = async (req, res) => {
+const deleteCombo = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Combo ID format');
+  }
+
   const combo = await Combo.findById(req.params.id);
   if (combo) {
     await combo.deleteOne();
@@ -91,7 +116,7 @@ const deleteCombo = async (req, res) => {
     res.status(404);
     throw new Error('Combo not found');
   }
-};
+});
 
 module.exports = {
   getCombos,

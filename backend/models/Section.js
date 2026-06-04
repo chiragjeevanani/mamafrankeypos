@@ -21,7 +21,7 @@ const sectionSchema = mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['DINE-IN', 'CAR-SERVICE', 'PICKUP'],
+      enum: ['DINE-IN', 'CAR-SERVICE'],
       default: 'DINE-IN',
     },
     status: {

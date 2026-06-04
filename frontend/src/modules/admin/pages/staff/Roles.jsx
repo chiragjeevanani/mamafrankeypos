@@ -272,7 +272,8 @@ export default function Roles() {
                         <input 
                           type="text" 
                           required
-                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] rounded-xl transition-all"
+                          disabled={editingRole?.isSystemRole}
+                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           value={formData.name}
                           onChange={(e) => setFormData({...formData, name: e.target.value})}
                           placeholder="e.g. FLOOR SUPERVISOR"

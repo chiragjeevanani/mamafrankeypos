@@ -13,7 +13,7 @@ const protect = async (req, res, next) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      req.user = await Staff.findById(decoded.id).select('-password -pin');
+      req.user = await Staff.findOne({ _id: decoded.id, isDeleted: { $ne: true } }).select('-password -pin');
 
       next();
     } catch (error) {
@@ -33,7 +33,7 @@ const admin = (req, res, next) => {
   if (req.user && req.user.role === 'Admin') {
     next();
   } else {
-    res.status(401);
+    res.status(403);
     throw new Error('Not authorized as an admin');
   }
 };

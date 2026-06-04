@@ -1,8 +1,3 @@
-
-/**
- * Applies a decrement percentage to a quantity for data visibility masking.
- * Ensures the result is never less than 1.
- */
 /**
  * Applies a decrement percentage to a quantity for data visibility masking.
  * Ensures the result is never less than 1.
@@ -11,7 +6,8 @@ export const maskQuantity = (qty) => {
   if (typeof qty !== 'number') return qty;
   
   const percentStr = localStorage.getItem('rms_visibility_decrement');
-  const percent = percentStr ? parseInt(percentStr) : 0;
+  let percent = percentStr ? parseInt(percentStr) : 0;
+  if (isNaN(percent)) percent = 0;
   
   if (percent === 0) return qty;
   
@@ -43,7 +39,8 @@ export const maskCurrency = (amount, itemName = null) => {
 
   // 2. Fallback to Global Percentage Mask
   const percentStr = localStorage.getItem('rms_visibility_decrement');
-  const percent = percentStr ? parseInt(percentStr) : 0;
+  let percent = percentStr ? parseInt(percentStr) : 0;
+  if (isNaN(percent)) percent = 0;
   
   if (percent === 0) return amount;
   
@@ -77,11 +74,24 @@ export const calculateMaskedOrderTotal = (order) => {
   let total = 0;
   let hasTargetedOverride = false;
 
+  let replacements = [];
+  try {
+    const savedSettings = localStorage.getItem('rms_item_replacements');
+    if (savedSettings) {
+      replacements = JSON.parse(savedSettings);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
   order.kots.forEach(kot => {
     kot.items.forEach(item => {
       if (item.status !== 'cancelled') {
         const maskedPrice = maskCurrency(item.price, item.name);
-        if (maskedPrice !== item.price) hasTargetedOverride = true;
+        const isReplaced = replacements.some(r => r.originalItem.toLowerCase() === item.name.toLowerCase());
+        if (isReplaced) {
+          hasTargetedOverride = true;
+        }
         total += maskedPrice * item.quantity;
       }
     });

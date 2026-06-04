@@ -96,9 +96,7 @@ export default function TableView() {
   const [settlementNotice, setSettlementNotice] = useState('');
 
   const carSections = sections.filter((section) => getSectionKind(section) === 'car');
-  const pickupSections = sections.filter((section) => getSectionKind(section) === 'pickup');
   const hasCarSection = carSections.length > 0;
-  const hasPickupSection = pickupSections.length > 0;
   const carSectionIds = carSections.map((section) => section.id);
   const untabledCarOrders = Object.values(carOrders).filter((order) => order?.carNumber && !order?.table?.name);
   const untabledPickupOrders = Object.values(pickupOrders).filter((order) => !order?.table?.name);
@@ -355,17 +353,15 @@ export default function TableView() {
               <Car size={14} /> Car Service
             </button>
           )}
-          {hasPickupSection && (
-            <button
-              onClick={() => {
-                const puId = `PU-${Date.now().toString().slice(-6)}`;
-                navigate(`/pos/order/${puId}`, { state: { fromPickup: true } });
-              }}
-              className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95"
-            >
-              Pick Up
-            </button>
-          )}
+          <button
+            onClick={() => {
+              const puId = `PU-${Date.now().toString().slice(-6)}`;
+              navigate(`/pos/order/${puId}`, { state: { fromPickup: true } });
+            }}
+            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors uppercase shadow-sm active:scale-95"
+          >
+            Pick Up
+          </button>
           <button 
             onClick={() => {
               if (sections.length > 0) setSelectedSectionId(sections[0].id);
@@ -425,7 +421,7 @@ export default function TableView() {
 
       {/* Main Content - Tables Grid */}
       <div className="flex-1 overflow-y-auto p-2 md:p-3 flex flex-col gap-4 bg-white">
-        {sections.map((section) => (
+        {sections.filter((section) => getSectionKind(section) !== 'pickup').map((section) => (
           <div key={section.id} className="space-y-1.5">
             <h2 className="text-[#E1261C] font-black text-[9px] uppercase tracking-[0.2em] px-1 opacity-70">
               {section.label}
@@ -828,7 +824,7 @@ export default function TableView() {
                             className="font-black text-[11px] tracking-tight text-center leading-tight truncate w-full"
                             style={{ color: statusConfig.textColor }}
                           >
-                            🛍️ {puId.split('-')[1] || puId}
+                            🛍️ {order.customer?.name ? `${order.customer.name} (${order.orderNumber || 'P'})` : (order.orderNumber || puId)}
                           </span>
                           {order.waiter && (
                             <span className="text-[7.5px] font-bold uppercase tracking-widest mt-0.5 opacity-70" style={{ color: statusConfig.textColor }}>
@@ -931,7 +927,7 @@ export default function TableView() {
                   if (val.length <= 4) setNewCarNumber(val);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newCarNumber.trim()) {
+                  if (e.key === 'Enter' && newCarNumber.length === 4) {
                     setPendingCarNumber(newCarNumber);
                     setNewCarNumber('');
                     setShowAddCar(false);
@@ -952,7 +948,7 @@ export default function TableView() {
                 </button>
                 <button
                   onClick={() => {
-                    if (!newCarNumber.trim()) return;
+                    if (newCarNumber.length !== 4) return;
                     // Store the car number and open waiter selection
                     setPendingCarNumber(newCarNumber);
                     setNewCarNumber('');
@@ -960,7 +956,12 @@ export default function TableView() {
                     setSelectedTableForWaiter(null); // clear table selection — pending car will be used
                     setShowWaiterModal(true);
                   }}
-                  className="flex-1 py-2.5 bg-[#E1261C] text-white rounded-xl text-[11px] font-black hover:bg-[#4E342E] transition-colors uppercase tracking-wider shadow-sm active:scale-95"
+                  disabled={newCarNumber.length !== 4}
+                  className={`flex-1 py-2.5 rounded-xl text-[11px] font-black transition-all uppercase tracking-wider shadow-sm ${
+                    newCarNumber.length !== 4
+                      ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                      : 'bg-[#E1261C] text-white hover:bg-[#C11F17] active:scale-95'
+                  }`}
                 >
                   🚗 Create
                 </button>

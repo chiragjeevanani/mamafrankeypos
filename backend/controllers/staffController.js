@@ -1,6 +1,8 @@
 const Staff = require('../models/Staff');
 const Role = require('../models/Role');
 const mongoose = require('mongoose');
+const asyncHandler = require('../utils/asyncHandler');
+const crypto = require('crypto');
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
 const normalizePhone = (phone) => String(phone || '').trim();
@@ -16,15 +18,35 @@ const validateRoleExists = async (roleName) => {
 // @desc    Get all staff
 // @route   GET /api/staff
 // @access  Private/Admin
-const getStaff = async (req, res) => {
-  const staff = await Staff.find({}).select('-password -pin');
-  res.json(staff);
-};
+const getStaff = asyncHandler(async (req, res) => {
+  const query = { isDeleted: { $ne: true } };
+  const page = req.query.page ? parseInt(req.query.page, 10) : null;
+  const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
+
+  if (page && limit) {
+    const skip = (page - 1) * limit;
+    const total = await Staff.countDocuments(query);
+    const data = await Staff.find(query)
+      .select('-password -pin')
+      .skip(skip)
+      .limit(limit);
+    res.json({
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    });
+  } else {
+    const staff = await Staff.find(query).select('-password -pin');
+    res.json(staff);
+  }
+});
 
 // @desc    Register a new staff member
 // @route   POST /api/staff
 // @access  Private/Admin
-const registerStaff = async (req, res) => {
+const registerStaff = asyncHandler(async (req, res) => {
   const name = normalizeName(req.body.name);
   const email = normalizeEmail(req.body.email);
   const phone = normalizePhone(req.body.phone);
@@ -62,7 +84,18 @@ const registerStaff = async (req, res) => {
     throw new Error('Password is required for admin staff');
   }
 
-  const staffExists = await Staff.findOne({ email });
+  // Check for duplicate PIN hash on active staff
+  if (pin) {
+    const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
+    const pinExists = await Staff.findOne({ pinHash, isDeleted: { $ne: true } });
+    if (pinExists) {
+      res.status(400);
+      throw new Error('This PIN is already assigned to another staff member. Please choose a unique PIN.');
+    }
+  }
+
+  // Only check for duplicate emails on non-deleted staff
+  const staffExists = await Staff.findOne({ email, isDeleted: { $ne: true } });
 
   if (staffExists && email) {
     res.status(400);
@@ -91,13 +124,18 @@ const registerStaff = async (req, res) => {
     res.status(400);
     throw new Error('Invalid staff data');
   }
-};
+});
 
 // @desc    Update staff
 // @route   PUT /api/staff/:id
 // @access  Private/Admin
-const updateStaff = async (req, res) => {
-  const staff = await Staff.findById(req.params.id);
+const updateStaff = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Staff ID format');
+  }
+
+  const staff = await Staff.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
 
   if (staff) {
     if (req.body.name !== undefined) staff.name = normalizeName(req.body.name) || staff.name;
@@ -108,7 +146,7 @@ const updateStaff = async (req, res) => {
         throw new Error('A valid email address is required');
       }
 
-      const emailExists = await Staff.findOne({ email, _id: { $ne: staff._id } });
+      const emailExists = await Staff.findOne({ email, _id: { $ne: staff._id }, isDeleted: { $ne: true } });
       if (email && emailExists) {
         res.status(400);
         throw new Error('Another staff member already uses this email');
@@ -127,9 +165,30 @@ const updateStaff = async (req, res) => {
         res.status(400);
         throw new Error('Selected role does not exist');
       }
+      
+      // If setting from Admin to non-Admin, check if this is the last active Admin
+      if (staff.role === 'Admin' && role !== 'Admin') {
+        const activeAdminCount = await Staff.countDocuments({ role: 'Admin', isDeleted: { $ne: true } });
+        if (activeAdminCount <= 1) {
+          res.status(400);
+          throw new Error('Cannot change role: must have at least one active Administrator');
+        }
+      }
+      
       staff.role = role;
     }
-    if (req.body.status !== undefined) staff.status = req.body.status;
+    
+    // If setting to Inactive and this user is Admin, check if this is the last active Admin
+    if (req.body.status !== undefined) {
+      if (staff.role === 'Admin' && req.body.status === 'Inactive' && staff.status === 'Active') {
+        const activeAdminCount = await Staff.countDocuments({ role: 'Admin', status: 'Active', isDeleted: { $ne: true } });
+        if (activeAdminCount <= 1) {
+          res.status(400);
+          throw new Error('Cannot set status to Inactive: must have at least one active Administrator');
+        }
+      }
+      staff.status = req.body.status;
+    }
 
     if (req.body.password) {
       staff.password = req.body.password;
@@ -141,6 +200,14 @@ const updateStaff = async (req, res) => {
         res.status(400);
         throw new Error('PIN must be exactly 4 digits');
       }
+
+      const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
+      const pinExists = await Staff.findOne({ pinHash, _id: { $ne: staff._id }, isDeleted: { $ne: true } });
+      if (pinExists) {
+        res.status(400);
+        throw new Error('This PIN is already assigned to another staff member. Please choose a unique PIN.');
+      }
+
       staff.pin = pin;
     }
 
@@ -163,34 +230,54 @@ const updateStaff = async (req, res) => {
     res.status(404);
     throw new Error('Staff member not found');
   }
-};
+});
 
-// @desc    Delete staff
+// @desc    Delete staff (soft-delete)
 // @route   DELETE /api/staff/:id
 // @access  Private/Admin
-const deleteStaff = async (req, res) => {
-  const staff = await Staff.findById(req.params.id);
+const deleteStaff = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Staff ID format');
+  }
+
+  const staff = await Staff.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
 
   if (staff) {
-    await staff.deleteOne();
+    // Prevent deleting the last Administrator
+    if (staff.role === 'Admin') {
+      const activeAdminCount = await Staff.countDocuments({ role: 'Admin', isDeleted: { $ne: true } });
+      if (activeAdminCount <= 1) {
+        res.status(400);
+        throw new Error('Cannot delete the last active Administrator account');
+      }
+    }
+
+    staff.isDeleted = true;
+    await staff.save();
     res.json({ message: 'Staff member removed' });
   } else {
     res.status(404);
     throw new Error('Staff member not found');
   }
-};
+});
+
 // @desc    Staff Login with PIN
 // @route   POST /api/staff/login
 // @access  Public
-const loginStaff = async (req, res) => {
+const loginStaff = asyncHandler(async (req, res) => {
   const { staffId, pin } = req.body;
 
-  // Search by name or email or ID
+  // Search by exact ID or email only (no regex name lookup) and not deleted
   const staff = await Staff.findOne({
-    $or: [
-      { _id: mongoose.Types.ObjectId.isValid(staffId) ? staffId : null },
-      { name: { $regex: new RegExp(`^${staffId}$`, 'i') } },
-      { email: staffId }
+    $and: [
+      { isDeleted: { $ne: true } },
+      {
+        $or: [
+          { _id: mongoose.Types.ObjectId.isValid(staffId) ? staffId : null },
+          { email: staffId }
+        ]
+      }
     ]
   });
 
@@ -205,7 +292,7 @@ const loginStaff = async (req, res) => {
     res.status(401);
     throw new Error('Invalid Staff ID or PIN');
   }
-};
+});
 
 module.exports = {
   getStaff,

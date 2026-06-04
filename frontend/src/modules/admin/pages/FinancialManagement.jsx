@@ -3,7 +3,7 @@ import {
   CreditCard, IndianRupee, TrendingUp, TrendingDown, 
   FileText, Download, Filter, Search, Plus,
   PieChart, Activity, DollarSign, X, Save,
-  AlertCircle
+  AlertCircle, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { maskCurrency, calculateMaskedOrderTotal } from '../utils/dataMask';
@@ -14,6 +14,7 @@ export default function FinancialManagement() {
   const [salesSummary, setSalesSummary] = useState({ today: { total: 0 }, mtd: { total: 0 } });
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     category: 'Supplies',
@@ -41,6 +42,7 @@ export default function FinancialManagement() {
   }, []);
 
   const handleOpenModal = () => {
+    setFormError('');
     setFormData({
       date: new Date().toISOString().split('T')[0],
       category: 'Supplies',
@@ -53,13 +55,57 @@ export default function FinancialManagement() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    if (!formData.title.trim()) {
+      setFormError('Expense title is required');
+      return;
+    }
+    const amt = Number(formData.amount);
+    if (isNaN(amt) || amt <= 0) {
+      setFormError('Amount must be a positive number');
+      return;
+    }
     try {
       const { data } = await api.post('/expenses', formData);
       setExpenses([data, ...expenses]);
       setIsModalOpen(false);
-    } catch (error) {
-      console.error('Error saving expense:', error);
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to save expense ledger entry');
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('LEGAL PROTOCOL: Proceed with expense ledger record deletion? This cannot be undone.')) {
+      try {
+        await api.delete(`/expenses/${id}`);
+        setExpenses(expenses.filter(e => e._id !== id));
+      } catch (err) {
+        console.error('Error deleting expense:', err);
+        window.alert(err.response?.data?.message || 'Failed to remove expense');
+      }
+    }
+  };
+
+  const exportExpensesCsv = () => {
+    const rows = [
+      ['EXPENSE LEDGER REPORT'],
+      ['Export Date', new Date().toLocaleDateString()],
+      [],
+      ['Date', 'Title / Description', 'Category', 'Amount (INR)', 'Notes'],
+      ...expenses.map(exp => [
+        new Date(exp.date).toLocaleDateString(),
+        exp.title,
+        exp.category,
+        maskCurrency(exp.amount),
+        exp.notes || ''
+      ])
+    ];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `expense_ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const totalExpenseValue = expenses.reduce((acc, curr) => acc + curr.amount, 0);
@@ -73,7 +119,7 @@ export default function FinancialManagement() {
         </div>
         <div className="flex items-center gap-3">
            <button 
-             onClick={() => window.alert('FISCAL PROTOCOL: Generating consolidated PDF report...')}
+             onClick={exportExpensesCsv}
              className="h-9 px-4 bg-white border border-slate-200 text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all"
            >
               <Download size={14} />
@@ -105,14 +151,14 @@ export default function FinancialManagement() {
             <div className="absolute top-0 right-0 w-16 h-16 bg-rose-50/50 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-110" />
             <TrendingDown className="text-rose-500 mb-4" size={24} />
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Logged Expenses</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-1">₹{totalExpenseValue.toLocaleString()}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">₹{maskCurrency(totalExpenseValue).toLocaleString()}</h3>
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-2 inline-block">Manual Registry Active</span>
          </div>
          <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50/50 rounded-bl-full -mr-4 -mt-4 transition-all group-hover:scale-110" />
             <Activity className="text-emerald-500 mb-4" size={24} />
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Net Profit Margin</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-1">{((maskCurrency(salesSummary.mtd.total) - totalExpenseValue) / (maskCurrency(salesSummary.mtd.total) || 1) * 100).toFixed(1)}%</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-1">{((maskCurrency(salesSummary.mtd.total) - maskCurrency(totalExpenseValue)) / (maskCurrency(salesSummary.mtd.total) || 1) * 100).toFixed(1)}%</h3>
             <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mt-2 inline-block">Highly Optimized</span>
          </div>
          <div className="bg-white p-6 border border-slate-100 rounded-sm shadow-sm relative overflow-hidden group">
@@ -141,6 +187,7 @@ export default function FinancialManagement() {
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Expense Category</th>
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-right">Amount (INR)</th>
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-center">Protocol Status</th>
+                     <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-right">Actions</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-slate-50">
@@ -158,12 +205,20 @@ export default function FinancialManagement() {
                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{exp.category}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                           <span className="text-[11px] font-black text-slate-900">₹{exp.amount.toLocaleString()}</span>
+                           <span className="text-[11px] font-black text-slate-900">₹{maskCurrency(exp.amount).toLocaleString()}</span>
                         </td>
                         <td className="px-6 py-4 flex justify-center">
                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600">
                               SETTLED
                            </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                           <button 
+                              onClick={(e) => { e.stopPropagation(); handleDelete(exp._id); }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors border border-transparent hover:border-slate-100 outline-none"
+                           >
+                              <Trash2 size={13} />
+                           </button>
                         </td>
                      </tr>
                   ))}
@@ -203,6 +258,12 @@ export default function FinancialManagement() {
                </div>
 
                <form onSubmit={handleSave} className="p-8 space-y-6">
+                  {formError && (
+                     <div className="p-3 bg-rose-50 border border-rose-100 rounded-sm flex items-center gap-3">
+                        <AlertCircle size={16} className="text-rose-500" />
+                        <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest">{formError}</p>
+                     </div>
+                  )}
                   <div className="grid grid-cols-2 gap-6">
                      <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Date</label>

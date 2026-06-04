@@ -60,7 +60,7 @@ export default function PosOrderPage() {
   const [splitPayments, setSplitPayments] = useState([]);
   const [selectedWaiter, setSelectedWaiter] = useState(() => {
     if (location.state?.waiter) return location.state.waiter;
-    return { id: 'w1', name: 'Peter' }; // Default fallback
+    return null;
   });
   const [isExtraMenuOpen, setIsExtraMenuOpen] = useState(false);
 
@@ -410,7 +410,7 @@ export default function PosOrderPage() {
       });
       if (isPrint) {
       printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
-      await markKOTPrinted(savedOrder?._id || savedOrder?.id || tableId, {
+      await markKOTPrinted(savedOrder || tableId, {
         isCarOrder: orderType === 'car-service',
         isPickupOrder: orderType === 'pickup'
       });
@@ -496,8 +496,8 @@ export default function PosOrderPage() {
       setOrderNotice({ type: 'error', text: 'Add items or open an active pickup order before downloading the bill.' });
       return;
     }
-    if (!selectedWaiter) {
-      setOrderNotice({ type: 'error', text: 'Select a waiter before preparing a pickup bill.' });
+    if (!isPickupMode && !selectedWaiter) {
+      setOrderNotice({ type: 'error', text: 'Select a waiter before preparing the bill.' });
       return;
     }
 
@@ -507,8 +507,8 @@ export default function PosOrderPage() {
           isPickupOrder: true,
           customer: buildCustomerPayload()
         });
-        await markKOTPrinted(savedOrder?._id || savedOrder?.id || tableId, { isPickupOrder: true });
-        await saveOrder(savedOrder?._id || savedOrder?.id || tableId, {
+        await markKOTPrinted(savedOrder || tableId, { isPickupOrder: true });
+        await saveOrder(savedOrder || tableId, {
           isPickupOrder: true,
           customer: buildCustomerPayload(),
           staffId: selectedWaiter?._id || selectedWaiter?.id

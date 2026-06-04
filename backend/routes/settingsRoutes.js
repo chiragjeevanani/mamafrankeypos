@@ -11,6 +11,7 @@ const {
   deleteCounter,
   getStoreSettings,
   updateStoreSettings,
+  purgeReportsData,
 } = require('../controllers/settingsController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -18,6 +19,9 @@ const { protect, admin } = require('../middleware/authMiddleware');
 router.route('/store')
   .get(getStoreSettings)
   .put(protect, admin, updateStoreSettings);
+
+router.route('/reports/purge')
+  .post(protect, admin, purgeReportsData);
 
 // Taxes
 router.route('/taxes')

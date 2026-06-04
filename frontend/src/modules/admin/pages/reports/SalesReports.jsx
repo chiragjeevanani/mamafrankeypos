@@ -10,9 +10,8 @@ import {
   Tooltip, ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, PieChart, Cell, Pie, Legend
 } from 'recharts';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000/api';
+import api from '../../../../utils/api';
+import { maskCurrency, getReplacedName, maskQuantity } from '../../utils/dataMask';
 
 export default function SalesReports() {
   const [loading, setLoading] = useState(true);
@@ -40,22 +39,16 @@ export default function SalesReports() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_access');
-      const config = {
-        headers: { Authorization: `Bearer ${token}` },
-        params: filters
-      };
-
       const [reportRes, staffRes, tableRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/reports/sales`, config),
-        axios.get(`${API_BASE_URL}/staff`, config),
-        axios.get(`${API_BASE_URL}/tables`, config)
+        api.get('/reports/sales', { params: filters }),
+        api.get('/staff'),
+        api.get('/tables')
       ]);
 
       setData(reportRes.data);
       setOptions(prev => ({
         ...prev,
-        waiters: staffRes.data,
+        waiters: staffRes.data.data || staffRes.data,
         tables: tableRes.data
       }));
       setLoading(false);
@@ -73,6 +66,99 @@ export default function SalesReports() {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Data Masking Memos
+  const maskedTrends = useMemo(() => {
+    if (!data?.trends) return [];
+    return data.trends.map(t => ({
+      ...t,
+      revenue: maskCurrency(t.revenue)
+    }));
+  }, [data?.trends]);
+
+  const maskedTopItems = useMemo(() => {
+    if (!data?.topItems) return [];
+    return data.topItems.map(item => ({
+      ...item,
+      name: getReplacedName(item.name),
+      quantity: maskQuantity(item.quantity)
+    }));
+  }, [data?.topItems]);
+
+  const maskedPaymentBreakdown = useMemo(() => {
+    if (!data?.paymentBreakdown) return [];
+    return data.paymentBreakdown.map(p => ({
+      ...p,
+      revenue: maskCurrency(p.revenue)
+    }));
+  }, [data?.paymentBreakdown]);
+
+  const maskedHourlySales = useMemo(() => {
+    if (!data?.hourlySales) return [];
+    return data.hourlySales.map(h => ({
+      ...h,
+      orders: maskQuantity(h.orders),
+      revenue: maskCurrency(h.revenue)
+    }));
+  }, [data?.hourlySales]);
+
+  const maskedTaxSummary = useMemo(() => {
+    if (!data?.taxSummary) return [];
+    return data.taxSummary.map(t => ({
+      ...t,
+      amount: maskCurrency(t.amount)
+    }));
+  }, [data?.taxSummary]);
+
+  const maskedCancellations = useMemo(() => {
+    if (!data?.cancellations) return [];
+    return data.cancellations.map(c => ({
+      ...c,
+      count: maskQuantity(c.count),
+      potentialRevenue: maskCurrency(c.potentialRevenue)
+    }));
+  }, [data?.cancellations]);
+
+  const exportCsv = () => {
+    if (!data) return;
+
+    const rows = [
+      ['SALES REPORT PERIOD SUMMARY'],
+      ['Start Date', filters.startDate],
+      ['End Date', filters.endDate],
+      [],
+      ['METRIC', 'VALUE'],
+      ['Gross Revenue', `INR ${maskCurrency(data.summary.totalRevenue).toLocaleString()}`],
+      ['Net Revenue', `INR ${maskCurrency(data.summary.netRevenue).toLocaleString()}`],
+      ['Total Orders', maskQuantity(data.summary.orderCount)],
+      ['Average Ticket Size', `INR ${maskCurrency(data.summary.avgOrderValue).toLocaleString()}`],
+      ['Total Tax Compliance', `INR ${maskCurrency(data.summary.taxAmount).toLocaleString()}`],
+      [],
+      ['DAILY TRENDS'],
+      ['Date', 'Revenue (INR)', 'Orders'],
+      ...maskedTrends.map(t => [t._id, t.revenue, t.orders]),
+      [],
+      ['TOP SELLING ITEMS'],
+      ['Item Name', 'Quantity Sold', 'Revenue (INR)'],
+      ...maskedTopItems.map(item => [item.name, item.quantity, maskCurrency(item.revenue)]),
+      [],
+      ['TAX SUMMARY'],
+      ['Tax Component', 'Amount (INR)'],
+      ...maskedTaxSummary.map(tax => [tax._id, tax.amount]),
+      [],
+      ['CANCELLATIONS'],
+      ['Reason', 'Count', 'Lost Value (INR)'],
+      ...maskedCancellations.map(c => [c._id || 'UNSPECIFIED', c.count, c.potentialRevenue])
+    ];
+
+    const csvContent = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `sales_report_${filters.startDate}_to_${filters.endDate}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   if (loading && !data) {
@@ -112,7 +198,10 @@ export default function SalesReports() {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Fiscal Metrics & Revenue Performance</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="h-10 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95 transition-all outline-none">
+            <button 
+              onClick={exportCsv}
+              className="h-10 px-6 bg-slate-900 text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-slate-900/10 active:scale-95 transition-all outline-none"
+            >
               <Download size={14} />
               Export CSV
             </button>
@@ -211,7 +300,7 @@ export default function SalesReports() {
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gross Revenue</span>
             <TrendingUp size={14} className="text-emerald-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">₹{data.summary.totalRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">₹{maskCurrency(data.summary.totalRevenue).toLocaleString()}</div>
           <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Transaction Value</div>
         </div>
 
@@ -221,7 +310,7 @@ export default function SalesReports() {
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Net Revenue</span>
             <DollarSign size={14} className="text-blue-500" />
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">₹{data.summary.netRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">₹{maskCurrency(data.summary.netRevenue).toLocaleString()}</div>
           <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Base Price Exclusive of Tax</div>
         </div>
 
@@ -231,7 +320,7 @@ export default function SalesReports() {
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Orders</span>
             <FileText size={14} className="text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">{data.summary.orderCount}</div>
+          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">{maskQuantity(data.summary.orderCount)}</div>
           <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Orders Finalized In Period</div>
         </div>
 
@@ -241,7 +330,7 @@ export default function SalesReports() {
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Avg Transaction</span>
             <BarChart3 size={14} className="text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">₹{Math.round(data.summary.avgOrderValue || 0).toLocaleString()}</div>
+          <div className="text-2xl font-black text-slate-900 tracking-tighter mb-1">₹{maskCurrency(Math.round(data.summary.avgOrderValue || 0)).toLocaleString()}</div>
           <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Mean Ticket Size</div>
         </div>
       </div>
@@ -259,7 +348,7 @@ export default function SalesReports() {
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.trends}>
+              <AreaChart data={maskedTrends}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0F172A" stopOpacity={0.1}/>
@@ -317,7 +406,7 @@ export default function SalesReports() {
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.topItems} layout="vertical">
+              <BarChart data={maskedTopItems} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
                 <XAxis type="number" hide />
                 <YAxis 
@@ -362,7 +451,7 @@ export default function SalesReports() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data.paymentBreakdown}
+                  data={maskedPaymentBreakdown}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -370,7 +459,7 @@ export default function SalesReports() {
                   paddingAngle={5}
                   dataKey="revenue"
                 >
-                  {data.paymentBreakdown.map((entry, index) => (
+                  {maskedPaymentBreakdown.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -395,7 +484,7 @@ export default function SalesReports() {
           </div>
           <div className="h-[200px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.hourlySales}>
+              <BarChart data={maskedHourlySales}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis 
                   dataKey="_id" 
@@ -440,13 +529,13 @@ export default function SalesReports() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {data.taxSummary.map((tax, i) => (
+              {maskedTaxSummary.map((tax, i) => (
                 <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 text-[11px] font-black text-slate-700 uppercase">{tax._id}</td>
                   <td className="px-6 py-4 text-[11px] font-black text-slate-900 text-right tabular-nums">₹{tax.amount.toLocaleString()}</td>
                 </tr>
               ))}
-              {data.taxSummary.length === 0 && (
+              {maskedTaxSummary.length === 0 && (
                 <tr>
                   <td colSpan="2" className="px-6 py-8 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">No tax data for period</td>
                 </tr>
@@ -455,7 +544,7 @@ export default function SalesReports() {
             <tfoot className="bg-slate-50">
               <tr>
                 <td className="px-6 py-4 text-[10px] font-black text-slate-900 uppercase">Total Compliance</td>
-                <td className="px-6 py-4 text-[12px] font-black text-slate-900 text-right">₹{data.summary.taxAmount.toLocaleString()}</td>
+                <td className="px-6 py-4 text-[12px] font-black text-slate-900 text-right">₹{maskCurrency(data.summary.taxAmount).toLocaleString()}</td>
               </tr>
             </tfoot>
           </table>
@@ -478,14 +567,14 @@ export default function SalesReports() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {data.cancellations.map((c, i) => (
+              {maskedCancellations.map((c, i) => (
                 <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4 text-[10px] font-bold text-slate-600 uppercase">{c._id || 'UNSPECIFIED'}</td>
                   <td className="px-6 py-4 text-[11px] font-black text-slate-900 text-right tabular-nums">{c.count}</td>
                   <td className="px-6 py-4 text-[11px] font-black text-rose-500 text-right tabular-nums">₹{c.potentialRevenue.toLocaleString()}</td>
                 </tr>
               ))}
-              {data.cancellations.length === 0 && (
+              {maskedCancellations.length === 0 && (
                 <tr>
                   <td colSpan="3" className="px-6 py-8 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Zero cancellations recorded</td>
                 </tr>

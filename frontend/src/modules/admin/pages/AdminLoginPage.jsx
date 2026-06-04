@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, Mail, Lock, ArrowRight, ShieldCheck, HelpCircle, AlertCircle } from 'lucide-react';
 import api from '../../../utils/api';
+import { usePos } from '../../pos/context/PosContext';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { refreshMenu, fetchStoreSettings } = usePos();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,6 +23,11 @@ export default function AdminLoginPage() {
       localStorage.setItem('admin_access', data.token);
       localStorage.setItem('user_info', JSON.stringify(data));
       setIsLoading(false);
+      
+      // Fetch required data directly after login to prevent empty state on first load
+      await refreshMenu();
+      await fetchStoreSettings();
+
       navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid credentials');

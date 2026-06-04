@@ -1,6 +1,13 @@
 const Counter = require('../models/Counter');
 const StoreSettings = require('../models/StoreSettings');
+const Order = require('../models/Order');
+const Attendance = require('../models/Attendance');
+const Expense = require('../models/Expense');
+const AuditLog = require('../models/AuditLog');
+const Table = require('../models/Table');
+const mongoose = require('mongoose');
 const logAudit = require('../utils/auditLogger');
+const asyncHandler = require('../utils/asyncHandler');
 
 const getOrCreateStoreSettings = async () => {
   let settings = await StoreSettings.findOne();
@@ -21,15 +28,15 @@ const normalizeTax = (tax = {}) => ({
 // @desc    Get all taxes
 // @route   GET /api/settings/taxes
 // @access  Public
-const getTaxes = async (req, res) => {
+const getTaxes = asyncHandler(async (req, res) => {
   const settings = await getOrCreateStoreSettings();
   res.json(settings.taxes || []);
-};
+});
 
 // @desc    Create tax
 // @route   POST /api/settings/taxes
 // @access  Private/Admin
-const createTax = async (req, res) => {
+const createTax = asyncHandler(async (req, res) => {
   const settings = await getOrCreateStoreSettings();
   const tax = normalizeTax(req.body);
 
@@ -51,12 +58,17 @@ const createTax = async (req, res) => {
   settings.taxes.push(tax);
   await settings.save();
   res.status(201).json(settings.taxes[settings.taxes.length - 1]);
-};
+});
 
 // @desc    Update tax
 // @route   PUT /api/settings/taxes/:id
 // @access  Private/Admin
-const updateTax = async (req, res) => {
+const updateTax = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Tax ID format');
+  }
+
   const settings = await getOrCreateStoreSettings();
   const tax = settings.taxes.id(req.params.id);
 
@@ -89,12 +101,17 @@ const updateTax = async (req, res) => {
   tax.active = updates.active;
   await settings.save();
   res.json(tax);
-};
+});
 
 // @desc    Delete tax
 // @route   DELETE /api/settings/taxes/:id
 // @access  Private/Admin
-const deleteTax = async (req, res) => {
+const deleteTax = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Tax ID format');
+  }
+
   const settings = await getOrCreateStoreSettings();
   const tax = settings.taxes.id(req.params.id);
 
@@ -106,73 +123,148 @@ const deleteTax = async (req, res) => {
   tax.deleteOne();
   await settings.save();
   res.json({ message: 'Tax removed' });
-};
+});
 
 // --- Counter Controllers ---
 
 // @desc    Get all counters
 // @route   GET /api/settings/counters
 // @access  Public
-const getCounters = async (req, res) => {
+const getCounters = asyncHandler(async (req, res) => {
   const counters = await Counter.find({});
   res.json(counters);
-};
+});
 
 // @desc    Create counter
 // @route   POST /api/settings/counters
 // @access  Private/Admin
-const createCounter = async (req, res) => {
-  const { name, prefix, startNum } = req.body;
+const createCounter = asyncHandler(async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const prefix = String(req.body.prefix || '').trim().toUpperCase();
+  const startNum = req.body.startNum !== undefined ? Number(req.body.startNum) : 1;
+
+  if (!name) {
+    res.status(400);
+    throw new Error('Counter name is required');
+  }
+
+  if (!prefix) {
+    res.status(400);
+    throw new Error('Counter prefix is required');
+  }
+
+  if (!Number.isInteger(startNum) || startNum < 0) {
+    res.status(400);
+    throw new Error('Start number must be a valid non-negative integer');
+  }
+
+  const prefixExists = await Counter.findOne({ prefix: { $regex: new RegExp(`^${prefix}$`, 'i') } });
+  if (prefixExists) {
+    res.status(400);
+    throw new Error(`Counter prefix "${prefix}" is already in use`);
+  }
+
   const counter = await Counter.create({ name, prefix, startNum, currentNum: startNum });
   res.status(201).json(counter);
-};
+});
 
 // @desc    Update counter
 // @route   PUT /api/settings/counters/:id
 // @access  Private/Admin
-const updateCounter = async (req, res) => {
+const updateCounter = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Counter ID format');
+  }
+
   const counter = await Counter.findById(req.params.id);
-  if (counter) {
-    counter.name = req.body.name || counter.name;
-    counter.prefix = req.body.prefix || counter.prefix;
-    counter.startNum = req.body.startNum !== undefined ? req.body.startNum : counter.startNum;
-    counter.isActive = req.body.isActive !== undefined ? req.body.isActive : counter.isActive;
-    const updatedCounter = await counter.save();
-    res.json(updatedCounter);
-  } else {
+  if (!counter) {
     res.status(404);
     throw new Error('Counter not found');
   }
-};
+
+  if (req.body.name !== undefined) {
+    const name = String(req.body.name).trim();
+    if (!name) {
+      res.status(400);
+      throw new Error('Counter name is required');
+    }
+    counter.name = name;
+  }
+
+  if (req.body.prefix !== undefined) {
+    const prefix = String(req.body.prefix).trim().toUpperCase();
+    if (!prefix) {
+      res.status(400);
+      throw new Error('Counter prefix is required');
+    }
+    const duplicate = await Counter.findOne({
+      _id: { $ne: counter._id },
+      prefix: { $regex: new RegExp(`^${prefix}$`, 'i') }
+    });
+    if (duplicate) {
+      res.status(400);
+      throw new Error(`Counter prefix "${prefix}" is already in use`);
+    }
+    counter.prefix = prefix;
+  }
+
+  if (req.body.startNum !== undefined) {
+    const startNum = Number(req.body.startNum);
+    if (!Number.isInteger(startNum) || startNum < 0) {
+      res.status(400);
+      throw new Error('Start number must be a valid non-negative integer');
+    }
+    counter.startNum = startNum;
+  }
+
+  if (req.body.isActive !== undefined) {
+    counter.isActive = req.body.isActive;
+  }
+
+  const updatedCounter = await counter.save();
+  res.json(updatedCounter);
+});
 
 // @desc    Delete counter
 // @route   DELETE /api/settings/counters/:id
 // @access  Private/Admin
-const deleteCounter = async (req, res) => {
+const deleteCounter = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Counter ID format');
+  }
+
   const counter = await Counter.findById(req.params.id);
-  if (counter) {
-    await counter.deleteOne();
-    res.json({ message: 'Counter removed' });
-  } else {
+  if (!counter) {
     res.status(404);
     throw new Error('Counter not found');
   }
-};
+
+  const count = await Counter.countDocuments({});
+  if (count <= 1) {
+    res.status(400);
+    throw new Error('Cannot delete the only counter. At least one billing counter is required.');
+  }
+
+  await counter.deleteOne();
+  res.json({ message: 'Counter removed' });
+});
 
 // --- Store Settings Controllers ---
 
 // @desc    Get store settings
 // @route   GET /api/settings/store
 // @access  Public
-const getStoreSettings = async (req, res) => {
+const getStoreSettings = asyncHandler(async (req, res) => {
   const settings = await getOrCreateStoreSettings();
   res.json(settings);
-};
+});
 
 // @desc    Update store settings
 // @route   PUT /api/settings/store
 // @access  Private/Admin
-const updateStoreSettings = async (req, res) => {
+const updateStoreSettings = asyncHandler(async (req, res) => {
   let settings = await StoreSettings.findOne();
   if (!settings) {
     settings = await StoreSettings.create(req.body);
@@ -202,13 +294,42 @@ const updateStoreSettings = async (req, res) => {
       settings.protocolPriceRange = req.body.protocolPriceRange;
     }
     
-    // Taxes
+    // Taxes with Input Validation
     if (req.body.taxes !== undefined) {
-      settings.taxes = req.body.taxes.map(t => ({
-        name: t.name,
-        percentage: Number(t.percentage || t.rate || 0),
-        active: t.active !== undefined ? t.active : (t.enabled !== undefined ? t.enabled : true)
-      }));
+      if (!Array.isArray(req.body.taxes)) {
+        res.status(400);
+        throw new Error('Taxes must be a valid array');
+      }
+
+      const uniqueNames = new Set();
+      const validatedTaxes = [];
+
+      for (const t of req.body.taxes) {
+        const name = String(t.name || '').trim();
+        const percentage = Number(t.percentage !== undefined ? t.percentage : (t.rate !== undefined ? t.rate : 0));
+        const active = t.active !== undefined ? t.active : (t.enabled !== undefined ? t.enabled : true);
+
+        if (!name) {
+          res.status(400);
+          throw new Error('Tax name is required');
+        }
+
+        if (!Number.isFinite(percentage) || percentage < 0) {
+          res.status(400);
+          throw new Error('Tax percentage must be a valid non-negative number');
+        }
+
+        const lowerName = name.toLowerCase();
+        if (uniqueNames.has(lowerName)) {
+          res.status(400);
+          throw new Error(`Duplicate tax identity detected: ${name}`);
+        }
+        uniqueNames.add(lowerName);
+
+        validatedTaxes.push({ name, percentage, active });
+      }
+
+      settings.taxes = validatedTaxes;
     }
     
     await settings.save();
@@ -225,7 +346,35 @@ const updateStoreSettings = async (req, res) => {
     }
   }
   res.json(settings);
-};
+});
+
+// @desc    Purge reports history
+// @route   POST /api/settings/reports/purge
+// @access  Private/Admin
+const purgeReportsData = asyncHandler(async (req, res) => {
+  // Delete all orders
+  await Order.deleteMany({});
+  
+  // Delete all attendance logs
+  await Attendance.deleteMany({});
+  
+  // Delete all expenses ledger logs
+  await Expense.deleteMany({});
+  
+  // Delete all audit logs
+  await AuditLog.deleteMany({});
+  
+  // Log the purge activity itself as a fresh audit log
+  await logAudit(
+    req.user?._id || '000000000000000000000000',
+    'SYSTEM_PURGE',
+    'SYSTEM_SETTINGS',
+    'All sales metrics, ledger expenses, attendance logs, and audit logs have been purged.',
+    req.ip
+  );
+  
+  res.json({ message: 'All report history purged successfully.' });
+});
 
 module.exports = {
   getTaxes,
@@ -237,5 +386,6 @@ module.exports = {
   updateCounter,
   deleteCounter,
   getStoreSettings,
-  updateStoreSettings
+  updateStoreSettings,
+  purgeReportsData
 };

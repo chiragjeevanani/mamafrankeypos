@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const xss = require('./middleware/xssClean');
 const connectDB = require('./config/db');
 const initSystem = require('./utils/initSystem');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
@@ -8,15 +9,23 @@ const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 // Load env vars
 dotenv.config();
 
-// Connect to database
-connectDB().then(() => {
-  initSystem();
-});
+// Connect to database & initialize system
+connectDB()
+  .then(() => {
+    initSystem();
+  })
+  .catch((err) => {
+    console.error('Database connection or initialization failed:', err);
+    process.exit(1);
+  });
 
 const app = express();
 
 // Body parser
 app.use(express.json());
+
+// Prevent XSS attacks
+app.use(xss());
 
 // Enable CORS
 app.use(cors());

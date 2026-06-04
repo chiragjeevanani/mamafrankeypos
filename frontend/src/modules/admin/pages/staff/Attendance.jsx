@@ -4,7 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../../utils/api';
 import { playClickSound } from '../../../pos/utils/sounds';
 
+const toLocalDatetimeString = (dateInput) => {
+  if (!dateInput) return '';
+  const date = new Date(dateInput);
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+};
+
 export default function Attendance() {
+  const todayStr = new Date().toISOString().split('T')[0];
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,6 +20,7 @@ export default function Attendance() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const [formData, setFormData] = useState({
     staffName: '',
@@ -22,13 +31,13 @@ export default function Attendance() {
   });
 
   useEffect(() => {
-    fetchAttendance();
-  }, []);
+    fetchAttendance(selectedDate);
+  }, [selectedDate]);
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = async (dateVal = selectedDate) => {
     try {
       setLoading(true);
-      const { data } = await api.get('/staff/attendance');
+      const { data } = await api.get(`/staff/attendance?date=${dateVal}`);
       setRecords(data);
       setLoading(false);
     } catch (err) {
@@ -43,8 +52,8 @@ export default function Attendance() {
       setEditingRecord(record);
       setFormData({
         staffName: record.staffName,
-        checkIn: new Date(record.checkIn).toISOString().slice(0, 16),
-        checkOut: record.checkOut ? new Date(record.checkOut).toISOString().slice(0, 16) : '',
+        checkIn: toLocalDatetimeString(record.checkIn),
+        checkOut: record.checkOut ? toLocalDatetimeString(record.checkOut) : '',
         terminal: record.terminal,
         status: record.status
       });
@@ -52,7 +61,7 @@ export default function Attendance() {
       setEditingRecord(null);
       setFormData({ 
         staffName: '', 
-        checkIn: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+        checkIn: toLocalDatetimeString(new Date()), 
         checkOut: '', 
         terminal: 'POS-Terminal', 
         status: 'In' 
@@ -79,7 +88,7 @@ export default function Attendance() {
     try {
       if (editingRecord) {
         await api.put(`/staff/attendance/${editingRecord._id}`, formData);
-        await fetchAttendance();
+        await fetchAttendance(selectedDate);
       }
       setIsModalOpen(false);
     } catch (err) {
@@ -107,7 +116,7 @@ export default function Attendance() {
             {records.filter(r => r.status === 'In').length} UNITS ACTIVE
           </div>
           <button 
-            onClick={() => { playClickSound(); fetchAttendance(); }}
+            onClick={() => { playClickSound(); fetchAttendance(selectedDate); }}
             className="h-10 w-10 bg-white border border-stone-200 text-stone-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-stone-50 active:scale-95 transition-all"
           >
             <Clock size={16} />
@@ -124,6 +133,14 @@ export default function Attendance() {
             className="w-full bg-stone-50 border-stone-100 rounded-xl py-3 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/10 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center">
+          <input 
+            type="date"
+            className="bg-stone-50 border border-stone-200 rounded-xl py-3 px-4 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/10"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
           />
         </div>
       </div>

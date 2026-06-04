@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Role = require('./models/Role');
 const connectDB = require('./config/db');
+const path = require('path');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 connectDB();
 
 const seedRoles = async () => {
@@ -12,7 +13,7 @@ const seedRoles = async () => {
 
     const roles = [
       {
-        name: 'Root Administrator',
+        name: 'Admin',
         description: 'Full system access',
         isSystemRole: true,
         permissions: {
@@ -29,7 +30,7 @@ const seedRoles = async () => {
         }
       },
       {
-        name: 'POS Biller',
+        name: 'Biller',
         description: 'Counter billing operations',
         isSystemRole: true,
         permissions: {

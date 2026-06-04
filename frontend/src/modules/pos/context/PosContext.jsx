@@ -88,6 +88,8 @@ export function PosProvider({ children }) {
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem('pos_user_info', JSON.stringify(userData));
+    fetchMenu();
+    fetchStoreSettings();
   };
 
   const logout = () => {
@@ -502,15 +504,38 @@ export function PosProvider({ children }) {
     }
   };
 
-  const markKOTPrinted = async (orderId, details = {}) => {
+  const markKOTPrinted = async (orderIdOrObject, details = {}) => {
     try {
-      const order = resolveOrderFromIdentifier(orderId, details);
+      let order = null;
+      let targetOrderId = null;
+
+      if (orderIdOrObject && typeof orderIdOrObject === 'object') {
+        order = orderIdOrObject;
+        targetOrderId = order.id || order._id;
+      } else {
+        order = resolveOrderFromIdentifier(orderIdOrObject, details);
+        targetOrderId = order?.id || order?._id;
+        
+        // Fallback: If context isn't updated yet but we have a valid MongoDB ID
+        if (!targetOrderId && orderIdOrObject && typeof orderIdOrObject === 'string' && /^[0-9a-fA-F]{24}$/.test(orderIdOrObject)) {
+          targetOrderId = orderIdOrObject;
+        }
+      }
+      
+      if (!targetOrderId) return null;
+      
+      // If we don't have the order object or its KOTs, fetch it from backend!
+      if (!order || !order.kots || order.kots.length === 0) {
+        const { data } = await api.get(`/orders/${targetOrderId}`);
+        order = data;
+      }
+
       if (!order || !order.kots || order.kots.length === 0) return null;
       
       const latestKot = order.kots[order.kots.length - 1];
       const kotId = latestKot._id || latestKot.id;
       
-      const { data } = await api.patch(`/orders/${order.id || order._id}/kot/${kotId}/print`);
+      const { data } = await api.patch(`/orders/${targetOrderId}/kot/${kotId}/print`);
       await fetchOrders();
       await fetchTables();
       return data;
@@ -520,21 +545,39 @@ export function PosProvider({ children }) {
     }
   };
 
-  const saveOrder = async (identifier, details = {}) => {
-    const order = resolveOrderFromIdentifier(identifier, details);
-    if (!order) {
+  const saveOrder = async (orderIdOrObject, details = {}) => {
+    let order = null;
+    let orderId = null;
+
+    if (orderIdOrObject && typeof orderIdOrObject === 'object') {
+      order = orderIdOrObject;
+      orderId = order.id || order._id;
+    } else {
+      order = resolveOrderFromIdentifier(orderIdOrObject, details);
+      orderId = order?.id || order?._id;
+      if (!orderId && orderIdOrObject && typeof orderIdOrObject === 'string' && /^[0-9a-fA-F]{24}$/.test(orderIdOrObject)) {
+        orderId = orderIdOrObject;
+      }
+    }
+
+    if (!orderId) {
       throw new Error('No active order found to bill');
     }
 
-    const { data } = await api.post(`/orders/${order.id || order._id}/bill`, details);
+    const { data } = await api.post(`/orders/${orderId}/bill`, details);
     await fetchOrders();
     await fetchTables();
     return data;
   };
 
   const updateOrderMeta = async (identifier, details = {}) => {
-    const order = resolveOrderFromIdentifier(identifier, details);
-    if (!order) {
+    let order = resolveOrderFromIdentifier(identifier, details);
+    let orderId = order?.id || order?._id;
+    if (!orderId && identifier && /^[0-9a-fA-F]{24}$/.test(identifier)) {
+      orderId = identifier;
+    }
+
+    if (!orderId) {
       return null;
     }
 
@@ -547,7 +590,7 @@ export function PosProvider({ children }) {
       return order;
     }
 
-    const { data } = await api.put(`/orders/${order.id || order._id}`, payload);
+    const { data } = await api.put(`/orders/${orderId}`, payload);
     await fetchOrders();
     await fetchTables();
     return data;
@@ -799,6 +842,10 @@ export function PosProvider({ children }) {
     try {
       const { data } = await api.get('/settings/store');
       setStoreSettings(data);
+      if (data) {
+        localStorage.setItem('rms_visibility_decrement', data.visibilityDecrement !== undefined ? String(data.visibilityDecrement) : '0');
+        localStorage.setItem('rms_item_replacements', JSON.stringify(data.itemReplacements || []));
+      }
     } catch (error) {
       console.error("Error fetching store settings:", error);
     }
@@ -829,7 +876,17 @@ export function PosProvider({ children }) {
   };
 
   const updateTax = (id, updates) => {
-    setAppliedTaxes(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setAppliedTaxes(prev => prev.map(t => {
+      if (t.id === id) {
+        const merged = { ...t, ...updates };
+        if (updates.rate !== undefined) merged.percentage = Number(updates.rate);
+        if (updates.percentage !== undefined) merged.rate = Number(updates.percentage);
+        if (updates.enabled !== undefined) merged.active = updates.enabled;
+        if (updates.active !== undefined) merged.enabled = updates.active;
+        return merged;
+      }
+      return t;
+    }));
   };
 
   const deleteTax = (id) => {
@@ -869,7 +926,7 @@ export function PosProvider({ children }) {
       combos, addCombo, updateCombo, deleteCombo,
       staff,
       dishVariants, assignVariantsToDish,
-      user, login, logout, currentCounter, storeSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
+      user, login, logout, currentCounter, storeSettings, fetchStoreSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       orders, refreshMenu: fetchMenu
     }}>
       {children}

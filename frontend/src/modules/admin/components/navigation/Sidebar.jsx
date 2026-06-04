@@ -221,6 +221,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           onClick={() => {
             playClickSound();
             localStorage.removeItem('admin_access');
+            localStorage.removeItem('user_info');
             navigate('/admin/login');
           }}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded text-white/55 hover:text-white hover:bg-[#E1261C] transition-all ${isCollapsed ? 'justify-center' : ''}`}

@@ -2,14 +2,26 @@ const jwt = require('jsonwebtoken');
 const Staff = require('../models/Staff');
 const generateToken = require('../utils/generateToken');
 const logAudit = require('../utils/auditLogger');
+const asyncHandler = require('../utils/asyncHandler');
+const crypto = require('crypto');
+const StoreSettings = require('../models/StoreSettings');
+
+const getLocalMidnight = (date, timezone) => {
+  const offsetMinutes = timezone === 'Asia/Kolkata' ? 330 : 0;
+  const utcTime = date.getTime();
+  const localTime = utcTime + (offsetMinutes * 60 * 1000);
+  const localDate = new Date(localTime);
+  localDate.setUTCHours(0, 0, 0, 0);
+  return new Date(localDate.getTime() - (offsetMinutes * 60 * 1000));
+};
 
 // @desc    Auth admin & get token
 // @route   POST /api/auth/admin/login
 // @access  Public
-const adminLogin = async (req, res) => {
+const adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await Staff.findOne({ email, role: 'Admin' });
+  const user = await Staff.findOne({ email, role: 'Admin', isDeleted: { $ne: true } });
 
   if (user && (await user.matchPassword(password))) {
     await logAudit(user._id, 'LOGIN', 'AUTH', 'Admin login successful', req.ip);
@@ -22,7 +34,7 @@ const adminLogin = async (req, res) => {
     });
   } else {
     // Log failed login attempt
-    const failedUser = await Staff.findOne({ email });
+    const failedUser = await Staff.findOne({ email, isDeleted: { $ne: true } });
     await logAudit(
       failedUser?._id || '000000000000000000000000',
       'LOGIN_FAILED',
@@ -33,24 +45,45 @@ const adminLogin = async (req, res) => {
     res.status(401);
     throw new Error('Invalid email or password');
   }
-};
+});
 
 // @desc    Auth POS staff via PIN & get token
 // @route   POST /api/auth/pos/login
 // @access  Public
-const posLogin = async (req, res) => {
+const posLogin = asyncHandler(async (req, res) => {
   const { pin } = req.body;
   const Role = require('../models/Role');
   const Attendance = require('../models/Attendance');
 
-  // Search for any active staff member
-  const staffMembers = await Staff.find({ status: 'Active' });
+  if (!pin) {
+    res.status(400);
+    throw new Error('PIN is required');
+  }
+
+  const hashedPin = crypto.createHash('sha256').update(pin).digest('hex');
   
-  let authorizedStaff = null;
-  for (const s of staffMembers) {
-    if (s.pin && await s.matchPin(pin)) {
-      authorizedStaff = s;
-      break;
+  // 1. Fast O(1) indexed query lookup
+  let authorizedStaff = await Staff.findOne({
+    pinHash: hashedPin,
+    status: 'Active',
+    isDeleted: { $ne: true }
+  });
+
+  // 2. Slow O(n) fallback for legacy records that don't have pinHash yet
+  if (!authorizedStaff) {
+    const legacyStaff = await Staff.find({
+      pinHash: { $exists: false },
+      status: 'Active',
+      isDeleted: { $ne: true }
+    });
+    for (const s of legacyStaff) {
+      if (s.pin && await s.matchPin(pin)) {
+        authorizedStaff = s;
+        // Automatically migrate to fast pinHash
+        s.pinHash = hashedPin;
+        await s.save();
+        break;
+      }
     }
   }
 
@@ -58,9 +91,10 @@ const posLogin = async (req, res) => {
     // 1. Fetch permissions for this staff's role
     const roleData = await Role.findOne({ name: authorizedStaff.role });
     
-    // 2. Handle Attendance (Step 3)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // 2. Handle Attendance
+    const settings = await StoreSettings.findOne() || {};
+    const timezone = settings.timezone || 'Asia/Kolkata';
+    const today = getLocalMidnight(new Date(), timezone);
 
     const existingAttendance = await Attendance.findOne({
       staff: authorizedStaff._id,
@@ -100,13 +134,13 @@ const posLogin = async (req, res) => {
     res.status(401);
     throw new Error('Invalid PIN');
   }
-};
+});
 
 // @desc    Get user profile
 // @route   GET /api/auth/profile
 // @access  Private
-const getUserProfile = async (req, res) => {
-  const user = await Staff.findById(req.user._id);
+const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await Staff.findOne({ _id: req.user._id, isDeleted: { $ne: true } });
 
   if (user) {
     res.json({
@@ -119,8 +153,7 @@ const getUserProfile = async (req, res) => {
     res.status(404);
     throw new Error('User not found');
   }
-};
-
+});
 
 module.exports = {
   adminLogin,

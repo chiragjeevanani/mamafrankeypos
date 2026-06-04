@@ -48,13 +48,36 @@ export default function AllOrders() {
 
   const handleUpdateStatus = async (e) => {
     e.preventDefault();
-    // Implementation for updating status via API would go here
-    setIsModalOpen(false);
+    try {
+      const payload = { orderStatus: formData.status };
+      if (formData.status === 'CANCELLED') {
+        const reason = window.prompt('Enter reason for cancellation:');
+        if (reason === null) return; // User cancelled
+        payload.cancellationReason = reason || 'Cancelled by Administrator via override';
+      }
+      await api.put(`/orders/${viewingOrder._id}`, payload);
+      setIsModalOpen(false);
+      // Refresh orders list
+      const { data } = await api.get('/orders');
+      setOrders(data);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      alert(error.response?.data?.message || 'Error updating order status');
+    }
   };
 
   const handleCancelOrder = async (id) => {
-    if (window.confirm('PROTOCOL: Proceed with order cancellation?')) {
-       // Implementation for cancellation via API
+    const reason = window.prompt('Enter reason for cancellation:');
+    if (reason === null) return; // User cancelled
+    
+    try {
+      await api.post(`/orders/${id}/cancel`, { reason: reason || 'Cancelled by Administrator' });
+      // Refresh orders list
+      const { data } = await api.get('/orders');
+      setOrders(data);
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      alert(error.response?.data?.message || 'Error cancelling order');
     }
   };
 
@@ -189,6 +212,26 @@ export default function AllOrders() {
                   >
                     {status}
                   </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border border-slate-100 rounded-sm p-4 max-h-60 overflow-y-auto bg-slate-50 underline decoration-transparent">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 underline decoration-transparent">Order Items Manifest</label>
+              <div className="space-y-2 underline decoration-transparent">
+                {viewingOrder.kots.flatMap(k => k.items).map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-0 underline decoration-transparent">
+                    <div className="flex flex-col underline decoration-transparent">
+                      <span className="font-bold text-slate-800 uppercase underline decoration-transparent">{item.name}</span>
+                      {item.status === 'cancelled' && (
+                        <span className="text-[8px] font-bold text-rose-500 uppercase tracking-wider underline decoration-transparent">CANCELLED</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 underline decoration-transparent">
+                      <span className="text-slate-400 font-bold underline decoration-transparent">Qty: {maskQuantity(item.quantity)}</span>
+                      <span className="text-slate-900 font-black underline decoration-transparent">₹{maskCurrency(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

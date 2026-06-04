@@ -142,6 +142,12 @@ const orderSchema = mongoose.Schema(
   }
 );
 
+// Indexes
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ completedAt: -1 });
+orderSchema.index({ orderStatus: 1 });
+orderSchema.index({ table: 1 });
+
 const Order = mongoose.model('Order', orderSchema);
 
 module.exports = Order;

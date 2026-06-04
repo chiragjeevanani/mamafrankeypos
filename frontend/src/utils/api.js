@@ -29,11 +29,26 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Handle unauthorized error (e.g., redirect to login or clear storage)
-      console.error('Unauthorized access - potential token expiration');
-      localStorage.removeItem('admin_access');
-      localStorage.removeItem('pos_access');
-      // Optional: window.location.href = '/login'; 
+      // Check if it's a login request to prevent redirect loops on authentication failure
+      const isLoginRequest = error.config && error.config.url && (error.config.url.endsWith('/login') || error.config.url.includes('/login'));
+
+      if (!isLoginRequest) {
+        console.error('Unauthorized access - potential token expiration');
+        localStorage.removeItem('admin_access');
+        localStorage.removeItem('pos_access');
+        localStorage.removeItem('user_info');
+        
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/admin')) {
+          if (currentPath !== '/admin/login') {
+            window.location.href = '/admin/login';
+          }
+        } else {
+          if (currentPath !== '/pos/login' && currentPath !== '/pos') {
+            window.location.href = '/pos/login';
+          }
+        }
+      }
     }
     return Promise.reject(error);
   }

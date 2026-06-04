@@ -6,12 +6,15 @@ import {
   Table, ChefHat, CreditCard, AlertCircle, BarChart3,
   Package, Truck, ChevronRight
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ADMIN_STATS_HISTORY } from '../data/adminData';
 import { maskCurrency, maskQuantity, calculateMaskedOrderTotal } from '../utils/dataMask';
 import api from '../../../utils/api';
+import { playClickSound } from '../../pos/utils/sounds';
 
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const now = new Date();
@@ -110,10 +113,16 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="px-3 py-2 bg-white border border-stone-200 rounded-lg text-[11px] font-bold text-stone-500 uppercase tracking-wider hover:bg-stone-50 transition-all shadow-sm">
+          <button 
+            onClick={() => { playClickSound(); alert('Export Report: This option is scheduled for a future release.'); }}
+            className="px-3 py-2 bg-white border border-stone-200 rounded-lg text-[11px] font-bold text-stone-500 uppercase tracking-wider hover:bg-stone-50 transition-all shadow-sm"
+          >
             Export Report
           </button>
-          <button className="px-3 py-2 bg-[#E1261C] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider shadow-md shadow-stone-900/15 hover:bg-[#4E342E] transition-all active:scale-[0.98]">
+          <button 
+            onClick={() => { playClickSound(); alert('Configure Operations: This option is scheduled for a future release.'); }}
+            className="px-3 py-2 bg-[#E1261C] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider shadow-md shadow-stone-900/15 hover:bg-[#4E342E] transition-all active:scale-[0.98]"
+          >
             Configure
           </button>
         </div>
@@ -193,7 +202,8 @@ export default function AdminDashboard() {
                         transition={{ duration: 1 }}
                         d={`M 0 100 ${dashboardData.hourlySales.map((item, i) => {
                           const x = (i / (dashboardData.hourlySales.length - 1)) * 100;
-                          const y = 98 - (maskCurrency(item.total) / maskCurrency(maxRevenue)) * 90; 
+                          const denominator = maskCurrency(maxRevenue) || 1;
+                          const y = 98 - (maskCurrency(item.total) / denominator) * 90; 
                           return `L ${x} ${y}`;
                         }).join(' ')} L 100 100 Z`}
                         fill="url(#lineGlow)" stroke="none"
@@ -204,7 +214,8 @@ export default function AdminDashboard() {
                         transition={{ duration: 2, ease: "easeInOut" }}
                         d={`M 0 100 ${dashboardData.hourlySales.map((item, i) => {
                           const x = (i / (dashboardData.hourlySales.length - 1)) * 100;
-                          const y = 98 - (maskCurrency(item.total) / maskCurrency(maxRevenue)) * 90;
+                          const denominator = maskCurrency(maxRevenue) || 1;
+                          const y = 98 - (maskCurrency(item.total) / denominator) * 90;
                           return `L ${x} ${y}`;
                         }).join(' ')}`}
                         fill="none" stroke="#E1261C" strokeWidth="2.5"
@@ -218,7 +229,9 @@ export default function AdminDashboard() {
               {/* Interaction Layer */}
               <div className="flex-1 flex justify-between gap-0 h-full relative z-10 pr-4">
                 {dashboardData.hourlySales.map((item, idx) => {
-                  const yPos = 98 - (item.total / maxRevenue) * 90;
+                  const maxRevenueMasked = maskCurrency(maxRevenue) || 1;
+                  const itemTotalMasked = maskCurrency(item.total);
+                  const yPos = 98 - (itemTotalMasked / maxRevenueMasked) * 90;
                   return (
                     <div key={idx} className="flex-1 flex flex-col items-center group relative h-full">
                       <div 
@@ -272,7 +285,10 @@ export default function AdminDashboard() {
             ))}
           </div>
           <div className="p-3 border-t border-stone-100">
-            <button className="w-full py-2 bg-stone-50 text-stone-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#E1261C] hover:text-white transition-all border border-stone-200 hover:border-transparent">
+            <button 
+              onClick={() => { playClickSound(); navigate('/admin/orders'); }}
+              className="w-full py-2 bg-stone-50 text-stone-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-[#E1261C] hover:text-white transition-all border border-stone-200 hover:border-transparent"
+            >
               Open Order History
             </button>
           </div>

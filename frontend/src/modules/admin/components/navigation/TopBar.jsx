@@ -7,10 +7,23 @@ import { playClickSound } from '../../../pos/utils/sounds';
 export default function TopBar() {
   const [showNotifications, setShowNotifications] = useState(false);
 
+  let userInfo = null;
+  try {
+    const userInfoStr = localStorage.getItem('user_info');
+    if (userInfoStr) {
+      userInfo = JSON.parse(userInfoStr);
+    }
+  } catch (error) {
+    console.error('Error parsing user_info from localStorage:', error);
+  }
+  const userName = userInfo?.name || 'Admin';
+  const userRole = userInfo?.role || 'Super Admin';
+
   return (
     <header className="h-14 bg-[#2C2C2C] border-b border-white/8 flex items-center justify-between px-6 shrink-0 relative z-40 shadow-md">
       <div className="flex-1 flex items-center">
-        {/* Intelligence Search */}
+        {/* TODO: Implement global intelligence search in a future release */}
+        {/* 
         <div className="max-w-xs w-full relative">
           <div className="flex items-center gap-2.5 px-3 py-2 bg-white/8 border border-white/15 rounded focus-within:bg-white/12 focus-within:border-white/30 transition-all">
             <Search size={14} className="text-white/60" />
@@ -21,6 +34,7 @@ export default function TopBar() {
             />
           </div>
         </div>
+        */}
       </div>
 
       <div className="flex items-center gap-5">
@@ -59,8 +73,8 @@ export default function TopBar() {
 
         <div className="flex items-center gap-3">
            <div className="text-right hidden sm:block">
-              <p className="text-[11px] font-black uppercase tracking-tight leading-none text-white">Chiraag J.</p>
-              <p className="text-[9px] text-[#FFD600] font-bold uppercase tracking-widest mt-1">Super Admin</p>
+              <p className="text-[11px] font-black uppercase tracking-tight leading-none text-white">{userName}</p>
+              <p className="text-[9px] text-[#FFD600] font-bold uppercase tracking-widest mt-1">{userRole}</p>
            </div>
            <div 
              className="w-8 h-8 rounded bg-[#E1261C]/40 border border-[#E1261C]/60 flex items-center justify-center text-white/80 shadow-inner cursor-pointer hover:bg-[#E1261C]/60 transition-all"

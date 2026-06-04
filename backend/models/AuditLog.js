@@ -5,7 +5,7 @@ const auditLogSchema = mongoose.Schema(
     staff: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Staff',
-      required: true,
+      required: false, // Optional for system events
     },
     action: {
       type: String,
@@ -26,6 +26,11 @@ const auditLogSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Indexes
+auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ staff: 1 });
+auditLogSchema.index({ module: 1 });
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 

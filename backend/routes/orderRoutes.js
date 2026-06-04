@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   processOrder,
   updateOrder,
+  getOrderById,
   getActiveOrder,
   markKOTPrinted,
   cancelKOTItem,
@@ -31,6 +32,7 @@ router.route('/active/:identifier')
   .get(protect, getActiveOrder);
 
 router.route('/:id')
+  .get(protect, getOrderById)
   .put(protect, updateOrder);
 
 router.route('/:id/kot/:kotId/print')

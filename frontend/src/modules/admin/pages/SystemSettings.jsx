@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePos } from '../../pos/context/PosContext';
 import api from '../../../utils/api';
+import { maskCurrency, getReplacedName, maskQuantity } from '../utils/dataMask';
 
 
 // ─────────────────────────────────────────────────
@@ -20,18 +21,27 @@ function WipeDataModal({ onClose }) {
   // step: 'confirm' | 'verify' | 'loading' | 'success'
   const [step, setStep] = useState('confirm');
   const [inputVal, setInputVal] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleContinue = () => setStep('verify');
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (inputVal !== 'CLEAR') return;
     setStep('loading');
-    setTimeout(() => setStep('success'), 2200);
+    setErrorMsg('');
+    try {
+      await api.post('/settings/reports/purge');
+      setStep('success');
+    } catch (err) {
+      setErrorMsg(err.response?.data?.message || 'Purge protocol failed.');
+      setStep('verify');
+    }
   };
 
   const handleClose = () => {
     setStep('confirm');
     setInputVal('');
+    setErrorMsg('');
     onClose();
   };
 
@@ -109,6 +119,12 @@ function WipeDataModal({ onClose }) {
                 </button>
               </div>
               <div className="px-6 py-5">
+                {errorMsg && (
+                  <div className="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-2">
+                    <AlertCircle size={14} className="text-rose-500 shrink-0" />
+                    <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest leading-normal">{errorMsg}</p>
+                  </div>
+                )}
                 <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider mb-2">
                   Type <span className="font-black text-rose-600 tracking-widest">CLEAR</span> to confirm
                 </p>
@@ -255,9 +271,86 @@ export default function SystemSettings() {
   const { 
     sections, addSection, updateSection, deleteSection,
     tables, addTable, updateTable, deleteTable,
-    appliedTaxes, addTax, updateTax, deleteTax,
-    variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup 
+    appliedTaxes, addTax, updateTax, deleteTax
   } = usePos();
+  const [newTax, setNewTax] = useState({ name: '', rate: '' });
+  const [taxError, setTaxError] = useState('');
+  const [editingTaxId, setEditingTaxId] = useState(null);
+  const [editingTaxRate, setEditingTaxRate] = useState('');
+
+  const exportDailySalesCsv = async () => {
+    try {
+      setIsSaving(true);
+      const { data: orders } = await api.get('/orders');
+      
+      const rows = [
+        ['Order ID', 'Date', 'Type', 'Table/Car', 'Status', 'Subtotal (INR)', 'Tax (INR)', 'Discount (INR)', 'Total (INR)'],
+        ...orders.map(order => {
+          const total = order.totalAmount || 0;
+          const discount = order.discountAmount || 0;
+          const subtotal = order.subtotal || (total + discount);
+          const tax = order.taxAmount || 0;
+          
+          return [
+            order.orderNumber,
+            order.createdAt ? new Date(order.createdAt).toLocaleString() : '',
+            order.orderType || '',
+            order.table?.name || order.carNumber || 'N/A',
+            order.orderStatus || '',
+            maskCurrency(subtotal).toFixed(2),
+            maskCurrency(tax).toFixed(2),
+            maskCurrency(discount).toFixed(2),
+            maskCurrency(total).toFixed(2)
+          ];
+        })
+      ];
+      
+      const csvContent = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `daily_sales_matrix_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error('Failed to export sales CSV:', err);
+      window.alert('ERROR: Export failed. Unable to fetch daily sales.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const exportAttendanceCsv = async () => {
+    try {
+      setIsSaving(true);
+      const { data: attendance } = await api.get('/staff/attendance?date=all');
+      
+      const rows = [
+        ['Staff Name', 'Date', 'Check In', 'Check Out', 'Shift Status', 'Terminal Node'],
+        ...attendance.map(log => [
+          getReplacedName(log.staffName),
+          log.date ? new Date(log.date).toLocaleDateString() : '',
+          log.checkIn ? new Date(log.checkIn).toLocaleTimeString() : '',
+          log.checkOut ? new Date(log.checkOut).toLocaleTimeString() : 'N/A',
+          log.status || '',
+          log.terminal || ''
+        ])
+      ];
+      
+      const csvContent = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `staff_attendance_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error('Failed to export attendance CSV:', err);
+      window.alert('ERROR: Export failed. Unable to fetch attendance logs.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [autoCommit, setAutoCommit] = useState(true);
@@ -271,59 +364,31 @@ export default function SystemSettings() {
     gstNumber: ''
   });
 
-  const [newTax, setNewTax] = useState({ name: '', rate: '' });
-
-  // Variant Master State
-  const [showVariantModal, setShowVariantModal] = useState(false);
-  const [editingVariant, setEditingVariant] = useState(null);
-  const [variantForm, setVariantForm] = useState({ name: '', options: [] });
-
-  const handleAddOption = () => {
-    setVariantForm(prev => ({
-      ...prev,
-      options: [...prev.options, { id: Date.now(), name: '', priceType: 'fixed', priceValue: 0 }]
-    }));
-  };
-
-  const updateOption = (id, field, value) => {
-    setVariantForm(prev => ({
-      ...prev,
-      options: prev.options.map(opt => opt.id === id ? { ...opt, [field]: value } : opt)
-    }));
-  };
-
-  const removeOption = (id) => {
-    setVariantForm(prev => ({
-      ...prev,
-      options: prev.options.filter(opt => opt.id !== id)
-    }));
-  };
-
-  const handleSaveVariant = () => {
-    if (!variantForm.name || variantForm.options.length === 0) return;
-    if (editingVariant) {
-      updateVariantGroup(editingVariant.id, variantForm);
-    } else {
-      addVariantGroup(variantForm);
-    }
-    setShowVariantModal(false);
-    setEditingVariant(null);
-    setVariantForm({ name: '', options: [] });
-  };
-
   const [tablesSaved, setTablesSaved] = useState(false);
-  const [activeTableSection, setActiveTableSection] = useState(sections[0]?._id || '');
+  const isPickupSection = (sec) =>
+    sec?.type === 'PICKUP' ||
+    sec?.id?.toLowerCase().includes('pickup') ||
+    sec?.name?.toLowerCase().includes('pickup') ||
+    sec?.label?.toLowerCase().includes('pickup');
+
+  const [activeTableSection, setActiveTableSection] = useState('');
   const [tableError, setTableError] = useState('');
   const [tableSuccess, setTableSuccess] = useState('');
   const [sectionForm, setSectionForm] = useState({ id: null, label: '', rank: 0 });
   const [tableForm, setTableForm] = useState({ id: null, name: '', capacity: 4, status: 'blank' });
 
-  // Update active section if sections change or on first load
+  // Update active section if sections change or on first load — always skip pickup sections
   React.useEffect(() => {
-    if (!activeTableSection && sections.length > 0) {
-      setActiveTableSection(sections[0]._id);
+    if (sections.length > 0) {
+      const currentIsValid = activeTableSection &&
+        sections.find(s => s._id === activeTableSection) &&
+        !isPickupSection(sections.find(s => s._id === activeTableSection));
+      if (!currentIsValid) {
+        const firstNonPickup = sections.find(s => !isPickupSection(s));
+        setActiveTableSection(firstNonPickup?._id || '');
+      }
     }
-  }, [sections, activeTableSection]);
+  }, [sections]);
 
   const clearTableMessages = () => {
     setTableError('');
@@ -339,6 +404,7 @@ export default function SystemSettings() {
   };
 
   const selectedSection = sections.find(s => s._id === activeTableSection) || null;
+  const isSelectedSectionPickup = isPickupSection(selectedSection);
   const tablesInActiveSection = tables.filter(t => t.sectionId === selectedSection?.id);
 
   const saveSection = async () => {
@@ -956,7 +1022,13 @@ export default function SystemSettings() {
                             </div>
                           )}
 
-                          {sections.map(sec => (
+                          {sections.filter(sec => {
+                            const isPickup = sec.type === 'PICKUP' ||
+                              sec.id?.toLowerCase().includes('pickup') ||
+                              sec.name?.toLowerCase().includes('pickup') ||
+                              sec.label?.toLowerCase().includes('pickup');
+                            return !isPickup;
+                          }).map(sec => (
                             <button 
                               key={sec.id} 
                               onClick={() => {
@@ -1018,7 +1090,7 @@ export default function SystemSettings() {
                               <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry {selectedSection ? `- ${selectedSection.label}` : '- Select Section'}</h4>
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Configure individual table identifiers and statuses</p>
                            </div>
-                           {selectedSection?.type !== 'CAR-SERVICE' && (
+                           {!isSelectedSectionPickup && selectedSection?.type !== 'CAR-SERVICE' && (
                              <button 
                                onClick={() => {
                                  clearTableMessages();
@@ -1037,6 +1109,12 @@ export default function SystemSettings() {
                               <ShieldAlert size={24} className="mx-auto text-amber-500 mb-2" />
                               <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Dedicated Car Service Mode</p>
                               <p className="text-[9px] font-bold text-amber-600 uppercase tracking-widest mt-1">This section operates strictly on car numbers. Physical tables are not required or permitted.</p>
+                           </div>
+                         ) : isSelectedSectionPickup ? (
+                           <div className="bg-sky-50 border border-sky-100 rounded-sm p-6 text-center">
+                              <ShieldAlert size={24} className="mx-auto text-sky-400 mb-2" />
+                              <p className="text-[10px] font-black uppercase tracking-widest text-sky-700">Pickup is POS-Driven</p>
+                              <p className="text-[9px] font-bold text-sky-600 uppercase tracking-widest mt-1">Pickup orders are created via the Pick Up button on the POS terminal. No physical tables are needed or permitted for this mode.</p>
                            </div>
                          ) : (
                            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_140px_180px_160px] gap-3 bg-white border border-slate-100 rounded-sm p-4">
@@ -1222,6 +1300,12 @@ export default function SystemSettings() {
                       {/* --- 1. Add New Tax Protocol --- */}
                       <div className="bg-slate-50 border border-slate-100 rounded-sm p-6 space-y-4">
                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3 mb-4">Initialize New Tax Unit</h4>
+                         {taxError && (
+                           <div className="rounded-sm border border-rose-100 bg-rose-50 px-4 py-3 flex items-start gap-3 text-rose-600">
+                             <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                             <p className="text-[10px] font-black uppercase tracking-widest">{taxError}</p>
+                           </div>
+                         )}
                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                             <div className="space-y-2">
                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tax Identity (e.g. GST)</label>
@@ -1245,9 +1329,21 @@ export default function SystemSettings() {
                             </div>
                             <button 
                               onClick={() => {
-                                if (!newTax.name || !newTax.rate) return window.alert('ERROR: Incomplete data matrices.');
-                                if (appliedTaxes.some(t => t.name === newTax.name)) return window.alert('ERROR: Identity duplication detected.');
-                                addTax(newTax.name, newTax.rate);
+                                setTaxError('');
+                                const rateNum = Number(newTax.rate);
+                                if (!newTax.name.trim() || isNaN(rateNum)) {
+                                  setTaxError('ERROR: Incomplete or invalid tax percentage.');
+                                  return;
+                                }
+                                if (rateNum < 0) {
+                                  setTaxError('ERROR: Tax percentage must be a valid non-negative number.');
+                                  return;
+                                }
+                                if (appliedTaxes.some(t => t.name.toLowerCase() === newTax.name.trim().toLowerCase())) {
+                                  setTaxError('ERROR: Identity duplication detected.');
+                                  return;
+                                }
+                                addTax(newTax.name.trim().toUpperCase(), newTax.rate);
                                 setNewTax({ name: '', rate: '' });
                               }}
                               className="bg-slate-900 text-white h-[42px] px-6 rounded-sm text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10"
@@ -1288,7 +1384,18 @@ export default function SystemSettings() {
                                     className="grid grid-cols-[1fr_120px_100px_120px] items-center px-6 py-4 hover:bg-slate-50/50 transition-colors group"
                                   >
                                     <span className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{tax.name}</span>
-                                    <span className="text-[11px] font-bold text-slate-600 tabular-nums font-mono">{tax.rate}%</span>
+                                    {editingTaxId === tax.id ? (
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={editingTaxRate}
+                                        onChange={(e) => setEditingTaxRate(e.target.value)}
+                                        className="w-20 bg-white border border-slate-200 rounded-sm px-2 py-1 text-[11px] font-bold text-slate-800 outline-none focus:ring-1 focus:ring-slate-900/15"
+                                      />
+                                    ) : (
+                                      <span className="text-[11px] font-bold text-slate-600 tabular-nums font-mono">{tax.rate}%</span>
+                                    )}
                                     <div>
                                       <button 
                                         onClick={() => updateTax(tax.id, { enabled: !tax.enabled })}
@@ -1302,15 +1409,35 @@ export default function SystemSettings() {
                                       </button>
                                     </div>
                                     <div className="flex items-center gap-2 opacity-20 group-hover:opacity-100 transition-all">
-                                      <button 
-                                        onClick={() => {
-                                          const newRate = window.prompt(`Update ${tax.name} percentage:`, tax.rate);
-                                          if (newRate !== null) updateTax(tax.id, { rate: Number(newRate) });
-                                        }}
-                                        className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-colors"
-                                      >
-                                        <Edit size={12} />
-                                      </button>
+                                      {editingTaxId === tax.id ? (
+                                        <button 
+                                          onClick={() => {
+                                            setTaxError('');
+                                            const rateVal = Number(editingTaxRate);
+                                            if (isNaN(rateVal) || rateVal < 0) {
+                                              setTaxError('ERROR: Tax percentage must be non-negative.');
+                                              return;
+                                            }
+                                            updateTax(tax.id, { rate: rateVal });
+                                            setEditingTaxId(null);
+                                          }}
+                                          className="p-1.5 bg-slate-900 border border-slate-900 rounded-sm text-white hover:bg-[#E1261C] transition-colors"
+                                          title="Save changes"
+                                        >
+                                          <CheckCircle size={12} />
+                                        </button>
+                                      ) : (
+                                        <button 
+                                          onClick={() => {
+                                            setEditingTaxId(tax.id);
+                                            setEditingTaxRate(tax.rate);
+                                          }}
+                                          className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-colors"
+                                          title="Edit percentage"
+                                        >
+                                          <Edit size={12} />
+                                        </button>
+                                      )}
                                       <button 
                                         onClick={() => {
                                           if (window.confirm(`SECURITY PROTOCOL: Authenticate deletion of ${tax.name} matrix?`)) {
@@ -1370,14 +1497,14 @@ export default function SystemSettings() {
                                 <Database size={16} className="text-slate-400" />
                                 <span className="text-[10px] font-black uppercase tracking-tight">Daily Sales Matrix</span>
                              </div>
-                             <button className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase">Export CSV</button>
+                             <button onClick={exportDailySalesCsv} className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase cursor-pointer">Export CSV</button>
                           </div>
                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
                              <div className="flex items-center gap-3">
                                 <Users size={16} className="text-slate-400" />
                                 <span className="text-[10px] font-black uppercase tracking-tight">Staff Attendance Logs</span>
                              </div>
-                             <button className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase">Export CSV</button>
+                             <button onClick={exportAttendanceCsv} className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase cursor-pointer">Export CSV</button>
                           </div>
                         </div>
                       </div>

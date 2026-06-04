@@ -176,6 +176,13 @@ export default function StaffManagement() {
          </div>
       </div>
 
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 text-rose-600 px-4 py-3 rounded-2xl flex items-center gap-2.5 text-[10px] font-black uppercase tracking-widest">
+          <AlertCircle size={16} />
+          <span>{error}</span>
+        </div>
+      )}
+
       <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
         <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#E1261C] transition-colors" size={16} />
@@ -209,14 +216,18 @@ export default function StaffManagement() {
                </span>
             </div>
          </div>
-         <div className="bg-white p-5 border border-stone-200 rounded-2xl shadow-sm flex flex-col justify-center">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Active Units</span>
-            <h3 className="text-xl font-black text-stone-800 mt-1">5 Depts</h3>
-         </div>
-         <div className="bg-white p-5 border border-stone-200 rounded-2xl shadow-sm flex flex-col justify-center">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Last Roster</span>
-            <h3 className="text-xl font-black text-stone-800 mt-1">Updated Now</h3>
-         </div>
+          <div className="bg-white p-5 border border-stone-200 rounded-2xl shadow-sm flex flex-col justify-center">
+             <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Active Roles</span>
+             <h3 className="text-xl font-black text-stone-800 mt-1">
+               {new Set(staff.map(s => s.role)).size} {new Set(staff.map(s => s.role)).size === 1 ? 'Role' : 'Roles'}
+             </h3>
+          </div>
+          <div className="bg-white p-5 border border-stone-200 rounded-2xl shadow-sm flex flex-col justify-center">
+             <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">System Admins</span>
+             <h3 className="text-xl font-black text-stone-800 mt-1">
+               {staff.filter(s => s.role === 'Admin').length} {staff.filter(s => s.role === 'Admin').length === 1 ? 'Admin' : 'Admins'}
+             </h3>
+          </div>
       </div>
 
       {/* Staff Directory */}

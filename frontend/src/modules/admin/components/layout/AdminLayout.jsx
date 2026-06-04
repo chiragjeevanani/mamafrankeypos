@@ -1,12 +1,18 @@
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../navigation/Sidebar';
 import TopBar from '../navigation/TopBar';
+import { usePos } from '../../../pos/context/PosContext';
 
 export default function AdminLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { refreshMenu } = usePos();
+
+  useEffect(() => {
+    refreshMenu();
+  }, [refreshMenu]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F0EBE3] text-stone-800 font-sans selection:bg-amber-50">

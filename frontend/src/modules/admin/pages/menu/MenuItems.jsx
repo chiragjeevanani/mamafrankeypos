@@ -13,6 +13,8 @@ export default function MenuItems() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
   const [selectedItems, setSelectedItems] = useState([]);
+  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const fileInputRef = useRef(null);
 
   const { 
@@ -34,6 +36,8 @@ export default function MenuItems() {
   });
 
   const handleOpenModal = (item = null) => {
+    setFormError('');
+    setError('');
     if (item) {
       setEditingItem(item);
       setFormData({
@@ -66,10 +70,26 @@ export default function MenuItems() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setError('');
+
+    if (!formData.name.trim()) {
+      setFormError('Item name is required.');
+      return;
+    }
+    if (!formData.category) {
+      setFormError('Category selection is required.');
+      return;
+    }
+    if (formData.price === '' || Number(formData.price) < 0) {
+      setFormError('Price must be a valid non-negative number.');
+      return;
+    }
+
     try {
       setIsSaving(true);
       const data = new FormData();
-      data.append('name', formData.name);
+      data.append('name', formData.name.trim());
       data.append('description', formData.description);
       data.append('price', formData.price);
       data.append('category', formData.category);
@@ -78,20 +98,15 @@ export default function MenuItems() {
       data.append('status', formData.status);
       data.append('variantGroups', JSON.stringify(formData.variantGroups));
       
-      // If we have variant groups assigned, we need to pass them
-      // For now, simplicity: we just pass the names/ids if needed
-      // But the model expects variantGroups: [variantGroupSchema]
-      // Let's just pass the data as is for now
-      
       if (editingItem) {
         await updateMenuItem(editingItem.id, data);
       } else {
         await addMenuItem(data);
       }
       setIsModalOpen(false);
-    } catch (error) {
-      console.error('Error saving menu item:', error);
-      alert('Error saving menu item.');
+    } catch (err) {
+      console.error('Error saving menu item:', err);
+      setFormError(err.response?.data?.message || 'Unable to save menu item.');
     } finally {
       setIsSaving(false);
     }
@@ -100,10 +115,11 @@ export default function MenuItems() {
   const handleDelete = async (id) => {
     if (window.confirm('PROTOCOL: Proceed with record termination?')) {
       try {
+        setError('');
         await deleteMenuItem(id);
-      } catch (error) {
-        console.error('Error deleting item:', error);
-        alert('Error deleting item.');
+      } catch (err) {
+        console.error('Error deleting item:', err);
+        setError(err.response?.data?.message || 'Unable to delete menu item.');
       }
     }
   };
@@ -114,11 +130,12 @@ export default function MenuItems() {
 
     try {
       setIsSaving(true);
+      setError('');
       await bulkUploadMenu(file);
-      alert('Bulk upload successful.');
-    } catch (error) {
-      console.error('Bulk upload error:', error);
-      alert('Bulk upload failed.');
+      alert('PROTOCOL SUCCESS: Bulk import completed successfully.');
+    } catch (err) {
+      console.error('Bulk upload error:', err);
+      setError(err.response?.data?.message || 'Bulk import failed.');
     } finally {
       setIsSaving(false);
       e.target.value = null;
@@ -186,10 +203,11 @@ export default function MenuItems() {
   const handleBulkStatusUpdate = async (status) => {
     try {
       setIsSaving(true);
+      setError('');
       await bulkUpdateMenuItems(selectedItems, { status });
       setSelectedItems([]);
-    } catch (error) {
-      alert('Bulk update failed');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Bulk status update failed.');
     } finally {
       setIsSaving(false);
     }
@@ -237,6 +255,13 @@ export default function MenuItems() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+          <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+          <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{error}</p>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-100 rounded-sm p-4 flex flex-col lg:flex-row items-center gap-4">
         <div className="relative flex-1 w-full lg:w-auto overflow-hidden">
@@ -387,6 +412,12 @@ export default function MenuItems() {
         isSaving={isSaving}
       >
         <div className="space-y-6">
+          {formError && (
+            <div className="bg-rose-50 border border-rose-100 rounded-sm px-4 py-3 flex items-start gap-3">
+              <AlertCircle size={14} className="text-rose-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest">{formError}</p>
+            </div>
+          )}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Designation</label>
             <input 

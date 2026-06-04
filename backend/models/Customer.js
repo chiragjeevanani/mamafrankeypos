@@ -36,6 +36,9 @@ const customerSchema = mongoose.Schema(
   }
 );
 
+customerSchema.index({ email: 1 });
+customerSchema.index({ updatedAt: -1 });
+
 const Customer = mongoose.model('Customer', customerSchema);
 
 module.exports = Customer;

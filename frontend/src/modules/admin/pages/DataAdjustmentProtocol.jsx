@@ -3,12 +3,13 @@ import {
   Search, Save, X, Edit3, Trash2, 
   FileSpreadsheet, Monitor, LogOut, HardDrive, 
   ChevronDown, Calendar, Hash, CreditCard, AlertCircle, RefreshCw,
-  Plus, CheckSquare, Square
+  Plus, CheckSquare, Square, Eye, Download
 } from 'lucide-react';
 import { usePos } from '../../pos/context/PosContext';
 import { maskQuantity, maskCurrency, getReplacedName } from '../utils/dataMask';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
+import { printBillReceipt } from '../../pos/utils/printBill';
 
 export default function DataAdjustmentProtocol() {
   const { menuItems } = usePos();
@@ -22,6 +23,8 @@ export default function DataAdjustmentProtocol() {
   const [decreasePct, setDecreasePct] = useState('0');
   const [isDecreaseQty, setIsDecreaseQty] = useState(false);
   const [selectedBills, setSelectedBills] = useState([]);
+  const [viewingBill, setViewingBill] = useState(null);
+  const [storeInfo, setStoreInfo] = useState(null);
   
   // New Filter States
   const [targetOutlet, setTargetOutlet] = useState('Main Outlet (Sadar)');
@@ -49,6 +52,7 @@ export default function DataAdjustmentProtocol() {
   const fetchProtocols = async () => {
     try {
       const { data } = await api.get('/settings/store');
+      setStoreInfo(data);
       setDecreasePct(data.visibilityDecrement?.toString() || '0');
       setIsDecreaseQty(data.maskQuantity || false);
       setTargetOutlet(data.targetOutlet || 'Main Outlet (Sadar)');
@@ -114,6 +118,35 @@ export default function DataAdjustmentProtocol() {
       setError('Failed to commit protocols to database');
       setLoading(false);
     }
+  };
+
+  const getMaskedBillingDetails = (bill) => {
+    if (!bill) return null;
+    return {
+      subTotal: bill.subtotal,
+      tax: (bill.taxes || []).reduce((sum, t) => sum + (t.amount || 0), 0),
+      discount: bill.discount?.amount || 0,
+      total: bill.totalAmount,
+      orderType: bill.orderType === 'DINE-IN' ? 'DINE IN' : (bill.orderType || 'DINE IN'),
+      appliedTaxes: (bill.taxes || []).map(t => ({
+        ...t,
+        rate: t.rate || t.percentage
+      })),
+      storeInfo: storeInfo,
+      billerName: bill.waiter?.name || 'Cashier',
+      orderNumber: bill.orderNumber
+    };
+  };
+
+  const handleDownloadBill = (bill) => {
+    if (!bill) return;
+    playClickSound();
+    const details = getMaskedBillingDetails(bill);
+    printBillReceipt(
+      bill,
+      { name: bill.table?.name || bill.carNumber || bill.orderType || 'Order' },
+      details
+    );
   };
 
   const toggleBillSelection = (id) => {
@@ -360,6 +393,7 @@ export default function DataAdjustmentProtocol() {
                         <th className="px-3 py-4 text-center">Table</th>
                         <th className="px-3 py-4 text-center">Units</th>
                         <th className="px-3 py-4">Protocol Year</th>
+                        <th className="px-3 py-4 text-center">Actions</th>
                      </tr>
                   </thead>
                   <tbody className="text-[11px]">
@@ -368,10 +402,12 @@ export default function DataAdjustmentProtocol() {
                         return (
                         <tr 
                           key={bill._id} 
-                          onClick={() => toggleBillSelection(bill._id)}
+                          onClick={() => { playClickSound(); setViewingBill(bill); }}
                           className={`${selectedBills.includes(bill._id) ? 'bg-[#E1261C]/5 border-l-4 border-[#E1261C]' : 'border-l-4 border-transparent'} border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-all`}
                         >
-                           <td className="px-3 py-3 text-center"><input type="checkbox" checked={selectedBills.includes(bill._id)} readOnly className="accent-[#E1261C]" /></td>
+                           <td className="px-3 py-3 text-center" onClick={(e) => { e.stopPropagation(); toggleBillSelection(bill._id); }}>
+                             <input type="checkbox" checked={selectedBills.includes(bill._id)} onChange={() => {}} className="accent-[#E1261C] cursor-pointer" />
+                           </td>
                            <td className="px-3 py-3 font-black text-[#E1261C] tabular-nums">{bill.orderNumber}</td>
                            <td className="px-3 py-3 font-bold text-emerald-600 uppercase italic max-w-xs truncate">
                               {bill.kots.flatMap(k => k.items.map(i => getReplacedName(i.name))).join(', ')}
@@ -391,6 +427,12 @@ export default function DataAdjustmentProtocol() {
                              }
                            </td>
                            <td className="px-3 py-3 font-bold text-slate-400">2026-2027</td>
+                           <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-2">
+                                 <button onClick={() => { playClickSound(); setViewingBill(bill); }} className="p-1 hover:text-[#E1261C] text-slate-400 transition-colors" title="View Receipt"><Eye size={16} /></button>
+                                 <button onClick={() => handleDownloadBill(bill)} className="p-1 hover:text-emerald-600 text-slate-400 transition-colors" title="Download PDF Receipt"><Download size={16} /></button>
+                              </div>
+                           </td>
                         </tr>
                      )})}
                   </tbody>
@@ -565,6 +607,160 @@ export default function DataAdjustmentProtocol() {
             </div>
          </div>
       </div>
+
+      {viewingBill && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Receipt Audit Preview</span>
+              <button 
+                onClick={() => { playClickSound(); setViewingBill(null); }}
+                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Receipt Body */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 flex flex-col items-center">
+              <div className="w-full bg-white border border-slate-200 shadow-sm rounded-lg p-6 font-mono text-[11px] text-slate-800 flex flex-col relative">
+                {/* Visual Thermal Receipt Top Border Jagged Effect */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-slate-100 to-transparent" />
+                
+                {/* Branding */}
+                <div className="text-center mb-4">
+                  <span className="text-[8px] font-black tracking-widest text-slate-400 uppercase">RETAIL INVOICE</span>
+                  <h3 className="text-sm font-extrabold uppercase tracking-tight text-slate-900 mt-1">
+                    {storeInfo?.name || 'MAMA FRANKY HOUSE'}
+                  </h3>
+                  {storeInfo?.legalName && (
+                    <div className="text-[9px] text-slate-500">({storeInfo.legalName})</div>
+                  )}
+                  <div className="text-[9px] text-slate-500 mt-1">
+                    {storeInfo?.address || 'A - 17, Shopping Arcade, Sadar Bazar'}
+                  </div>
+                  <div className="text-[9px] text-slate-500">
+                    {storeInfo?.city ? `${storeInfo.city}, ${storeInfo.state || ''} - ${storeInfo.pincode || ''}` : 'Agra Cantt, U. P. - 282001'}
+                  </div>
+                  {storeInfo?.phone && (
+                    <div className="text-[9px] text-slate-500">Ph. No: +91 {storeInfo.phone}</div>
+                  )}
+                  <div className="text-[9px] text-slate-500">GSTIN: {storeInfo?.gstin || '09AAFFT9378RIZW'}</div>
+                </div>
+
+                <div className="border-t border-dashed border-slate-300 my-3" />
+
+                {/* Metadata */}
+                <div className="space-y-1 text-slate-600 mb-3">
+                  <div className="flex justify-between">
+                    <span>Date: {new Date(viewingBill.completedAt).toLocaleDateString('en-GB')}</span>
+                    <span className="font-bold">{viewingBill.orderType}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Time: {new Date(viewingBill.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                    <span>Bill No: {viewingBill.orderNumber}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cashier: {viewingBill.waiter?.name || 'SYSTEM'}</span>
+                    <span>Table: {viewingBill.orderType === 'PICKUP' ? 'PICKUP' : (viewingBill.table?.name || viewingBill.carNumber || 'CAR')}</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-dashed border-slate-300 my-2" />
+
+                {/* Item List Header */}
+                <div className="grid grid-cols-12 font-bold text-slate-700 py-1 border-b border-dashed border-slate-200">
+                  <span className="col-span-6">Item</span>
+                  <span className="col-span-2 text-right">Qty</span>
+                  <span className="col-span-2 text-right">Price</span>
+                  <span className="col-span-2 text-right">Amt</span>
+                </div>
+
+                {/* Item List Rows */}
+                <div className="space-y-2 py-2">
+                  {(viewingBill.kots || []).flatMap(kot => kot.items || [])
+                    .filter(item => item.status !== 'cancelled')
+                    .map((item, idx) => (
+                      <div key={idx} className="grid grid-cols-12 text-slate-600">
+                        <div className="col-span-6 flex flex-col">
+                          <span className="font-bold">{item.name}</span>
+                          {item.variantLabel && <span className="text-[9px] text-slate-400">({item.variantLabel})</span>}
+                        </div>
+                        <span className="col-span-2 text-right">{item.quantity}</span>
+                        <span className="col-span-2 text-right">{item.price.toFixed(2)}</span>
+                        <span className="col-span-2 text-right">{(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                </div>
+
+                <div className="border-t border-dashed border-slate-300 my-2" />
+
+                {/* Totals */}
+                <div className="space-y-1.5 text-slate-700 font-bold">
+                  {(() => {
+                    const details = getMaskedBillingDetails(viewingBill);
+                    if (!details) return null;
+                    const grandTotal = Math.round(details.total);
+                    const roundOff = (grandTotal - details.total).toFixed(2);
+                    return (
+                      <>
+                        <div className="flex justify-between">
+                          <span>Sub Total</span>
+                          <span>₹{details.subTotal.toFixed(2)}</span>
+                        </div>
+                        {details.discount > 0 && (
+                          <div className="flex justify-between text-rose-600">
+                            <span>Discount</span>
+                            <span>-₹{details.discount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {details.appliedTaxes.map((tax, i) => (
+                          <div key={i} className="flex justify-between font-normal text-slate-600">
+                            <span>{tax.name} {tax.rate}%</span>
+                            <span>₹{tax.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="border-t border-slate-200 pt-1.5 flex justify-between font-normal text-[10px] text-slate-500">
+                          <span>Round off</span>
+                          <span>₹{roundOff}</span>
+                        </div>
+                        <div className="border-t-2 border-double border-slate-300 pt-2 flex justify-between text-slate-900 text-sm font-extrabold">
+                          <span>GRAND TOTAL</span>
+                          <span>₹{grandTotal}.00</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div className="border-t border-dashed border-slate-300 my-3" />
+                
+                <div className="text-center text-[9px] text-slate-400 uppercase tracking-widest mt-1">
+                  Thank You, Kindly Visit Again...!!
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 flex gap-3 shrink-0 bg-slate-50/50">
+              <button 
+                onClick={() => { playClickSound(); setViewingBill(null); }}
+                className="flex-1 h-10 border border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-50 transition-all active:scale-95 outline-none"
+              >
+                Close Preview
+              </button>
+              <button 
+                onClick={() => handleDownloadBill(viewingBill)}
+                className="flex-1 h-10 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-emerald-700 shadow-md shadow-emerald-600/10 transition-all flex items-center justify-center gap-2 active:scale-95 outline-none"
+              >
+                <Download size={14} />
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

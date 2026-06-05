@@ -57,17 +57,18 @@ const maskOrder = (order, rules) => {
       if (kot.items && Array.isArray(kot.items)) {
         kot.items.forEach(item => {
           if (item.status !== 'cancelled') {
-            const isReplaced = rules.itemReplacements && rules.itemReplacements.some(r => r.originalItem.toLowerCase() === item.name.toLowerCase());
+            const originalName = item.name;
+            const isReplaced = rules.itemReplacements && rules.itemReplacements.some(r => r.originalItem.toLowerCase() === originalName.toLowerCase());
             if (isReplaced) {
               hasTargetedOverride = true;
             }
             
             // Mask item name
-            item.name = getReplacedName(item.name, rules);
+            item.name = getReplacedName(originalName, rules);
             
             // Mask item price
             const originalPrice = item.price;
-            item.price = maskCurrencyValue(originalPrice, item.name, rules);
+            item.price = maskCurrencyValue(originalPrice, originalName, rules);
             
             // Mask item quantity
             item.quantity = maskQuantityValue(item.quantity, rules);
@@ -99,6 +100,33 @@ const maskOrder = (order, rules) => {
     o.totalAmount = maskCurrencyValue(o.totalAmount, null, rules);
   }
   
+  // Proportional tax and discount scaling to match masked totals
+  const originalDiscount = o.discount?.amount || 0;
+  const originalTaxesSum = (o.taxes || []).reduce((sum, t) => sum + (t.amount || 0), 0);
+  const originalDiff = originalTaxesSum - originalDiscount;
+  const maskedDiff = o.totalAmount - o.subtotal;
+
+  if (originalDiff !== 0) {
+    const scale = maskedDiff / originalDiff;
+    if (o.discount) {
+      o.discount.amount = originalDiscount * scale;
+    }
+    o.taxes = (o.taxes || []).map(t => ({
+      ...t,
+      amount: (t.amount || 0) * scale
+    }));
+  } else {
+    if (maskedDiff > 0) {
+      o.taxes = [
+        { name: 'CGST', rate: 2.5, amount: maskedDiff / 2 },
+        { name: 'SGST', rate: 2.5, amount: maskedDiff / 2 }
+      ];
+    } else if (maskedDiff < 0) {
+      if (!o.discount) o.discount = { type: 'FLAT', value: 0 };
+      o.discount.amount = Math.abs(maskedDiff);
+    }
+  }
+
   // Mask customer name if exists
   if (o.customer && o.customer.name) {
     o.customer.name = getReplacedName(o.customer.name, rules);

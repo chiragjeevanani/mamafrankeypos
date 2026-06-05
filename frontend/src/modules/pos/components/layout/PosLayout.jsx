@@ -1,17 +1,14 @@
 import { usePos } from '../../context/PosContext';
 import { Outlet } from 'react-router-dom';
 import PosSidebar from '../navigation/PosSidebar';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, MoreVertical, X, Plus, Minus } from 'lucide-react';
 
 export default function PosLayout() {
-  const { isSidebarOpen, closeSidebar, refreshMenu } = usePos();
+  const { isSidebarOpen, closeSidebar } = usePos();
   const [acceptingOrder, setAcceptingOrder] = useState(null);
-
-  useEffect(() => {
-    refreshMenu();
-  }, [refreshMenu]);
   const [deliveryTime, setDeliveryTime] = useState(30);
   const [prepTime, setPrepTime] = useState(0);
 

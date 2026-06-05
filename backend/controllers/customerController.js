@@ -1,6 +1,7 @@
 const Customer = require('../models/Customer');
 const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
+const { getMaskingRules, maskCurrencyValue, getReplacedName } = require('../utils/dataMask');
 
 // @desc    Get all customers
 // @route   GET /api/customers
@@ -10,6 +11,9 @@ const getCustomers = asyncHandler(async (req, res) => {
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  const rules = isAdminRequest ? await getMaskingRules() : null;
+
   if (page && limit) {
     const skip = (page - 1) * limit;
     const total = await Customer.countDocuments(query);
@@ -17,8 +21,16 @@ const getCustomers = asyncHandler(async (req, res) => {
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit);
+      
+    const responseData = isAdminRequest ? data.map(c => {
+      const masked = JSON.parse(JSON.stringify(c));
+      masked.name = getReplacedName(masked.name, rules);
+      masked.totalSpent = maskCurrencyValue(masked.totalSpent, null, rules);
+      return masked;
+    }) : data;
+
     res.json({
-      data,
+      data: responseData,
       total,
       page,
       limit,
@@ -26,7 +38,15 @@ const getCustomers = asyncHandler(async (req, res) => {
     });
   } else {
     const customers = await Customer.find(query).sort({ updatedAt: -1 });
-    res.json(customers);
+    
+    const responseData = isAdminRequest ? customers.map(c => {
+      const masked = JSON.parse(JSON.stringify(c));
+      masked.name = getReplacedName(masked.name, rules);
+      masked.totalSpent = maskCurrencyValue(masked.totalSpent, null, rules);
+      return masked;
+    }) : customers;
+
+    res.json(responseData);
   }
 });
 

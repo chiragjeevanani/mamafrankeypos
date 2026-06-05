@@ -1,109 +1,27 @@
 /**
- * Applies a decrement percentage to a quantity for data visibility masking.
- * Ensures the result is never less than 1.
+ * Pass-through wrapper for quantity. Masking is now processed securely on the server-side.
  */
 export const maskQuantity = (qty) => {
-  if (typeof qty !== 'number') return qty;
-  
-  const percentStr = localStorage.getItem('rms_visibility_decrement');
-  let percent = percentStr ? parseInt(percentStr) : 0;
-  if (isNaN(percent)) percent = 0;
-  
-  if (percent === 0) return qty;
-  
-  const reduced = Math.floor(qty * (1 - percent / 100));
-  return Math.max(1, reduced);
+  return qty;
 };
 
 /**
- * Applies the mask to currency values, considering targeted item replacements.
+ * Pass-through wrapper for currency. Masking is now processed securely on the server-side.
  */
 export const maskCurrency = (amount, itemName = null) => {
-  if (typeof amount !== 'number') return amount;
-  
-  // 1. Check for Targeted Item Replacement Price
-  if (itemName) {
-    try {
-      const savedSettings = localStorage.getItem('rms_item_replacements');
-      if (savedSettings) {
-        const replacements = JSON.parse(savedSettings);
-        const match = replacements.find(r => r.originalItem.toLowerCase() === itemName.toLowerCase());
-        if (match && match.replacedPrice !== undefined) {
-          return match.replacedPrice;
-        }
-      }
-    } catch (e) {
-      console.error("Masking Engine Error:", e);
-    }
-  }
-
-  // 2. Fallback to Global Percentage Mask
-  const percentStr = localStorage.getItem('rms_visibility_decrement');
-  let percent = percentStr ? parseInt(percentStr) : 0;
-  if (isNaN(percent)) percent = 0;
-  
-  if (percent === 0) return amount;
-  
-  const reduced = Math.floor(amount * (1 - percent / 100));
-  return Math.max(0, reduced);
+  return amount;
 };
 
 /**
- * Utility to get the replaced name for an item based on active protocols.
+ * Pass-through wrapper for item names. Masking is now processed securely on the server-side.
  */
 export const getReplacedName = (originalName) => {
-  try {
-    const savedSettings = localStorage.getItem('rms_item_replacements');
-    if (savedSettings) {
-      const replacements = JSON.parse(savedSettings);
-      const match = replacements.find(r => r.originalItem.toLowerCase() === originalName.toLowerCase());
-      return match ? match.replacedWith : originalName;
-    }
-  } catch {
-    return originalName;
-  }
   return originalName;
 };
 
 /**
- * Calculates the total amount for an order after applying all active protocols.
+ * Pass-through wrapper for order totals. Masking is now processed securely on the server-side.
  */
 export const calculateMaskedOrderTotal = (order) => {
-  if (!order || !order.kots) return 0;
-  
-  let total = 0;
-  let hasTargetedOverride = false;
-
-  let replacements = [];
-  try {
-    const savedSettings = localStorage.getItem('rms_item_replacements');
-    if (savedSettings) {
-      replacements = JSON.parse(savedSettings);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-
-  order.kots.forEach(kot => {
-    kot.items.forEach(item => {
-      if (item.status !== 'cancelled') {
-        const maskedPrice = maskCurrency(item.price, item.name);
-        const isReplaced = replacements.some(r => r.originalItem.toLowerCase() === item.name.toLowerCase());
-        if (isReplaced) {
-          hasTargetedOverride = true;
-        }
-        total += maskedPrice * item.quantity;
-      }
-    });
-  });
-
-  // If targeted overrides were applied, we use the recalculated total.
-  // Otherwise, we apply the global percentage mask to the order's total amount.
-  if (hasTargetedOverride) {
-    // Note: This simplified calculation might differ slightly from original taxes/discounts 
-    // but serves the purpose of targeted "manipulation".
-    return total;
-  }
-  
-  return maskCurrency(order.totalAmount);
+  return order?.totalAmount || 0;
 };

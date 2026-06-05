@@ -4,6 +4,7 @@ const Customer = require('../models/Customer');
 const Expense = require('../models/Expense');
 const StoreSettings = require('../models/StoreSettings');
 const asyncHandler = require('../utils/asyncHandler');
+const { getMaskingRules, maskCurrencyValue, maskQuantityValue, getReplacedName } = require('../utils/dataMask');
 
 // Utility helpers for timezone-aware date calculations
 const getLocalMidnight = (date, timezone) => {
@@ -90,16 +91,59 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     { $sort: { '_id': 1 } }
   ]);
 
+  let todayTotal = todayStats[0]?.total || 0;
+  let todayCount = todayStats[0]?.count || 0;
+  let weekTotal = weekStats[0]?.total || 0;
+  let weekCount = weekStats[0]?.count || 0;
+  let monthTotal = monthStats[0]?.total || 0;
+  let monthCount = monthStats[0]?.count || 0;
+  let expensesTotal = totalExpenses[0]?.total || 0;
+  let mappedTopItems = topItems;
+  let mappedHourlySales = hourlySales;
+
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  if (isAdminRequest) {
+    const rules = await getMaskingRules();
+    todayTotal = maskCurrencyValue(todayTotal, null, rules);
+    todayCount = maskQuantityValue(todayCount, rules);
+    weekTotal = maskCurrencyValue(weekTotal, null, rules);
+    weekCount = maskQuantityValue(weekCount, rules);
+    monthTotal = maskCurrencyValue(monthTotal, null, rules);
+    monthCount = maskQuantityValue(monthCount, rules);
+    expensesTotal = maskCurrencyValue(expensesTotal, null, rules);
+    
+    // Mask topItems
+    const groupedItems = {};
+    topItems.forEach(item => {
+      const maskedName = getReplacedName(item._id, rules);
+      const maskedCount = maskQuantityValue(item.count, rules);
+      const maskedRevenue = maskCurrencyValue(item.revenue, item._id, rules);
+      
+      if (!groupedItems[maskedName]) {
+        groupedItems[maskedName] = { _id: maskedName, count: 0, revenue: 0 };
+      }
+      groupedItems[maskedName].count += maskedCount;
+      groupedItems[maskedName].revenue += maskedRevenue;
+    });
+    mappedTopItems = Object.values(groupedItems).sort((a, b) => b.count - a.count);
+
+    // Mask hourlySales
+    mappedHourlySales = hourlySales.map(h => ({
+      _id: h._id,
+      total: maskCurrencyValue(h.total, null, rules)
+    }));
+  }
+
   res.json({
     sales: {
-      today: todayStats[0] || { total: 0, count: 0 },
-      week: weekStats[0] || { total: 0, count: 0 },
-      month: monthStats[0] || { total: 0, count: 0 }
+      today: { total: todayTotal, count: todayCount },
+      week: { total: weekTotal, count: weekCount },
+      month: { total: monthTotal, count: monthCount }
     },
     customers: totalCustomers,
-    expenses: totalExpenses[0]?.total || 0,
-    topItems,
-    hourlySales
+    expenses: expensesTotal,
+    topItems: mappedTopItems,
+    hourlySales: mappedHourlySales
   });
 });
 

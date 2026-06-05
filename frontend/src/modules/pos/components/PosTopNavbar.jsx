@@ -14,9 +14,9 @@ import logo from '../../../assets/time-to-eat.png';
 
 export default function PosTopNavbar() {
   const navigate = useNavigate();
-  const { user, toggleCustomerSection } = usePos();
+  const { user, toggleCustomerSection, toggleSidebar } = usePos();
   const [isRecentOrdersOpen, setIsRecentOrdersOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const [isStoreStatusOpen, setIsStoreStatusOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('Dine In');
 
@@ -29,7 +29,7 @@ export default function PosTopNavbar() {
     <nav className="sticky top-0 z-50 bg-[#1C1E22] border-b border-white/8 h-14 flex items-center px-4 justify-between shadow-lg">
       <div className="flex items-center gap-3">
         <button 
-          onClick={() => { playClickSound(); setIsSidebarOpen(true); }}
+          onClick={() => { playClickSound(); toggleSidebar(); }}
           className="p-2.5 hover:bg-white/8 rounded-lg transition-colors"
         >
           <Menu size={20} className="text-slate-300" />
@@ -80,34 +80,6 @@ export default function PosTopNavbar() {
       </div>
 
       <AnimatePresence>
-        {isSidebarOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-black/50 z-[100]" />
-            <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed left-0 top-0 bottom-0 w-72 bg-[#1C1E22] z-[101] flex flex-col font-sans border-r border-white/5">
-               <div className="bg-[#1C1E22] p-4 flex items-center justify-between border-b border-white/5">
-                  <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Settings</h2>
-                  <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-gray-400 hover:text-white"><ArrowLeft size={18} /></button>
-               </div>
-               <div className="flex-1 overflow-y-auto py-2 no-scrollbar">
-                  <SidebarItem onClick={() => { setIsSidebarOpen(false); navigate('/pos/billing'); }} icon={<Printer size={20} />} label="Billing" active={true} />
-                  <SidebarItem onClick={() => { setIsSidebarOpen(false); navigate('/pos/operations'); }} icon={<SlidersHorizontal size={20} />} label="Operations" />
-                  <SidebarItem onClick={() => setIsSidebarOpen(false)} icon={<TrendingUp size={20} />} label="Reports" hasSubmenu={true} />
-                  <SidebarItem onClick={() => { setIsSidebarOpen(false); navigate('/pos/dashboard'); }} icon={<LayoutGrid size={20} />} label="Live View" />
-                  <SidebarItem onClick={() => setIsSidebarOpen(false)} icon={<Clock size={20} />} label="Day End" />
-                  <SidebarItem onClick={() => { setIsSidebarOpen(false); navigate('/pos/menu'); }} icon={<Settings size={20} />} label="Settings" />
-                  <SidebarItem onClick={() => setIsSidebarOpen(false)} icon={<RefreshCw size={20} />} label="Check Updates" />
-                  <SidebarItem onClick={() => { setIsSidebarOpen(false); navigate('/pos/login'); }} icon={<Power size={20} />} label="Logout" color="text-red-400" />
-               </div>
-               <div className="bg-[#141518] p-4 border-t border-white/5 space-y-2">
-                  <div className="flex items-center justify-between text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                     <span>Ref ID: A112011R</span><span>Version: 107.0.1</span>
-                  </div>
-                  <div className="text-[10px] text-gray-400 font-black uppercase text-center border-t border-white/5 pt-2">Biller Name: {user?.name || 'biller'}</div>
-               </div>
-            </motion.div>
-          </>
-        )}
-
         {isStoreStatusOpen && (
           <StoreStatusModal onClose={() => setIsStoreStatusOpen(false)} />
         )}
@@ -259,13 +231,4 @@ function StatusBadge({ label, color }) {
   );
 }
 
-function SidebarItem({ icon, label, hasSubmenu, active, color, onClick }) {
-  return (
-    <div onClick={() => { playClickSound(); onClick(); }} className={`px-4 py-3.5 flex items-center justify-between cursor-pointer transition-all hover:bg-white/5 border-l-4 ${active ? 'bg-white/10 border-red-600' : 'border-transparent'}`}>
-       <div className={`flex items-center gap-4 ${color || (active ? 'text-white' : 'text-gray-400')}`}>
-          {icon}<span className="text-xs font-bold uppercase tracking-widest">{label}</span>
-       </div>
-       {hasSubmenu && <ChevronRight size={16} className="text-gray-600" />}
-    </div>
-  );
-}
+

@@ -88,8 +88,9 @@ export function PosProvider({ children }) {
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem('pos_user_info', JSON.stringify(userData));
+    // fetchMenu is already called on mount via useEffect — only re-fetch menu data on explicit login
     fetchMenu();
-    fetchStoreSettings();
+    // NOTE: fetchStoreSettings is already running in its own useEffect on mount. No duplicate needed.
   };
 
   const logout = () => {
@@ -263,15 +264,24 @@ export function PosProvider({ children }) {
     fetchOrders();
     fetchTables();
 
-    // PRODUCTION HEARTBEAT: Poll for updates every 15 seconds to keep terminals in sync
-    const heartbeat = setInterval(() => {
+    // PRODUCTION HEARTBEAT: Poll orders every 15 seconds (live KOT sync)
+    const ordersHeartbeat = setInterval(() => {
       if (localStorage.getItem('admin_access') || localStorage.getItem('pos_access')) {
         fetchOrders();
-        fetchTables();
       }
     }, 15000);
 
-    return () => clearInterval(heartbeat);
+    // Table structure rarely changes mid-shift — poll every 60 seconds
+    const tablesHeartbeat = setInterval(() => {
+      if (localStorage.getItem('admin_access') || localStorage.getItem('pos_access')) {
+        fetchTables();
+      }
+    }, 60000);
+
+    return () => {
+      clearInterval(ordersHeartbeat);
+      clearInterval(tablesHeartbeat);
+    };
   }, []);
 
   const addCategory = async (formData) => {
@@ -495,8 +505,20 @@ export function PosProvider({ children }) {
         customer: details.customer
       };
       const { data } = await api.post('/orders', orderData);
-      await fetchOrders();
-      await fetchTables();
+
+      // Optimistic update: insert/update the new order in the correct map
+      const normalized = normalizeOrder(data, data.table?.status || 'running-kot');
+      if (details.isPickupOrder) {
+        const orderKey = data?.table?.name || data?._id;
+        if (orderKey) setPickupOrders(prev => ({ ...prev, [orderKey]: normalized }));
+      } else if (details.isCarOrder) {
+        const orderKey = data?.table?.name || data?.carNumber || data?._id;
+        if (orderKey) setCarOrders(prev => ({ ...prev, [orderKey]: normalized }));
+      } else {
+        const orderKey = data?.table?.name || tableId;
+        if (orderKey) setOrders(prev => ({ ...prev, [orderKey]: normalized }));
+      }
+
       return data;
     } catch (error) {
       console.error("Error placing KOT:", error);
@@ -524,7 +546,7 @@ export function PosProvider({ children }) {
       
       if (!targetOrderId) return null;
       
-      // If we don't have the order object or its KOTs, fetch it from backend!
+      // If we don't have the order object or its KOTs, fetch it from backend
       if (!order || !order.kots || order.kots.length === 0) {
         const { data } = await api.get(`/orders/${targetOrderId}`);
         order = data;
@@ -536,8 +558,22 @@ export function PosProvider({ children }) {
       const kotId = latestKot._id || latestKot.id;
       
       const { data } = await api.patch(`/orders/${targetOrderId}/kot/${kotId}/print`);
-      await fetchOrders();
-      await fetchTables();
+
+      // Optimistic update: mark the order's latest KOT as printed in the correct state map
+      const updateOrderInMap = (prev) => {
+        const updatedMap = { ...prev };
+        Object.keys(updatedMap).forEach(key => {
+          const o = updatedMap[key];
+          if ((o?.id === targetOrderId || o?._id === targetOrderId)) {
+            updatedMap[key] = { ...o, billPrinted: true, orderStatus: data.orderStatus || o.orderStatus };
+          }
+        });
+        return updatedMap;
+      };
+      if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
+      else if (details.isCarOrder) setCarOrders(updateOrderInMap);
+      else setOrders(updateOrderInMap);
+
       return data;
     } catch (error) {
       console.error("Error marking KOT printed:", error);
@@ -565,8 +601,22 @@ export function PosProvider({ children }) {
     }
 
     const { data } = await api.post(`/orders/${orderId}/bill`, details);
-    await fetchOrders();
-    await fetchTables();
+
+    // Optimistic update: mark the order as BILLED in the correct state map
+    const updateOrderInMap = (prev) => {
+      const updatedMap = { ...prev };
+      Object.keys(updatedMap).forEach(key => {
+        const o = updatedMap[key];
+        if (o?.id === orderId || o?._id === orderId) {
+          updatedMap[key] = { ...o, orderStatus: 'BILLED', billPrinted: true, ...normalizeOrder(data, 'printed') };
+        }
+      });
+      return updatedMap;
+    };
+    if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
+    else if (details.isCarOrder) setCarOrders(updateOrderInMap);
+    else setOrders(updateOrderInMap);
+
     return data;
   };
 
@@ -591,8 +641,22 @@ export function PosProvider({ children }) {
     }
 
     const { data } = await api.put(`/orders/${orderId}`, payload);
-    await fetchOrders();
-    await fetchTables();
+
+    // Optimistic update: update the specific order's meta fields in state
+    const updateOrderInMap = (prev) => {
+      const updatedMap = { ...prev };
+      Object.keys(updatedMap).forEach(key => {
+        const o = updatedMap[key];
+        if (o?.id === orderId || o?._id === orderId) {
+          updatedMap[key] = { ...o, ...normalizeOrder(data, o.status) };
+        }
+      });
+      return updatedMap;
+    };
+    if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
+    else if (details.isCarOrder) setCarOrders(updateOrderInMap);
+    else setOrders(updateOrderInMap);
+
     return data;
   };
 
@@ -607,14 +671,29 @@ export function PosProvider({ children }) {
         throw new Error('No active order found to settle');
       }
 
+      const orderId = order.id || order._id;
       const payload = {
         paymentMethod,
         taxes: details.taxes || [],
         totalAmount: details.total || 0
       };
-      const { data } = await api.post(`/orders/${order.id || order._id}/settle`, payload);
-      await fetchOrders();
-      await fetchTables();
+      const { data } = await api.post(`/orders/${orderId}/settle`, payload);
+
+      // Optimistic update: remove the settled order from the correct state map
+      const removeOrderFromMap = (prev) => {
+        const updatedMap = { ...prev };
+        Object.keys(updatedMap).forEach(key => {
+          const o = updatedMap[key];
+          if (o?.id === orderId || o?._id === orderId) {
+            delete updatedMap[key];
+          }
+        });
+        return updatedMap;
+      };
+      if (details.isPickupOrder) setPickupOrders(removeOrderFromMap);
+      else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
+      else setOrders(removeOrderFromMap);
+
       return data;
     } catch (error) {
       console.error("Settlement error:", error);
@@ -626,10 +705,25 @@ export function PosProvider({ children }) {
     try {
       const order = resolveOrderFromIdentifier(identifier, details);
       if (!order) throw new Error('Order not found');
-      
-      const { data } = await api.post(`/orders/${order.id || order._id}/discount`, discountData);
-      await fetchOrders();
-      await fetchTables();
+
+      const orderId = order.id || order._id;
+      const { data } = await api.post(`/orders/${orderId}/discount`, discountData);
+
+      // Optimistic update: update the discount on the specific order in state
+      const updateOrderInMap = (prev) => {
+        const updatedMap = { ...prev };
+        Object.keys(updatedMap).forEach(key => {
+          const o = updatedMap[key];
+          if (o?.id === orderId || o?._id === orderId) {
+            updatedMap[key] = { ...o, discount: data.discount || discountData };
+          }
+        });
+        return updatedMap;
+      };
+      if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
+      else if (details.isCarOrder) setCarOrders(updateOrderInMap);
+      else setOrders(updateOrderInMap);
+
       return data;
     } catch (error) {
       console.error("Discount error:", error);
@@ -642,27 +736,53 @@ export function PosProvider({ children }) {
       const order = resolveOrderFromIdentifier(identifier, details);
 
       if (!order) {
+        // No order exists — just clear the table status on the backend
         const table = tables.find(t => t.id === identifier || t._id === identifier);
         if (table) {
           const { data } = await api.patch(`/tables/${table._id}/status`, { status: 'blank', currentOrder: null });
-          await fetchTables();
+          // Optimistic update: clear table status in local state
+          setTables(prev => prev.map(t => t._id === table._id ? { ...t, status: 'blank' } : t));
           return data;
         }
         return null;
       }
 
+      const orderId = order.id || order._id;
+
       // Completed orders are already cleared by settlement on the backend.
       if (order.orderStatus === 'COMPLETED') {
-        await fetchOrders();
-        await fetchTables();
+        // Optimistic update: remove from state since it's already completed
+        const removeOrderFromMap = (prev) => {
+          const updatedMap = { ...prev };
+          Object.keys(updatedMap).forEach(key => {
+            const o = updatedMap[key];
+            if (o?.id === orderId || o?._id === orderId) delete updatedMap[key];
+          });
+          return updatedMap;
+        };
+        if (details.isPickupOrder) setPickupOrders(removeOrderFromMap);
+        else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
+        else setOrders(removeOrderFromMap);
         return order;
       }
 
-      const { data } = await api.post(`/orders/${order.id || order._id}/cancel`, {
+      const { data } = await api.post(`/orders/${orderId}/cancel`, {
         reason: details.reason || 'Cleared from POS terminal'
       });
-      await fetchOrders();
-      await fetchTables();
+
+      // Optimistic update: remove the cancelled order from the correct state map
+      const removeOrderFromMap = (prev) => {
+        const updatedMap = { ...prev };
+        Object.keys(updatedMap).forEach(key => {
+          const o = updatedMap[key];
+          if (o?.id === orderId || o?._id === orderId) delete updatedMap[key];
+        });
+        return updatedMap;
+      };
+      if (details.isPickupOrder) setPickupOrders(removeOrderFromMap);
+      else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
+      else setOrders(removeOrderFromMap);
+
       return data;
     } catch (error) {
       console.error("Error clearing table/order:", error);
@@ -677,9 +797,35 @@ export function PosProvider({ children }) {
         throw new Error('No active order found for item cancellation');
       }
 
-      const { data } = await api.patch(`/orders/${order.id || order._id}/kot/${kotId}/items/${itemId}/cancel`);
-      await fetchOrders();
-      await fetchTables();
+      const orderId = order.id || order._id;
+      const { data } = await api.patch(`/orders/${orderId}/kot/${kotId}/items/${itemId}/cancel`);
+
+      // Optimistic update: mark the cancelled item in the order's KOTs
+      const updateOrderInMap = (prev) => {
+        const updatedMap = { ...prev };
+        Object.keys(updatedMap).forEach(key => {
+          const o = updatedMap[key];
+          if (o?.id === orderId || o?._id === orderId) {
+            const updatedKots = (o.kots || []).map(kot => {
+              if (kot._id !== kotId && kot.id !== kotId) return kot;
+              return {
+                ...kot,
+                items: (kot.items || []).map(item =>
+                  (item._id === itemId || item.id === itemId)
+                    ? { ...item, status: 'cancelled' }
+                    : item
+                )
+              };
+            });
+            updatedMap[key] = { ...o, kots: updatedKots };
+          }
+        });
+        return updatedMap;
+      };
+      if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
+      else if (details.isCarOrder) setCarOrders(updateOrderInMap);
+      else setOrders(updateOrderInMap);
+
       return data;
     } catch (error) {
       console.error("Error cancelling KOT item:", error);
@@ -730,7 +876,14 @@ export function PosProvider({ children }) {
         counterId: currentCounter?._id
       };
       const { data } = await api.post('/orders', orderData);
-      await fetchOrders();
+
+      // Optimistic update: add the new car order to carOrders state
+      const orderKey = data?.table?.name || data?.carNumber || data?._id;
+      if (orderKey) {
+        const normalized = normalizeOrder(data, 'running-kot');
+        setCarOrders(prev => ({ ...prev, [orderKey]: normalized }));
+      }
+
       return data;
     } catch (error) {
       console.error("Error adding car order:", error);
@@ -761,7 +914,12 @@ export function PosProvider({ children }) {
   const addSection = async (sectionData) => {
     try {
       const { data } = await api.post('/tables/sections', sectionData);
-      await fetchTables();
+      // Optimistic update: add the new section to local state immediately
+      setSections(prev => [...prev, {
+        id: data.name, label: data.label, _id: data._id,
+        rank: data.rank ?? 0, status: data.status || 'Active',
+        isSystem: data.isSystem || false, type: data.type || 'DINE-IN'
+      }]);
       return data;
     } catch (error) {
       console.error("Error adding section:", error);
@@ -772,7 +930,12 @@ export function PosProvider({ children }) {
   const updateSection = async (id, sectionData) => {
     try {
       const { data } = await api.put(`/tables/sections/${id}`, sectionData);
-      await fetchTables();
+      // Optimistic update: update the matching section in local state
+      setSections(prev => prev.map(sec => sec._id === id ? {
+        ...sec, id: data.name, label: data.label,
+        rank: data.rank ?? sec.rank, status: data.status || sec.status,
+        type: data.type || sec.type
+      } : sec));
       return data;
     } catch (error) {
       console.error("Error updating section:", error);
@@ -783,7 +946,8 @@ export function PosProvider({ children }) {
   const deleteSection = async (id) => {
     try {
       const { data } = await api.delete(`/tables/sections/${id}`);
-      await fetchTables();
+      // Optimistic update: remove the section from local state
+      setSections(prev => prev.filter(sec => sec._id !== id));
       return data;
     } catch (error) {
       console.error("Error deleting section:", error);
@@ -794,7 +958,13 @@ export function PosProvider({ children }) {
   const addTable = async (tableData) => {
     try {
       const { data } = await api.post('/tables', tableData);
-      await fetchTables();
+      // Optimistic update: add the new table to local state immediately
+      setTables(prev => [...prev, {
+        id: data.name, name: data.name,
+        sectionId: data.section?.name,
+        status: data.status || 'blank',
+        capacity: data.capacity || 4, _id: data._id
+      }]);
       return data;
     } catch (error) {
       console.error("Error adding table:", error);
@@ -805,7 +975,12 @@ export function PosProvider({ children }) {
   const updateTable = async (id, tableData) => {
     try {
       const { data } = await api.put(`/tables/${id}`, tableData);
-      await fetchTables();
+      // Optimistic update: update the matching table in local state
+      setTables(prev => prev.map(t => t._id === id ? {
+        ...t, name: data.name, id: data.name,
+        sectionId: data.section?.name || t.sectionId,
+        capacity: data.capacity || t.capacity, status: data.status || t.status
+      } : t));
       return data;
     } catch (error) {
       console.error("Error updating table:", error);
@@ -816,7 +991,8 @@ export function PosProvider({ children }) {
   const deleteTable = async (id) => {
     try {
       const { data } = await api.delete(`/tables/${id}`);
-      await fetchTables();
+      // Optimistic update: remove the table from local state
+      setTables(prev => prev.filter(t => t._id !== id));
       return data;
     } catch (error) {
       console.error("Error deleting table:", error);
@@ -828,8 +1004,14 @@ export function PosProvider({ children }) {
     try {
       const section = sections.find(s => s.id === sectionId)?._id;
       if (!section) return;
-      await api.post('/tables', { name: tableName, section, capacity: 4 });
-      fetchTables();
+      const { data } = await api.post('/tables', { name: tableName, section, capacity: 4 });
+      // Optimistic update: add the new table to local state immediately
+      setTables(prev => [...prev, {
+        id: data.name, name: data.name,
+        sectionId: data.section?.name || sectionId,
+        status: data.status || 'blank',
+        capacity: data.capacity || 4, _id: data._id
+      }]);
     } catch (error) {
       console.error("Error adding POS table:", error);
     }
@@ -927,7 +1109,7 @@ export function PosProvider({ children }) {
       staff,
       dishVariants, assignVariantsToDish,
       user, login, logout, currentCounter, storeSettings, fetchStoreSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
-      orders, refreshMenu: fetchMenu
+      orders, refreshMenu: fetchMenu, refreshOrders: fetchOrders
     }}>
       {children}
     </PosContext.Provider>

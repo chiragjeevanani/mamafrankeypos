@@ -17,6 +17,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (window.location.pathname.startsWith('/admin')) {
+      config.headers['X-Module'] = 'admin';
+    } else {
+      config.headers['X-Module'] = 'pos';
+    }
+
     return config;
   },
   (error) => {

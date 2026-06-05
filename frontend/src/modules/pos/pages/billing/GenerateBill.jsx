@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AlertCircle, Banknote, Calculator, ChevronRight, CreditCard,
   Printer, Receipt, RefreshCw, Send, Smartphone, Table
 } from 'lucide-react';
-import api from '../../../../utils/api';
 import { usePos } from '../../context/PosContext';
+import api from '../../../../utils/api';
 import { printBillReceipt } from '../../utils/printBill';
+
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -16,34 +17,40 @@ const getItemCount = (order) =>
 const getDisplayName = (order) => order.table?.name || order.carNumber || order.orderType || 'Order';
 
 export default function GenerateBill() {
-  const { user, storeSettings, calculateTaxes } = usePos();
-  const [orders, setOrders] = useState([]);
+  const { user, storeSettings, calculateTaxes, orders, carOrders, pickupOrders, refreshOrders } = usePos();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchBillableOrders = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const { data } = await api.get('/orders?status=printed');
-      setOrders(data || []);
-      setSelectedOrder((current) => {
-        if (!current) return (data || [])[0] || null;
-        return (data || []).find((order) => order._id === current._id) || (data || [])[0] || null;
-      });
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to load billable orders');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Derive billed orders from context — already kept fresh by the 15s heartbeat
+  const orders_list = useMemo(() => {
+    const dineIn = Object.values(orders || {});
+    const car = Object.values(carOrders || {});
+    const pickup = Object.values(pickupOrders || {});
+    return [...dineIn, ...car, ...pickup].filter(
+      o => o.orderStatus === 'BILLED' || o.status === 'printed' || o.billPrinted
+    );
+  }, [orders, carOrders, pickupOrders]);
 
-  useEffect(() => {
-    fetchBillableOrders();
-  }, []);
+  // Auto-select first available billed order
+  const billableOrders = useMemo(() => {
+    if (!selectedOrder && orders_list.length > 0) {
+      setSelectedOrder(orders_list[0]);
+    } else if (selectedOrder) {
+      // Keep selection in sync if the order still exists
+      const stillExists = orders_list.find(o => (o._id || o.id) === (selectedOrder._id || selectedOrder.id));
+      if (!stillExists && orders_list.length > 0) setSelectedOrder(orders_list[0]);
+      else if (!stillExists) setSelectedOrder(null);
+    }
+    return orders_list;
+  }, [orders_list]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await refreshOrders(); } finally { setRefreshing(false); }
+  };
 
   const billSummary = useMemo(() => {
     if (!selectedOrder) return { subtotal: 0, tax: 0, total: 0, taxes: [] };
@@ -86,7 +93,8 @@ export default function GenerateBill() {
         taxes: billSummary.taxes,
         totalAmount: billSummary.total
       });
-      await fetchBillableOrders();
+      // Refresh orders from backend after settlement
+      await handleRefresh();
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to settle selected bill');
     } finally {
@@ -105,13 +113,13 @@ export default function GenerateBill() {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-100 shadow-sm">
               <Calculator size={14} />
-              <span className="text-[9px] font-black uppercase tracking-widest">{orders.length} Pending</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">{billableOrders.length} Pending</span>
             </div>
             <button
-              onClick={fetchBillableOrders}
+              onClick={handleRefresh}
               className="h-9 px-4 bg-slate-900 text-white rounded text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2 outline-none"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               Refresh
             </button>
           </div>
@@ -124,11 +132,9 @@ export default function GenerateBill() {
         <div className="w-full lg:w-1/2 border-r border-slate-200 overflow-y-auto p-8 no-scrollbar bg-white/50">
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6">Pending Bill Requests</h2>
           <div className="space-y-4">
-            {loading ? (
-              <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Loading bills...</div>
-            ) : orders.length === 0 ? (
+            {billableOrders.length === 0 ? (
               <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">No printed bills pending settlement</div>
-            ) : orders.map((order) => (
+            ) : billableOrders.map((order) => (
               <button
                 key={order._id}
                 onClick={() => setSelectedOrder(order)}

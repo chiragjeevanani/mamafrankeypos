@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { Calendar, CheckCircle2, Download, Eye, Receipt, RefreshCw, Search } from 'lucide-react';
 import api from '../../../../utils/api';
 
@@ -13,13 +13,19 @@ export default function CompletedOrders() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const lastFetchedAt = useRef(null); // Cache: skip re-fetch if data < 60s old
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (force = false) => {
+    // Skip if we recently fetched and this isn't a forced refresh
+    if (!force && lastFetchedAt.current && Date.now() - lastFetchedAt.current < 60000) {
+      return;
+    }
     try {
       setLoading(true);
       setError('');
       const { data } = await api.get('/orders?status=completed');
       setOrders(data || []);
+      lastFetchedAt.current = Date.now();
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load completed orders');
     } finally {
@@ -98,7 +104,7 @@ export default function CompletedOrders() {
             />
           </div>
           <button
-            onClick={fetchOrders}
+            onClick={() => fetchOrders(true)}
             className="h-10 px-4 bg-white border border-slate-200 text-slate-500 rounded text-[10px] font-black uppercase tracking-widest hover:text-slate-900 flex items-center gap-2 transition-all outline-none"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />

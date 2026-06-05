@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const StoreSettings = require('../models/StoreSettings');
 const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
+const { getMaskingRules, maskCurrencyValue, maskQuantityValue, getReplacedName } = require('../utils/dataMask');
 
 // @desc    Get comprehensive sales report
 // @route   GET /api/reports/sales
@@ -196,6 +197,79 @@ const getSalesReport = asyncHandler(async (req, res) => {
     orderCount: 0,
     avgOrderValue: 0
   };
+
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  if (isAdminRequest) {
+    const rules = await getMaskingRules();
+
+    // Summary masking
+    result.summary.totalRevenue = maskCurrencyValue(result.summary.totalRevenue, null, rules);
+    result.summary.netRevenue = maskCurrencyValue(result.summary.netRevenue, null, rules);
+    result.summary.taxAmount = maskCurrencyValue(result.summary.taxAmount, null, rules);
+    result.summary.orderCount = maskQuantityValue(result.summary.orderCount, rules);
+    result.summary.avgOrderValue = maskCurrencyValue(result.summary.avgOrderValue, null, rules);
+
+    // Trends masking
+    if (result.trends) {
+      result.trends = result.trends.map(t => ({
+        _id: t._id,
+        revenue: maskCurrencyValue(t.revenue, null, rules),
+        orders: maskQuantityValue(t.orders, rules)
+      }));
+    }
+
+    // Top Items masking & grouping
+    if (result.topItems) {
+      const groupedItems = {};
+      result.topItems.forEach(item => {
+        const maskedName = getReplacedName(item.name, rules);
+        const maskedQty = maskQuantityValue(item.quantity, rules);
+        const maskedRevenue = maskCurrencyValue(item.revenue, item.name, rules);
+
+        if (!groupedItems[maskedName]) {
+          groupedItems[maskedName] = { _id: item._id, name: maskedName, quantity: 0, revenue: 0 };
+        }
+        groupedItems[maskedName].quantity += maskedQty;
+        groupedItems[maskedName].revenue += maskedRevenue;
+      });
+      result.topItems = Object.values(groupedItems).sort((a, b) => b.quantity - a.quantity);
+    }
+
+    // Payment breakdown masking
+    if (result.paymentBreakdown) {
+      result.paymentBreakdown = result.paymentBreakdown.map(p => ({
+        _id: p._id,
+        revenue: maskCurrencyValue(p.revenue, null, rules),
+        count: maskQuantityValue(p.count, rules)
+      }));
+    }
+
+    // Hourly sales masking
+    if (result.hourlySales) {
+      result.hourlySales = result.hourlySales.map(h => ({
+        _id: h._id,
+        revenue: maskCurrencyValue(h.revenue, null, rules),
+        orders: maskQuantityValue(h.orders, rules)
+      }));
+    }
+
+    // Cancellations masking
+    if (result.cancellations) {
+      result.cancellations = result.cancellations.map(c => ({
+        _id: c._id,
+        count: maskQuantityValue(c.count, rules),
+        potentialRevenue: maskCurrencyValue(c.potentialRevenue, null, rules)
+      }));
+    }
+
+    // Tax summary masking
+    if (result.taxSummary) {
+      result.taxSummary = result.taxSummary.map(t => ({
+        _id: t._id,
+        amount: maskCurrencyValue(t.amount, null, rules)
+      }));
+    }
+  }
 
   res.json(result);
 });

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Clock, Receipt, RefreshCw, Search, Timer, Utensils } from 'lucide-react';
-import api from '../../../../utils/api';
+import { usePos } from '../../context/PosContext';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -18,36 +18,37 @@ const getOrderAge = (order) => {
 };
 
 export default function ActiveOrders() {
-  const [orders, setOrders] = useState([]);
+  // Read orders directly from context — already kept fresh by the 15s heartbeat
+  const { orders, carOrders, pickupOrders, refreshOrders } = usePos();
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchOrders = async () => {
+  // Merge all active order maps into a flat list
+  const allOrders = useMemo(() => {
+    const dineIn = Object.values(orders || {});
+    const car = Object.values(carOrders || {});
+    const pickup = Object.values(pickupOrders || {});
+    return [...dineIn, ...car, ...pickup];
+  }, [orders, carOrders, pickupOrders]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
     try {
-      setLoading(true);
-      setError('');
-      const [runningRes, billedRes] = await Promise.all([
-        api.get('/orders?status=running-kot'),
-        api.get('/orders?status=printed')
-      ]);
-      setOrders([...(runningRes.data || []), ...(billedRes.data || [])]);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to load active orders');
+      await refreshOrders();
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
   const filteredOrders = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return orders.filter((order) => {
-      const statusMatch = activeTab === 'all' || order.orderStatus === activeTab;
+    return allOrders.filter((order) => {
+      const statusMatch =
+        activeTab === 'all' ||
+        order.orderStatus === activeTab ||
+        (activeTab === 'RUNNING' && order.status === 'running-kot') ||
+        (activeTab === 'BILLED' && (order.orderStatus === 'BILLED' || order.status === 'printed'));
       const text = [
         order.orderNumber,
         order.table?.name,
@@ -58,7 +59,7 @@ export default function ActiveOrders() {
       ].filter(Boolean).join(' ').toLowerCase();
       return statusMatch && (!query || text.includes(query));
     });
-  }, [activeTab, orders, searchQuery]);
+  }, [activeTab, allOrders, searchQuery]);
 
   return (
     <div className="h-full flex flex-col bg-[#F8F9FB] animate-in fade-in duration-500">
@@ -71,13 +72,13 @@ export default function ActiveOrders() {
           <div className="flex items-center gap-3">
             <div className="h-10 px-4 bg-blue-50 text-blue-600 rounded flex items-center gap-2 border border-blue-100 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              <span className="text-[10px] font-extrabold uppercase tracking-widest">{orders.length} Orders Active</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest">{allOrders.length} Orders Active</span>
             </div>
             <button
-              onClick={fetchOrders}
+              onClick={handleRefresh}
               className="h-10 px-4 bg-slate-900 text-white rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center gap-2"
             >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
               Refresh
             </button>
           </div>
@@ -113,19 +114,16 @@ export default function ActiveOrders() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
-        {error && <div className="mb-5 rounded border border-rose-100 bg-rose-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-rose-600">{error}</div>}
-        {loading && filteredOrders.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-400">Loading active orders...</div>
-        ) : filteredOrders.length === 0 ? (
+        {filteredOrders.length === 0 ? (
           <div className="h-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">No active orders found</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredOrders.map((order) => {
               const items = getOrderItems(order);
-              const readyForCheckout = order.orderStatus === 'BILLED';
+              const readyForCheckout = order.orderStatus === 'BILLED' || order.status === 'printed';
               return (
                 <div
-                  key={order._id}
+                  key={order._id || order.id}
                   className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col group transition-all hover:border-blue-300 hover:shadow-xl hover:shadow-blue-600/5"
                 >
                   <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
@@ -139,7 +137,7 @@ export default function ActiveOrders() {
                       </div>
                     </div>
                     <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded ${readyForCheckout ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                      {order.orderStatus}
+                      {order.orderStatus || order.status}
                     </span>
                   </div>
 

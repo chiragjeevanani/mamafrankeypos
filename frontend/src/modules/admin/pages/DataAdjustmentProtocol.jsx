@@ -104,6 +104,9 @@ export default function DataAdjustmentProtocol() {
       localStorage.setItem('rms_visibility_decrement', decreasePct);
       localStorage.setItem('rms_item_replacements', JSON.stringify(itemReplacements));
       
+      // Auto-refresh registry table values in UI with new rules
+      await fetchBills();
+      
       playClickSound();
       alert(`System Protocol Synchronized: Rules successfully committed to database.`);
       setLoading(false);

@@ -5,6 +5,7 @@ const StoreSettings = require('../models/StoreSettings');
 const mongoose = require('mongoose');
 const logAudit = require('../utils/auditLogger');
 const asyncHandler = require('../utils/asyncHandler');
+const { getMaskingRules, maskOrder, maskCurrencyValue, maskQuantityValue } = require('../utils/dataMask');
 
 // Utility helpers for timezone-aware date calculations
 const getLocalMidnight = (date, timezone) => {
@@ -569,6 +570,9 @@ const getOrders = asyncHandler(async (req, res) => {
 
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
+  
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  const rules = isAdminRequest ? await getMaskingRules() : null;
 
   if (page && limit) {
     const skip = (page - 1) * limit;
@@ -578,8 +582,11 @@ const getOrders = asyncHandler(async (req, res) => {
       .populate('table waiter counter')
       .skip(skip)
       .limit(limit);
+      
+    const responseData = isAdminRequest ? data.map(o => maskOrder(o, rules)) : data;
+
     res.json({
-      data,
+      data: responseData,
       total,
       page,
       limit,
@@ -589,7 +596,9 @@ const getOrders = asyncHandler(async (req, res) => {
     const orders = await Order.find(query)
       .sort({ createdAt: -1 })
       .populate('table waiter counter');
-    res.json(orders);
+      
+    const responseData = isAdminRequest ? orders.map(o => maskOrder(o, rules)) : orders;
+    res.json(responseData);
   }
 });
 
@@ -614,9 +623,29 @@ const getSalesSummary = asyncHandler(async (req, res) => {
     ])
   ]);
 
+  let todayTotal = todaySales[0]?.total || 0;
+  let mtdTotal = mtdSales[0]?.total || 0;
+  let todayCount = todaySales[0]?.count || 0;
+  let mtdCount = mtdSales[0]?.count || 0;
+
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  if (isAdminRequest) {
+    const rules = await getMaskingRules();
+    todayTotal = maskCurrencyValue(todayTotal, null, rules);
+    mtdTotal = maskCurrencyValue(mtdTotal, null, rules);
+    todayCount = maskQuantityValue(todayCount, rules);
+    mtdCount = maskQuantityValue(mtdCount, rules);
+  }
+
   res.json({
-    today: todaySales[0] || { total: 0, count: 0 },
-    mtd: mtdSales[0] || { total: 0, count: 0 }
+    today: {
+      total: todayTotal,
+      count: todayCount
+    },
+    mtd: {
+      total: mtdTotal,
+      count: mtdCount
+    }
   });
 });
 
@@ -693,6 +722,13 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
   const orders = await Order.find(query)
     .sort({ completedAt: -1 })
     .populate('table waiter counter');
+    
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  if (isAdminRequest) {
+    const rules = await getMaskingRules();
+    const maskedOrders = orders.map(o => maskOrder(o, rules));
+    return res.json(maskedOrders);
+  }
     
   res.json(orders);
 });

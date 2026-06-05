@@ -2,6 +2,7 @@ const Expense = require('../models/Expense');
 const StoreSettings = require('../models/StoreSettings');
 const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
+const { getMaskingRules, maskCurrencyValue } = require('../utils/dataMask');
 
 // @desc    Get all expenses
 // @route   GET /api/expenses
@@ -11,6 +12,9 @@ const getExpenses = asyncHandler(async (req, res) => {
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  const rules = isAdminRequest ? await getMaskingRules() : null;
+
   if (page && limit) {
     const skip = (page - 1) * limit;
     const total = await Expense.countDocuments(query);
@@ -19,8 +23,15 @@ const getExpenses = asyncHandler(async (req, res) => {
       .populate('staff', 'name')
       .skip(skip)
       .limit(limit);
+      
+    const responseData = isAdminRequest ? data.map(e => {
+      const masked = JSON.parse(JSON.stringify(e));
+      masked.amount = maskCurrencyValue(masked.amount, null, rules);
+      return masked;
+    }) : data;
+
     res.json({
-      data,
+      data: responseData,
       total,
       page,
       limit,
@@ -28,7 +39,14 @@ const getExpenses = asyncHandler(async (req, res) => {
     });
   } else {
     const expenses = await Expense.find(query).sort({ date: -1 }).populate('staff', 'name');
-    res.json(expenses);
+    
+    const responseData = isAdminRequest ? expenses.map(e => {
+      const masked = JSON.parse(JSON.stringify(e));
+      masked.amount = maskCurrencyValue(masked.amount, null, rules);
+      return masked;
+    }) : expenses;
+
+    res.json(responseData);
   }
 });
 
@@ -118,6 +136,17 @@ const getExpenseSummary = asyncHandler(async (req, res) => {
       },
     },
   ]);
+  
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  if (isAdminRequest) {
+    const rules = await getMaskingRules();
+    const responseData = summary.map(item => ({
+      _id: item._id,
+      total: maskCurrencyValue(item.total, null, rules)
+    }));
+    return res.json(responseData);
+  }
+  
   res.json(summary);
 });
 

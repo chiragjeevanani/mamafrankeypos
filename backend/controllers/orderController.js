@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const logAudit = require('../utils/auditLogger');
 const asyncHandler = require('../utils/asyncHandler');
 const { getMaskingRules, maskOrder, maskCurrencyValue, maskQuantityValue } = require('../utils/dataMask');
+const { getDailySequenceNextValue } = require('../utils/counterHelper');
 
 // Utility helpers for timezone-aware date calculations
 const getLocalMidnight = (date, timezone) => {
@@ -153,6 +154,9 @@ const processOrder = asyncHandler(async (req, res) => {
   };
 
   if (order) {
+    const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
+    newKOT.kotNumber = String(kotVal);
+
     // Add KOT to existing order ATOMICALLY
     const updatePayload = {
       $push: { kots: newKOT },
@@ -185,8 +189,16 @@ const processOrder = asyncHandler(async (req, res) => {
 
     const orderNumber = `${counter.prefix}-${String(counter.currentNum).padStart(3, '0')}`;
 
+    // Get daily token number for all orders
+    const tokenVal = await getDailySequenceNextValue('DAILY_TOKEN_COUNTER', 'TKN', 1);
+    const tokenNo = String(tokenVal);
+
+    const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
+    newKOT.kotNumber = String(kotVal);
+
     order = await Order.create({
       orderNumber,
+      tokenNo,
       table: tableId,
       orderType: orderType || 'DINE-IN',
       carNumber,
@@ -205,7 +217,8 @@ const processOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  res.status(201).json(order);
+  const populatedOrder = await Order.findById(order._id).populate('table waiter');
+  res.status(201).json(populatedOrder);
 });
 
 // @desc    Get order by ID
@@ -326,10 +339,14 @@ const getActiveOrder = asyncHandler(async (req, res) => {
   let order;
   // Try finding by table ID if it is a valid ObjectId
   if (mongoose.Types.ObjectId.isValid(identifier)) {
-    order = await Order.findOne({ table: identifier, orderStatus: 'RUNNING' }).populate('kots.items.menuItem');
+    order = await Order.findOne({ table: identifier, orderStatus: 'RUNNING' })
+      .populate('table waiter')
+      .populate('kots.items.menuItem');
   } else {
     // Try finding by car number
-    order = await Order.findOne({ carNumber: identifier, orderStatus: 'RUNNING' }).populate('kots.items.menuItem');
+    order = await Order.findOne({ carNumber: identifier, orderStatus: 'RUNNING' })
+      .populate('table waiter')
+      .populate('kots.items.menuItem');
   }
 
   if (order) {
@@ -361,12 +378,13 @@ const markKOTPrinted = asyncHandler(async (req, res) => {
       kot.status = 'printed';
       await order.save();
       
-      // Update table status if all KOTs are printed
+      // Update table status if all KOTs are printed (keep as running-kot)
       if (order.table && order.kots.every(k => k.status === 'printed')) {
-        await Table.findByIdAndUpdate(order.table, { status: 'printed' });
+        await Table.findByIdAndUpdate(order.table, { status: 'running-kot' });
       }
       
-      res.json(order);
+      const populatedOrder = await Order.findById(order._id).populate('table waiter');
+      res.json(populatedOrder);
     } else {
       res.status(404);
       throw new Error('KOT not found');

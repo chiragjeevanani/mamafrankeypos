@@ -23,9 +23,10 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-GB'); 
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  const cashierName = waiter?.name || billingDetails?.billerName || 'Biller';
-  const billNo = Math.floor(200000 + Math.random() * 90000);
-  const tokenNo = Math.floor(100 + Math.random() * 900);
+  const cashierName = billingDetails?.billerName || 'Biller';
+  const waiterName = waiter?.name || billingDetails?.waiterName || '';
+  const billNo = orderData.orderNumber || billingDetails?.orderNumber || `T-${Math.floor(1000 + Math.random() * 9000)}`;
+  const tokenNo = orderData.tokenNo || billingDetails?.tokenNo || '-';
   const { subTotal, tax, discount, total, orderType } = billingDetails;
 
   // --- BILL SECTION (Page 1) ---
@@ -59,24 +60,33 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
   
   doc.setFont('courier', 'normal');
   doc.text(`${timeStr}`, 5, 53);
-  doc.text(`Cashier: ${cashierName.split(' ')[0]}`, 5, 57);
-  doc.text(`Bill No.: ${billNo}`, 45, 57);
-  
-  doc.setFont('courier', 'bold');
-  doc.setFontSize(10);
-  doc.text(`Token No.: ${tokenNo}`, 5, 62);
+  doc.text(`Cashier: ${cashierName}`, 5, 57);
+
+  let headerShift = 0;
+  if (waiterName) {
+    doc.text(`Waiter : ${waiterName}`, 5, 61);
+    doc.setFont('courier', 'bold');
+    doc.text(`Bill No.: ${billNo}`, 5, 65);
+    doc.text(`Token No.: ${tokenNo}`, 45, 65);
+    headerShift = 8;
+  } else {
+    doc.setFont('courier', 'bold');
+    doc.text(`Bill No.: ${billNo}`, 5, 61);
+    doc.text(`Token No.: ${tokenNo}`, 45, 61);
+    headerShift = 4;
+  }
 
   doc.setFontSize(8);
   doc.setFont('courier', 'normal');
   doc.setLineWidth(0.2);
-  doc.line(5, 64, 75, 64);
-  doc.text('No.Item', 5, 68);
-  doc.text('Qty.', 45, 68, { align: 'right' });
-  doc.text('Price', 60, 68, { align: 'right' });
-  doc.text('Amount', 75, 68, { align: 'right' });
-  doc.line(5, 70, 75, 70);
+  doc.line(5, 64 + headerShift, 75, 64 + headerShift);
+  doc.text('No.Item', 5, 68 + headerShift);
+  doc.text('Qty.', 45, 68 + headerShift, { align: 'right' });
+  doc.text('Price', 60, 68 + headerShift, { align: 'right' });
+  doc.text('Amount', 75, 68 + headerShift, { align: 'right' });
+  doc.line(5, 70 + headerShift, 75, 70 + headerShift);
 
-  let y = 74;
+  let y = 74 + headerShift;
   allItems.forEach((item, index) => {
     doc.text(`${index + 1} `, 5, y);
     const splitName = doc.splitTextToSize(item.name, 35);
@@ -138,8 +148,12 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
   doc.addPage([80, 150], 'portrait');
   
   const latestKot = orderData.kots?.[orderData.kots.length - 1];
-  const kotNumber = latestKot?.id || Math.floor(100 + Math.random() * 900);
+  const kotNumber = latestKot?.kotNumber || ((latestKot?._id || latestKot?.id)
+    ? `${orderData.kots.length}-${String(latestKot._id || latestKot.id).slice(-4).toUpperCase()}`
+    : Math.floor(100 + Math.random() * 900));
   const kotOrderType = orderType || 'Pickup';
+  const kotWaiterName = waiter?.name || latestKot?.waiter?.name || waiterName || '';
+  const tableNo = tableInfo?.name || '';
 
   doc.setFont('courier', 'bold');
   doc.setFontSize(12);
@@ -150,7 +164,8 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
   doc.text(`KOT - ${kotNumber}`, 40, 22, { align: 'center' });
   doc.setFont('courier', 'bold');
   doc.setFontSize(11);
-  doc.text(kotOrderType.toUpperCase(), 40, 27, { align: 'center' });
+  const displayOrderType = kotOrderType.toLowerCase() === 'car-service' ? 'CAR SERVICE' : kotOrderType.toUpperCase();
+  doc.text(displayOrderType, 40, 27, { align: 'center' });
 
   const drawDashedLine = (yPos) => {
     doc.setLineWidth(0.2);
@@ -162,13 +177,26 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
   drawDashedLine(30);
   doc.setFont('courier', 'normal');
   doc.setFontSize(11);
-  doc.text(`Biller: ${cashierName}`, 5, 35);
-  drawDashedLine(38);
-  doc.setFontSize(10);
-  doc.text('Item', 5, 43);
-  doc.text('Qty.', 75, 43, { align: 'right' });
 
-  let ky = 50;
+  let kotHeaderShift = 0;
+  if (kotOrderType.toLowerCase() === 'car-service') {
+    doc.text(`CAR NO: ${tableNo}`, 5, 35);
+    doc.text(`WAITER: ${kotWaiterName || 'Staff'}`, 5, 41);
+    doc.text(`CASHIER: ${cashierName}`, 5, 47);
+    drawDashedLine(50);
+    kotHeaderShift = 12;
+  } else {
+    doc.text(`WAITER: ${kotWaiterName || 'Staff'}`, 5, 35);
+    doc.text(`CASHIER: ${cashierName}`, 5, 41);
+    drawDashedLine(44);
+    kotHeaderShift = 6;
+  }
+
+  doc.setFontSize(10);
+  doc.text('Item', 5, 43 + kotHeaderShift);
+  doc.text('Qty.', 75, 43 + kotHeaderShift, { align: 'right' });
+
+  let ky = 50 + kotHeaderShift;
   allItems.forEach(item => {
     doc.setFont('courier', 'bold');
     const splitName = doc.splitTextToSize(item.name, 60);
@@ -176,12 +204,22 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
     doc.setFont('courier', 'normal');
     doc.text(`${item.quantity}`, 75, ky, { align: 'right' });
     ky += (splitName.length * 5);
+
+    // Print Variants if exist
+    if (item.variantLabel) {
+       doc.setFont('courier', 'normal');
+       doc.setFontSize(8);
+       const splitVariants = doc.splitTextToSize(`(${item.variantLabel})`, 60);
+       doc.text(splitVariants, 7, ky - 1);
+       ky += (splitVariants.length * 4);
+       doc.setFontSize(10);
+    }
   });
 
   drawDashedLine(ky);
   ky += 6;
   doc.setFontSize(11);
-  doc.text(`${totalQty}`, 75, ky, { align: 'right' });
+  doc.text(`Total Qty: ${totalQty}`, 75, ky, { align: 'right' });
   ky += 4;
   drawDashedLine(ky);
 

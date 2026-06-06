@@ -25,6 +25,9 @@ const counterSchema = mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    lastResetDate: {
+      type: String,
+    },
   },
   {
     timestamps: true,

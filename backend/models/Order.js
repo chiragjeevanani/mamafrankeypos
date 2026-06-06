@@ -63,6 +63,10 @@ const orderSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
+    tokenNo: {
+      type: String,
+      default: '-',
+    },
     table: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Table',

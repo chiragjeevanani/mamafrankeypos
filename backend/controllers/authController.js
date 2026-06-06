@@ -91,6 +91,29 @@ const posLogin = asyncHandler(async (req, res) => {
     // 1. Fetch permissions for this staff's role
     const roleData = await Role.findOne({ name: authorizedStaff.role });
     
+    // Check if the role is allowed to access POS
+    let isAllowed = false;
+    if (roleData && roleData.permissions) {
+      isAllowed = roleData.permissions.canAccessPOS === true;
+    } else {
+      // Fallback for system roles if role data is missing from DB
+      if (authorizedStaff.role === 'Admin' || authorizedStaff.role === 'Biller') {
+        isAllowed = true;
+      }
+    }
+
+    if (!isAllowed) {
+      await logAudit(
+        authorizedStaff._id,
+        'LOGIN_FAILED_POS_UNAUTHORIZED',
+        'AUTH',
+        `POS login denied: Role '${authorizedStaff.role}' does not have POS access permissions.`,
+        req.ip
+      );
+      res.status(403);
+      throw new Error(`Access Denied: Role '${authorizedStaff.role}' is not authorized to access the POS terminal.`);
+    }
+
     // 2. Handle Attendance
     const settings = await StoreSettings.findOne() || {};
     const timezone = settings.timezone || 'Asia/Kolkata';

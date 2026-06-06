@@ -506,6 +506,13 @@ export function PosProvider({ children }) {
       };
       const { data } = await api.post('/orders', orderData);
 
+      // Optimistic update: update table status to 'running-kot' in tables list
+      if (!details.isCarOrder && !details.isPickupOrder && table?._id) {
+        setTables(prev => prev.map(t => 
+          t._id === table._id ? { ...t, status: 'running-kot' } : t
+        ));
+      }
+
       // Optimistic update: insert/update the new order in the correct map
       const normalized = normalizeOrder(data, data.table?.status || 'running-kot');
       if (details.isPickupOrder) {
@@ -565,7 +572,7 @@ export function PosProvider({ children }) {
         Object.keys(updatedMap).forEach(key => {
           const o = updatedMap[key];
           if ((o?.id === targetOrderId || o?._id === targetOrderId)) {
-            updatedMap[key] = { ...o, billPrinted: true, orderStatus: data.orderStatus || o.orderStatus };
+            updatedMap[key] = { ...o, kotPrinted: true, billPrinted: false, orderStatus: data.orderStatus || o.orderStatus, ...normalizeOrder(data, 'running-kot') };
           }
         });
         return updatedMap;
@@ -573,6 +580,14 @@ export function PosProvider({ children }) {
       if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
       else if (details.isCarOrder) setCarOrders(updateOrderInMap);
       else setOrders(updateOrderInMap);
+
+      // Optimistic update: update table status to 'running-kot' in tables list
+      if (!details.isPickupOrder && !details.isCarOrder && data.table) {
+        const tableIdObj = data.table._id || data.table;
+        setTables(prev => prev.map(t => 
+          (t._id === tableIdObj || t.name === data.table.name) ? { ...t, status: 'running-kot' } : t
+        ));
+      }
 
       return data;
     } catch (error) {
@@ -616,6 +631,14 @@ export function PosProvider({ children }) {
     if (details.isPickupOrder) setPickupOrders(updateOrderInMap);
     else if (details.isCarOrder) setCarOrders(updateOrderInMap);
     else setOrders(updateOrderInMap);
+
+    // Optimistic update: update table status to 'printed' in tables list
+    if (!details.isPickupOrder && !details.isCarOrder && data.table) {
+      const tableIdObj = data.table._id || data.table;
+      setTables(prev => prev.map(t => 
+        (t._id === tableIdObj || t.name === data.table.name) ? { ...t, status: 'printed' } : t
+      ));
+    }
 
     return data;
   };
@@ -694,6 +717,15 @@ export function PosProvider({ children }) {
       else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
       else setOrders(removeOrderFromMap);
 
+      // Optimistic update: update table status to 'blank' in tables list
+      const tableObj = data.table || order.table;
+      if (!details.isPickupOrder && !details.isCarOrder && tableObj) {
+        const tableIdObj = tableObj._id || tableObj;
+        setTables(prev => prev.map(t => 
+          (t._id === tableIdObj || t.name === tableObj.name) ? { ...t, status: 'blank' } : t
+        ));
+      }
+
       return data;
     } catch (error) {
       console.error("Settlement error:", error);
@@ -763,6 +795,16 @@ export function PosProvider({ children }) {
         if (details.isPickupOrder) setPickupOrders(removeOrderFromMap);
         else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
         else setOrders(removeOrderFromMap);
+
+        // Optimistic update: update table status to 'blank' in tables list
+        const tableObj = order.table;
+        if (!details.isPickupOrder && !details.isCarOrder && tableObj) {
+          const tableIdObj = tableObj._id || tableObj;
+          setTables(prev => prev.map(t => 
+            (t._id === tableIdObj || t.name === tableObj.name) ? { ...t, status: 'blank' } : t
+          ));
+        }
+
         return order;
       }
 
@@ -782,6 +824,15 @@ export function PosProvider({ children }) {
       if (details.isPickupOrder) setPickupOrders(removeOrderFromMap);
       else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
       else setOrders(removeOrderFromMap);
+
+      // Optimistic update: update table status to 'blank' in tables list
+      const tableObj = data.order?.table || order.table;
+      if (!details.isPickupOrder && !details.isCarOrder && tableObj) {
+        const tableIdObj = tableObj._id || tableObj;
+        setTables(prev => prev.map(t => 
+          (t._id === tableIdObj || t.name === tableObj.name) ? { ...t, status: 'blank' } : t
+        ));
+      }
 
       return data;
     } catch (error) {

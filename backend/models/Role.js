@@ -12,6 +12,7 @@ const roleSchema = mongoose.Schema(
     },
     permissions: {
       // POS Permissions
+      canAccessPOS: { type: Boolean, default: false },
       canCreateOrder: { type: Boolean, default: true },
       canCancelOrder: { type: Boolean, default: false },
       canApplyDiscount: { type: Boolean, default: false },

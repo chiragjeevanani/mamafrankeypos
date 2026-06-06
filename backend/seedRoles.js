@@ -17,6 +17,7 @@ const seedRoles = async () => {
         description: 'Full system access',
         isSystemRole: true,
         permissions: {
+          canAccessPOS: true,
           canCreateOrder: true,
           canCancelOrder: true,
           canApplyDiscount: true,
@@ -34,6 +35,7 @@ const seedRoles = async () => {
         description: 'Counter billing operations',
         isSystemRole: true,
         permissions: {
+          canAccessPOS: true,
           canCreateOrder: true,
           canCancelOrder: false,
           canApplyDiscount: true,
@@ -51,6 +53,7 @@ const seedRoles = async () => {
         description: 'Order taking only',
         isSystemRole: true,
         permissions: {
+          canAccessPOS: false,
           canCreateOrder: true,
           canCancelOrder: false,
           canApplyDiscount: false,

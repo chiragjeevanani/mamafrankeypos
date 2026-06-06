@@ -16,6 +16,7 @@ export default function Roles() {
     name: '',
     description: '',
     permissions: {
+      canAccessPOS: false,
       canCreateOrder: true,
       canCancelOrder: false,
       canApplyDiscount: false,
@@ -60,6 +61,7 @@ export default function Roles() {
         name: '',
         description: '',
         permissions: {
+          canAccessPOS: false,
           canCreateOrder: true,
           canCancelOrder: false,
           canApplyDiscount: false,
@@ -125,6 +127,7 @@ export default function Roles() {
       title: 'POS Operations',
       icon: ShoppingCart,
       perms: [
+        { key: 'canAccessPOS', label: 'Access POS Terminal' },
         { key: 'canCreateOrder', label: 'Create Orders/KOT' },
         { key: 'canCancelOrder', label: 'Cancel/Void Orders' },
         { key: 'canApplyDiscount', label: 'Apply Discounts' },

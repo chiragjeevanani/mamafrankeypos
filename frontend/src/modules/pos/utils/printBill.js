@@ -20,7 +20,8 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-GB'); // dd/mm/yy style
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  const cashierName = waiter?.name || billingDetails?.billerName || 'Biller';
+  const cashierName = billingDetails?.billerName || 'Biller';
+  const waiterName = waiter?.name || billingDetails?.waiterName || '';
   const billNo = orderData.orderNumber || billingDetails?.orderNumber || `T-${Math.floor(1000 + Math.random() * 9000)}`;
   const tokenNo = orderData.tokenNo || billingDetails?.tokenNo || '-';
   const { subTotal, tax, discount, total, orderType, appliedTaxes, storeInfo } = billingDetails;
@@ -75,26 +76,35 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   
   doc.setFont('courier', 'normal');
   doc.text(`${timeStr}`, 5, 53);
-  doc.text(`Cashier: ${cashierName.split(' ')[0]}`, 5, 57);
-  doc.text(`Bill No.: ${billNo}`, 45, 57);
-  
-  doc.setFont('courier', 'bold');
-  doc.setFontSize(10);
-  doc.text(`Token No.: ${tokenNo}`, 5, 62);
+  doc.text(`Cashier: ${cashierName}`, 5, 57);
+
+  let headerShift = 0;
+  if (waiterName) {
+    doc.text(`Waiter : ${waiterName}`, 5, 61);
+    doc.setFont('courier', 'bold');
+    doc.text(`Bill No.: ${billNo}`, 5, 65);
+    doc.text(`Token No.: ${tokenNo}`, 45, 65);
+    headerShift = 8;
+  } else {
+    doc.setFont('courier', 'bold');
+    doc.text(`Bill No.: ${billNo}`, 5, 61);
+    doc.text(`Token No.: ${tokenNo}`, 45, 61);
+    headerShift = 4;
+  }
 
   // Table Headers
   doc.setFontSize(8);
   doc.setFont('courier', 'normal');
   doc.setLineWidth(0.2);
-  doc.line(5, 64, 75, 64);
-  doc.text('No.Item', 5, 68);
-  doc.text('Qty.', 45, 68, { align: 'right' });
-  doc.text('Price', 60, 68, { align: 'right' });
-  doc.text('Amount', 75, 68, { align: 'right' });
-  doc.line(5, 70, 75, 70);
+  doc.line(5, 64 + headerShift, 75, 64 + headerShift);
+  doc.text('No.Item', 5, 68 + headerShift);
+  doc.text('Qty.', 45, 68 + headerShift, { align: 'right' });
+  doc.text('Price', 60, 68 + headerShift, { align: 'right' });
+  doc.text('Amount', 75, 68 + headerShift, { align: 'right' });
+  doc.line(5, 70 + headerShift, 75, 70 + headerShift);
 
   // Items List
-  let y = 74;
+  let y = 74 + headerShift;
   allItems.forEach((item, index) => {
     doc.text(`${index + 1} `, 5, y);
     const splitName = doc.splitTextToSize(item.name, 35);

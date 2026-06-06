@@ -409,7 +409,7 @@ export default function PosOrderPage() {
         customer: buildCustomerPayload()
       });
       if (isPrint) {
-      printKOTReceipt({ items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
+      printKOTReceipt(savedOrder || { items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
       await markKOTPrinted(savedOrder || tableId, {
         isCarOrder: orderType === 'car-service',
         isPickupOrder: orderType === 'pickup'

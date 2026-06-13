@@ -153,6 +153,9 @@ export function PosProvider({ children }) {
   };
 
   const resolveOrderFromIdentifier = (identifier, details = {}) => {
+    if (identifier && typeof identifier === 'object') {
+      return identifier;
+    }
     const scopedOrders = getScopedOrderMaps(details);
     return scopedOrders[identifier] || Object.values(scopedOrders).find(order =>
       order?.id === identifier ||

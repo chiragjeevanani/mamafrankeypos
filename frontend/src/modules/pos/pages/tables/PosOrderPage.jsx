@@ -20,7 +20,7 @@ export default function PosOrderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    placeKOT, markKOTPrinted, saveOrder, holdOrder, clearTable, cancelKOTItem, applyOrderDiscount,
+    placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, applyOrderDiscount,
     orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes, storeSettings,
     variantGroups, dishVariants, categories, menuItems, tables, sections, staff
   } = usePos();
@@ -515,8 +515,24 @@ export default function PosOrderPage() {
         });
         orderData = savedOrder || orderData;
       }
+
+      // Automatically settle pickup orders immediately after saving
+      if (isPickupMode) {
+        const finalOrder = orderData || activeOrder;
+        if (finalOrder) {
+          let finalPaymentMethod = paymentMode;
+          if (paymentMode === 'Other') {
+            finalPaymentMethod = otherPaymentDetails?.type || 'UPI';
+          }
+          await settleOrder(finalOrder, finalPaymentMethod, {
+            total,
+            taxes: appliedTaxes,
+            isPickupOrder: true
+          });
+        }
+      }
     } catch (error) {
-      setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to prepare pickup bill.' });
+      setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to process pickup order.' });
       return;
     }
 
@@ -1047,31 +1063,29 @@ export default function PosOrderPage() {
                 </div>
               )}
 
-              {/* Row 2: Payment Methods - hidden in pickup mode */}
-              {!isPickupMode && (
-                <div className="flex items-center justify-between px-2 py-1 border-y border-white/5">
-                  {['Cash', 'Card', 'Due', 'Other', 'Part'].map(method => (
-                    <label key={method} className="flex items-center gap-1.5 cursor-pointer group">
-                       <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
-                          <div className={`w-full h-full rounded-full ${paymentMode === method ? 'bg-white' : 'group-hover:bg-white/10'}`} />
-                       </div>
-                       <input
-                         type="radio"
-                         className="hidden"
-                         name="payment"
-                         value={method}
-                         checked={paymentMode === method}
-                         onChange={() => {
-                           playClickSound();
-                           setPaymentMode(method);
-                           if (method === 'Other') setIsOtherPaymentModalOpen(true);
-                         }}
-                       />
-                       <span className={`font-bold text-[10px] transition-colors ${paymentMode === method ? 'text-white' : 'text-white/60'}`}>{method}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+              {/* Row 2: Payment Methods */}
+              <div className="flex items-center justify-between px-2 py-1 border-y border-white/5">
+                {['Cash', 'Card', 'Due', 'Other', 'Part'].map(method => (
+                  <label key={method} className="flex items-center gap-1.5 cursor-pointer group">
+                     <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
+                        <div className={`w-full h-full rounded-full ${paymentMode === method ? 'bg-white' : 'group-hover:bg-white/10'}`} />
+                     </div>
+                     <input
+                       type="radio"
+                       className="hidden"
+                       name="payment"
+                       value={method}
+                       checked={paymentMode === method}
+                       onChange={() => {
+                         playClickSound();
+                         setPaymentMode(method);
+                         if (method === 'Other') setIsOtherPaymentModalOpen(true);
+                       }}
+                     />
+                     <span className={`font-bold text-[10px] transition-colors ${paymentMode === method ? 'text-white' : 'text-white/60'}`}>{method}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Always Visible Action Buttons (Row 4) */}

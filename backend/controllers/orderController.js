@@ -705,12 +705,23 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
 
   // 3. Order Type (Bill Type)
   if (orderType && orderType !== '--All Types--') {
-    const typeMap = {
-      'TABLE BILL': 'DINE-IN',
-      'TAKE WAY': 'PICKUP',
-      'CAR SERVICE': 'CAR-SERVICE'
-    };
-    query.orderType = typeMap[orderType] || orderType;
+    if (mongoose.Types.ObjectId.isValid(orderType)) {
+      // It's a Section ID! Find all tables belonging to this section
+      const tables = await Table.find({ section: orderType });
+      const tableIds = tables.map(t => t._id);
+      query.table = { $in: tableIds };
+      query.orderType = 'DINE-IN';
+    } else {
+      const typeMap = {
+        'DINE-IN': 'DINE-IN',
+        'PICKUP': 'PICKUP',
+        'CAR-SERVICE': 'CAR-SERVICE',
+        'TABLE BILL': 'DINE-IN',
+        'TAKE WAY': 'PICKUP',
+        'CAR SERVICE': 'CAR-SERVICE'
+      };
+      query.orderType = typeMap[orderType] || orderType;
+    }
   }
 
   // 4. Bill Number (Order Number)
@@ -719,7 +730,7 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
   }
 
   // 5. Item Name Filter
-  if (itemName && itemName !== '--Replace this item--') {
+  if (itemName && itemName !== '--Filter by item--') {
     query['kots.items.name'] = { $regex: itemName, $options: 'i' };
   }
 
@@ -741,14 +752,11 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
     .sort({ completedAt: -1 })
     .populate('table waiter counter');
     
-  const isAdminRequest = req.headers['x-module'] === 'admin';
-  if (isAdminRequest) {
-    const rules = await getMaskingRules();
-    const maskedOrders = orders.map(o => maskOrder(o, rules));
-    return res.json(maskedOrders);
-  }
-    
-  res.json(orders);
+  // Always apply masking — this route is admin-only (protect + admin middleware)
+  // regardless of x-module header to prevent unmasked data leaking via API tools
+  const rules = await getMaskingRules();
+  const maskedOrders = orders.map(o => maskOrder(o, rules));
+  res.json(maskedOrders);
 });
 
 // @desc    Cancel Order

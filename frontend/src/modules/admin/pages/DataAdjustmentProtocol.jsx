@@ -3,25 +3,106 @@ import {
   Search, Save, X, Edit3, Trash2, 
   FileSpreadsheet, Monitor, LogOut, HardDrive, 
   ChevronDown, Calendar, Hash, CreditCard, AlertCircle, RefreshCw,
-  Plus, CheckSquare, Square, Eye, Download
+  Plus, CheckSquare, Square, Eye, Download, CheckCircle
 } from 'lucide-react';
 import { usePos } from '../../pos/context/PosContext';
-import { maskQuantity, maskCurrency, getReplacedName } from '../utils/dataMask';
+import { getReplacedName } from '../utils/dataMask';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
 import { printBillReceipt } from '../../pos/utils/printBill';
 
+function SearchableSelect({ label, value, onChange, options, placeholder }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  useEffect(() => {
+    setSearch(value || '');
+  }, [value]);
+
+  const filteredOptions = options.filter(option =>
+    option.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="relative space-y-1">
+      <label className="text-[8px] font-black text-slate-400 uppercase">{label}</label>
+      <div className="relative">
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onFocus={() => {
+            setSearch('');
+            setIsOpen(true);
+          }}
+          onBlur={() => {
+            setTimeout(() => {
+              setIsOpen(false);
+              setSearch(value || '');
+            }, 200);
+          }}
+          className="w-full h-8 bg-white border border-slate-200 rounded px-2 pr-8 text-[10px] font-bold uppercase outline-none focus:border-[#E1261C]"
+        />
+        <ChevronDown size={14} className="absolute right-2.5 top-2 text-slate-400 pointer-events-none" />
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto py-1 text-[10px] font-bold uppercase">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onMouseDown={() => {
+                  onChange(option);
+                  setSearch(option);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors ${value === option ? 'text-[#E1261C] bg-[#E1261C]/5' : 'text-slate-700'}`}
+              >
+                {option}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-slate-400 italic">No items found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DataAdjustmentProtocol() {
-  const { menuItems } = usePos();
+  const { menuItems, sections = [] } = usePos();
   const today = new Date().toISOString().split('T')[0];
+
+  const isStandardDineInSection = (sec) => {
+    const type = (sec.type || '').toUpperCase();
+    if (type === 'PICKUP' || type === 'CAR-SERVICE') return false;
+
+    const name = (sec.name || sec.label || sec.id || '').toLowerCase();
+    if (name.includes('pickup') || name.includes('pick-up') || name.includes('takeaway') || name.includes('take-away')) {
+      return false;
+    }
+    if (name.includes('car-service') || name.includes('car') || name.includes('drive-thru') || name.includes('drive-through')) {
+      return false;
+    }
+    return true;
+  };
+
+  const dineInSections = sections.filter(isStandardDineInSection);
   
   // --- States ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
   const [records, setRecords] = useState([]);
   
   const [decreasePct, setDecreasePct] = useState('0');
-  const [isDecreaseQty, setIsDecreaseQty] = useState(false);
   const [selectedBills, setSelectedBills] = useState([]);
   const [viewingBill, setViewingBill] = useState(null);
   const [storeInfo, setStoreInfo] = useState(null);
@@ -54,7 +135,6 @@ export default function DataAdjustmentProtocol() {
       const { data } = await api.get('/settings/store');
       setStoreInfo(data);
       setDecreasePct(data.visibilityDecrement?.toString() || '0');
-      setIsDecreaseQty(data.maskQuantity || false);
       setTargetOutlet(data.targetOutlet || 'Main Outlet (Sadar)');
       setPriceRange(data.protocolPriceRange || 'Price Range: Standard');
       setItemReplacements(data.itemReplacements || []);
@@ -93,11 +173,18 @@ export default function DataAdjustmentProtocol() {
   };
 
   const handleApplyModify = async () => {
+    // Bug 5: Validate decrement range before sending
+    const pct = Number(decreasePct);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      setError('Decrement % must be between 0 and 100.');
+      return;
+    }
     try {
       setLoading(true);
+      setError('');
       const payload = {
-        visibilityDecrement: Number(decreasePct),
-        maskQuantity: isDecreaseQty,
+        visibilityDecrement: pct,
+        maskQuantity: true,
         targetOutlet,
         protocolPriceRange: priceRange,
         itemReplacements
@@ -112,7 +199,9 @@ export default function DataAdjustmentProtocol() {
       await fetchBills();
       
       playClickSound();
-      alert(`System Protocol Synchronized: Rules successfully committed to database.`);
+      // Bug 6: Replace window.alert() with inline toast
+      setSaveSuccess('System Protocol Synchronized: Rules committed to database.');
+      setTimeout(() => setSaveSuccess(''), 3000);
       setLoading(false);
     } catch (err) {
       setError('Failed to commit protocols to database');
@@ -164,13 +253,25 @@ export default function DataAdjustmentProtocol() {
   };
 
   const handleExportSnapshot = () => {
-    const headers = ["Bill ID", "Date", "Original Amount", "Masked Amount", "Mode", "Type", "Items"];
+    const headers = ["Bill ID", "Date", "Amount", "Mode", "Type", "Items"];
+    
+    const formatDateForCSV = (dateStr) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `'${year}-${month}-${day} ${hours}:${minutes}`;
+    };
+
     const rows = records.map(bill => {
        const maskedTotal = calculateMaskedTotal(bill);
        return [
         bill.orderNumber,
-        new Date(bill.completedAt).toLocaleDateString(),
-        bill.totalAmount,
+        formatDateForCSV(bill.completedAt),
         maskedTotal,
         bill.paymentMethod,
         bill.orderType,
@@ -178,15 +279,27 @@ export default function DataAdjustmentProtocol() {
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const escapeCSV = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const csvContent = "\uFEFF" + [
+      headers.map(escapeCSV).join(","), 
+      ...rows.map(r => r.map(escapeCSV).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
+    link.href = url;
     link.download = `adjustment_protocol_snapshot_${new Date().toLocaleDateString()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     playClickSound();
   };
 
@@ -202,23 +315,10 @@ export default function DataAdjustmentProtocol() {
     playClickSound();
   };
 
-  const calculateMaskedTotal = (bill) => {
-     let total = 0;
-     bill.kots.forEach(kot => {
-        kot.items.forEach(item => {
-           if (item.status !== 'cancelled') {
-              total += maskCurrency(item.price, item.name) * item.quantity;
-           }
-        });
-     });
-     // If we have global taxes in the bill, we might need to adjust them too, 
-     // but for "manipulation", usually we just mask the final total.
-     // To be safe, if the item overrides didn't catch anything, we apply global mask to the bill's total.
-     if (total === 0 || total === bill.subtotal) {
-        return maskCurrency(bill.totalAmount);
-     }
-     return total;
-  };
+  // The backend already runs maskOrder() and returns the correct masked totalAmount.
+  // Simply read it — no re-simulation needed (re-simulating caused double-masking → ₹0.00).
+  const calculateMaskedTotal = (bill) => bill.totalAmount || 0;
+
 
   const aggregateTotal = records.reduce((sum, r) => sum + calculateMaskedTotal(r), 0);
 
@@ -272,18 +372,21 @@ export default function DataAdjustmentProtocol() {
                   </select>
                </div>
                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bill Type</label>
-                  <select 
-                    value={filters.orderType}
-                    onChange={(e) => setFilters({...filters, orderType: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
-                  >
-                     <option>--All Types--</option>
-                     <option>TABLE BILL</option>
-                     <option>TAKE WAY</option>
-                     <option>CAR SERVICE</option>
-                  </select>
-               </div>
+                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bill Type</label>
+                   <select 
+                     value={filters.orderType}
+                     onChange={(e) => setFilters({...filters, orderType: e.target.value})}
+                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
+                   >
+                      <option value="--All Types--">--All Types--</option>
+                      <option value="DINE-IN">DINE-IN</option>
+                      {dineInSections.map(sec => (
+                        <option key={sec.id || sec._id} value={sec._id}>DINE-IN ({sec.label || sec.name})</option>
+                      ))}
+                      <option value="PICKUP">PICKUP</option>
+                      <option value="CAR-SERVICE">CAR-SERVICE</option>
+                   </select>
+                </div>
             </div>
 
             {/* Column 3: Item Search */}
@@ -319,12 +422,15 @@ export default function DataAdjustmentProtocol() {
                      <input 
                         type="date" 
                         value={filters.startDate} 
+                        max={today}
                         onChange={(e) => setFilters({...filters, startDate: e.target.value})}
                         className="flex-1 bg-white border border-slate-200 h-9 px-3 text-[10px] font-bold uppercase rounded-md outline-none focus:border-[#E1261C]/50" 
                      />
                      <input 
                         type="date" 
                         value={filters.endDate} 
+                        min={filters.startDate}
+                        max={today}
                         onChange={(e) => setFilters({...filters, endDate: e.target.value})}
                         className="flex-1 bg-white border border-slate-200 h-9 px-3 text-[10px] font-bold uppercase rounded-md outline-none focus:border-[#E1261C]/50" 
                      />
@@ -353,6 +459,13 @@ export default function DataAdjustmentProtocol() {
 
          </div>
       </div>
+
+      {saveSuccess && (
+        <div className="mx-6 mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg flex items-center gap-3 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+           <CheckCircle size={16} />
+           {saveSuccess}
+        </div>
+      )}
 
       {error && (
         <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest">
@@ -421,12 +534,16 @@ export default function DataAdjustmentProtocol() {
                               {bill.orderType === 'PICKUP' ? 'PICKUP' : (bill.table?.name || bill.carNumber || 'CAR')}
                             </td>
                            <td className="px-3 py-3 text-center font-black text-slate-800">
-                             {isDecreaseQty 
-                               ? maskQuantity(bill.kots.reduce((s, k) => s + k.items.reduce((si, i) => si + i.quantity, 0), 0))
-                               : bill.kots.reduce((s, k) => s + k.items.reduce((si, i) => si + i.quantity, 0), 0)
-                             }
+                              {bill.kots.reduce((s, k) => s + k.items.reduce((si, i) => si + i.quantity, 0), 0)}
                            </td>
-                           <td className="px-3 py-3 font-bold text-slate-400">2026-2027</td>
+                           <td className="px-3 py-3 font-bold text-slate-400">
+                              {(() => {
+                                const d = new Date(bill.completedAt);
+                                const y = d.getFullYear();
+                                const fiscalStart = d.getMonth() >= 3 ? y : y - 1;
+                                return `${fiscalStart}-${(fiscalStart + 1).toString().slice(-2)}`;
+                              })()}
+                           </td>
                            <td className="px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-2">
                                  <button onClick={() => { playClickSound(); setViewingBill(bill); }} className="p-1 hover:text-[#E1261C] text-slate-400 transition-colors" title="View Receipt"><Eye size={16} /></button>
@@ -489,25 +606,18 @@ export default function DataAdjustmentProtocol() {
                      <Hash size={12} className="text-[#E1261C]" />
                      Global Mask Decrement (%)
                   </label>
-                  <input 
-                     type="number" 
-                     value={decreasePct}
-                     onChange={(e) => setDecreasePct(e.target.value)}
-                     className="w-full bg-slate-50 border border-slate-200 h-10 rounded-lg text-center text-sm font-black text-slate-800 focus:border-[#E1261C] transition-all outline-none" 
-                  />
-               </div>
-
-               <div 
-                  className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-[#E1261C] hover:bg-white hover:shadow-md transition-all duration-300 cursor-pointer group" 
-                  onClick={() => { playClickSound(); setIsDecreaseQty(!isDecreaseQty); }}
-               >
-                  <input 
-                    type="checkbox" 
-                    checked={isDecreaseQty}
-                    onChange={() => {}}
-                    className="w-5 h-5 accent-[#E1261C] cursor-pointer" 
-                  />
-                  <span className="text-[10px] font-black uppercase text-slate-600 tracking-wider group-hover:text-slate-900 transition-colors leading-tight">Apply Quantity Masking</span>
+                   <input 
+                      type="number" 
+                      value={decreasePct}
+                      min="0"
+                      max="100"
+                      step="1"
+                      onChange={(e) => {
+                        const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                        setDecreasePct(String(val));
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 h-10 rounded-lg text-center text-sm font-black text-slate-800 focus:border-[#E1261C] transition-all outline-none" 
+                   />
                </div>
             </div>
 
@@ -520,37 +630,36 @@ export default function DataAdjustmentProtocol() {
 
                {/* Add New Rule */}
                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
-                  <div className="space-y-1">
-                     <label className="text-[8px] font-black text-slate-400 uppercase">Target Item</label>
-                     <select 
-                        value={newReplacement.originalItem}
-                        onChange={(e) => setNewReplacement({...newReplacement, originalItem: e.target.value})}
-                        className="w-full h-8 bg-white border border-slate-200 rounded px-2 text-[10px] font-bold uppercase outline-none"
-                     >
-                        <option value="">--Select Item--</option>
-                        {menuItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                     </select>
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[8px] font-black text-slate-400 uppercase">Replace With Name</label>
-                     <input 
-                        type="text" 
-                        placeholder="NEW NAME"
-                        value={newReplacement.replacedWith}
-                        onChange={(e) => setNewReplacement({...newReplacement, replacedWith: e.target.value})}
-                        className="w-full h-8 bg-white border border-slate-200 rounded px-2 text-[10px] font-bold uppercase outline-none"
-                     />
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[8px] font-black text-slate-400 uppercase">Protocol Price (Targeted)</label>
-                     <input 
-                        type="number" 
-                        placeholder="0.00"
-                        value={newReplacement.replacedPrice}
-                        onChange={(e) => setNewReplacement({...newReplacement, replacedPrice: Number(e.target.value)})}
-                        className="w-full h-8 bg-white border border-slate-200 rounded px-2 text-[10px] font-bold outline-none"
-                     />
-                  </div>
+                  <SearchableSelect
+                     label="Target Item"
+                     placeholder="--Select Item--"
+                     value={newReplacement.originalItem}
+                     onChange={(val) => setNewReplacement({ ...newReplacement, originalItem: val })}
+                     options={menuItems.map(item => item.name)}
+                  />
+                  <SearchableSelect
+                     label="Replace With (Menu Item)"
+                     placeholder="--Select Replacement--"
+                     value={newReplacement.replacedWith}
+                     onChange={(val) => {
+                        const selectedItem = menuItems.find(item => item.name === val);
+                        setNewReplacement({
+                           ...newReplacement,
+                           replacedWith: val,
+                           replacedPrice: selectedItem ? (selectedItem.price || selectedItem.variants?.[0]?.price || 0) : 0
+                        });
+                     }}
+                     options={menuItems.map(item => item.name)}
+                  />
+                   <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1">Protocol Price <span className="text-emerald-500 normal-case font-normal">(auto-filled from menu)</span></label>
+                      <input 
+                         type="number" 
+                         readOnly
+                         value={newReplacement.replacedPrice}
+                         className="w-full h-8 bg-slate-100 border border-slate-200 rounded px-2 text-[10px] font-bold outline-none cursor-not-allowed text-slate-500"
+                      />
+                   </div>
                   <button 
                      onClick={addReplacementRule}
                      className="w-full h-8 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded shadow-md hover:bg-[#E1261C] transition-all flex items-center justify-center gap-2"

@@ -19,7 +19,7 @@ export default function MenuItems() {
 
   const { 
     menuItems, categories, addMenuItem, updateMenuItem, deleteMenuItem, 
-    bulkUpdateMenuItems, variantGroups, bulkUploadMenu 
+    bulkUpdateMenuItems, bulkUploadMenu 
   } = usePos();
   const availableCategories = categories.filter(c => c.id !== 'fav');
 

@@ -13,32 +13,32 @@ const {
   updateStoreSettings,
   purgeReportsData,
 } = require('../controllers/settingsController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, checkPermission } = require('../middleware/authMiddleware');
 
 // Store
 router.route('/store')
   .get(getStoreSettings)
-  .put(protect, admin, updateStoreSettings);
+  .put(protect, checkPermission('canManageSettings'), updateStoreSettings);
 
 router.route('/reports/purge')
-  .post(protect, admin, purgeReportsData);
+  .post(protect, checkPermission('canManageSettings'), purgeReportsData);
 
 // Taxes
 router.route('/taxes')
   .get(getTaxes)
-  .post(protect, admin, createTax);
+  .post(protect, checkPermission('canManageSettings'), createTax);
 
 router.route('/taxes/:id')
-  .put(protect, admin, updateTax)
-  .delete(protect, admin, deleteTax);
+  .put(protect, checkPermission('canManageSettings'), updateTax)
+  .delete(protect, checkPermission('canManageSettings'), deleteTax);
 
 // Counters
 router.route('/counters')
   .get(getCounters)
-  .post(protect, admin, createCounter);
+  .post(protect, checkPermission('canManageSettings'), createCounter);
 
 router.route('/counters/:id')
-  .put(protect, admin, updateCounter)
-  .delete(protect, admin, deleteCounter);
+  .put(protect, checkPermission('canManageSettings'), updateCounter)
+  .delete(protect, checkPermission('canManageSettings'), deleteCounter);
 
 module.exports = router;

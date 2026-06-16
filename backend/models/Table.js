@@ -38,6 +38,8 @@ const tableSchema = mongoose.Schema(
 
 // Unique constraint on name within a section
 tableSchema.index({ name: 1, section: 1 }, { unique: true });
+tableSchema.index({ status: 1 });
+tableSchema.index({ isActive: 1 });
 
 const Table = mongoose.model('Table', tableSchema);
 

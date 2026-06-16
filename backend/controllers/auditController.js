@@ -74,7 +74,43 @@ const getAuditSummary = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Clear older audit logs (Cleanup)
+// @route   DELETE /api/audit/cleanup
+// @access  Private/Admin
+const deleteAuditLogs = asyncHandler(async (req, res) => {
+  const retentionDays = parseInt(req.query.retentionDays || req.body.retentionDays, 10) || 90;
+
+  if (Number.isNaN(retentionDays) || retentionDays <= 0) {
+    res.status(400);
+    throw new Error('Retention days must be a positive integer');
+  }
+
+  const logAudit = require('../utils/auditLogger');
+  const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+
+  // Execute deletion
+  const deleteResult = await AuditLog.deleteMany({
+    createdAt: { $lt: cutoffDate }
+  });
+
+  // Log cleanup audit event itself
+  await logAudit(
+    req.user?._id || '000000000000000000000000',
+    'AUDIT_CLEANUP',
+    'AUDIT',
+    `Cleared ${deleteResult.deletedCount} audit logs older than ${retentionDays} days`,
+    req.ip
+  );
+
+  res.json({
+    message: `Successfully purged older audit logs`,
+    deletedCount: deleteResult.deletedCount,
+    retentionDays
+  });
+});
+
 module.exports = {
   getAuditLogs,
-  getAuditSummary
+  getAuditSummary,
+  deleteAuditLogs
 };

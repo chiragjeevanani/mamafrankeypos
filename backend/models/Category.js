@@ -28,6 +28,9 @@ const categorySchema = mongoose.Schema(
   }
 );
 
+// Indexes
+categorySchema.index({ rank: 1 });
+
 const Category = mongoose.model('Category', categorySchema);
 
 module.exports = Category;

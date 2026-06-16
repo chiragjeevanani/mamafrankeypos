@@ -107,8 +107,7 @@ export default function DataAdjustmentProtocol() {
   const [viewingBill, setViewingBill] = useState(null);
   const [storeInfo, setStoreInfo] = useState(null);
   
-  // New Filter States
-  const [targetOutlet, setTargetOutlet] = useState('Main Outlet (Sadar)');
+  // New Filter States (targetOutlet removed)
   const [priceRange, setPriceRange] = useState('Price Range: Standard');
 
   // Multi-Replacement State
@@ -119,7 +118,7 @@ export default function DataAdjustmentProtocol() {
   const [filters, setFilters] = useState({
     startDate: today,
     endDate: today,
-    paymentMode: '--All Modes--',
+    paymentMode: '--All Payment Modes--',
     orderType: '--All Types--',
     billNo: '',
     itemName: '--Filter by item--'
@@ -135,7 +134,6 @@ export default function DataAdjustmentProtocol() {
       const { data } = await api.get('/settings/store');
       setStoreInfo(data);
       setDecreasePct(data.visibilityDecrement?.toString() || '0');
-      setTargetOutlet(data.targetOutlet || 'Main Outlet (Sadar)');
       setPriceRange(data.protocolPriceRange || 'Price Range: Standard');
       setItemReplacements(data.itemReplacements || []);
       
@@ -154,29 +152,26 @@ export default function DataAdjustmentProtocol() {
       const params = new URLSearchParams();
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.paymentMode !== '--All Modes--') params.append('paymentMode', filters.paymentMode);
+      if (filters.paymentMode !== '--All Payment Modes--') params.append('paymentMode', filters.paymentMode);
       if (filters.orderType !== '--All Types--') params.append('orderType', filters.orderType);
       if (filters.billNo) params.append('billNo', filters.billNo);
       if (filters.itemName !== '--Filter by item--') params.append('itemName', filters.itemName);
       
-      // Real filtering from backend
-      params.append('outlet', targetOutlet);
       params.append('priceRange', priceRange);
 
       const { data } = await api.get(`/orders/adjustment-audit?${params.toString()}`);
       setRecords(data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch registry signals');
+      setError('Failed to fetch bills log');
       setLoading(false);
     }
   };
 
   const handleApplyModify = async () => {
-    // Bug 5: Validate decrement range before sending
     const pct = Number(decreasePct);
     if (isNaN(pct) || pct < 0 || pct > 100) {
-      setError('Decrement % must be between 0 and 100.');
+      setError('Reduction % must be between 0 and 100.');
       return;
     }
     try {
@@ -185,7 +180,6 @@ export default function DataAdjustmentProtocol() {
       const payload = {
         visibilityDecrement: pct,
         maskQuantity: true,
-        targetOutlet,
         protocolPriceRange: priceRange,
         itemReplacements
       };
@@ -195,32 +189,51 @@ export default function DataAdjustmentProtocol() {
       localStorage.setItem('rms_visibility_decrement', decreasePct);
       localStorage.setItem('rms_item_replacements', JSON.stringify(itemReplacements));
       
-      // Auto-refresh registry table values in UI with new rules
       await fetchBills();
       
       playClickSound();
-      // Bug 6: Replace window.alert() with inline toast
-      setSaveSuccess('System Protocol Synchronized: Rules committed to database.');
+      setSaveSuccess('Reduction settings saved successfully.');
       setTimeout(() => setSaveSuccess(''), 3000);
       setLoading(false);
     } catch (err) {
-      setError('Failed to commit protocols to database');
+      setError('Failed to save settings');
       setLoading(false);
     }
   };
 
   const getMaskedBillingDetails = (bill) => {
     if (!bill) return null;
+
+    let appliedTaxes = (bill.taxes || []).map(t => ({
+      ...t,
+      rate: t.rate || t.percentage
+    }));
+
+    // Dynamic CGST & SGST fallback reverse calculation matching POS logic
+    if (appliedTaxes.length === 0 && storeInfo?.taxes) {
+      const activeTaxes = storeInfo.taxes.filter(t => t.active);
+      if (activeTaxes.length > 0) {
+        const totalTaxRate = activeTaxes.reduce((sum, t) => sum + (t.percentage || 0), 0);
+        const discountAmt = bill.discount?.amount || 0;
+        const taxableAmount = Math.max(0, bill.subtotal - discountAmt);
+        appliedTaxes = activeTaxes.map(t => ({
+          name: t.name,
+          rate: t.percentage,
+          amount: Number((taxableAmount * (t.percentage / 100)).toFixed(2))
+        }));
+      }
+    }
+
+    const subTotal = bill.subtotal;
+    const taxSum = appliedTaxes.reduce((sum, t) => sum + (t.amount || 0), 0);
+
     return {
-      subTotal: bill.subtotal,
-      tax: (bill.taxes || []).reduce((sum, t) => sum + (t.amount || 0), 0),
+      subTotal,
+      tax: taxSum,
       discount: bill.discount?.amount || 0,
       total: bill.totalAmount,
       orderType: bill.orderType === 'DINE-IN' ? 'DINE IN' : (bill.orderType || 'DINE IN'),
-      appliedTaxes: (bill.taxes || []).map(t => ({
-        ...t,
-        rate: t.rate || t.percentage
-      })),
+      appliedTaxes,
       storeInfo: storeInfo,
       billerName: bill.waiter?.name || 'Cashier',
       orderNumber: bill.orderNumber
@@ -303,20 +316,62 @@ export default function DataAdjustmentProtocol() {
     playClickSound();
   };
 
-  const addReplacementRule = () => {
+  const addReplacementRule = async () => {
     if (!newReplacement.originalItem || !newReplacement.replacedWith) return;
-    setItemReplacements([...itemReplacements, { ...newReplacement }]);
+    const updated = [...itemReplacements, { ...newReplacement }];
+    setItemReplacements(updated);
     setNewReplacement({ originalItem: '', replacedWith: '', replacedPrice: 0 });
     playClickSound();
+
+    // Instant save rule to DB
+    try {
+      setLoading(true);
+      setError('');
+      const payload = {
+        visibilityDecrement: Number(decreasePct),
+        maskQuantity: true,
+        protocolPriceRange: priceRange,
+        itemReplacements: updated
+      };
+      await api.put('/settings/store', payload);
+      localStorage.setItem('rms_item_replacements', JSON.stringify(updated));
+      setSaveSuccess('Substitutions updated permanently.');
+      setTimeout(() => setSaveSuccess(''), 3000);
+      await fetchBills();
+    } catch (err) {
+      setError('Failed to update substitutions permanently');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeReplacementRule = (idx) => {
-    setItemReplacements(itemReplacements.filter((_, i) => i !== idx));
+  const removeReplacementRule = async (idx) => {
+    const updated = itemReplacements.filter((_, i) => i !== idx);
+    setItemReplacements(updated);
     playClickSound();
+
+    // Instant save rule deletion to DB
+    try {
+      setLoading(true);
+      setError('');
+      const payload = {
+        visibilityDecrement: Number(decreasePct),
+        maskQuantity: true,
+        protocolPriceRange: priceRange,
+        itemReplacements: updated
+      };
+      await api.put('/settings/store', payload);
+      localStorage.setItem('rms_item_replacements', JSON.stringify(updated));
+      setSaveSuccess('Substitutions updated permanently.');
+      setTimeout(() => setSaveSuccess(''), 3000);
+      await fetchBills();
+    } catch (err) {
+      setError('Failed to update substitutions permanently');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // The backend already runs maskOrder() and returns the correct masked totalAmount.
-  // Simply read it — no re-simulation needed (re-simulating caused double-masking → ₹0.00).
   const calculateMaskedTotal = (bill) => bill.totalAmount || 0;
 
 
@@ -328,35 +383,23 @@ export default function DataAdjustmentProtocol() {
       <div className="bg-white p-6 border-b border-slate-200 shadow-sm">
          <div className="grid grid-cols-4 gap-x-8 gap-y-6">
             
-            {/* Column 1: Filter Logic */}
+            {/* Column 1: Bill Value Filter */}
             <div className="space-y-4">
                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Target Outlet</label>
-                  <select 
-                    value={targetOutlet}
-                    onChange={(e) => setTargetOutlet(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
-                  >
-                     <option>Main Outlet (Sadar)</option>
-                     <option>Station Branch</option>
-                     <option>City Center</option>
-                  </select>
-               </div>
-               <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Protocol Price Range</label>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Filter by Bill Value</label>
                   <select 
                     value={priceRange}
                     onChange={(e) => setPriceRange(e.target.value)}
-                    className="w-full bg-emerald-50 text-emerald-700 border border-emerald-100 h-9 text-[11px] font-black uppercase tracking-widest rounded-md outline-none px-3"
+                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
                   >
-                     <option>Price Range: Standard</option>
-                     <option>Price Range: Premium</option>
-                     <option>Price Range: Economy</option>
+                     <option value="Price Range: Standard">All Bills</option>
+                     <option value="Price Range: Premium">High Value (&gt; ₹1000)</option>
+                     <option value="Price Range: Economy">Low Value (&lt; ₹300)</option>
                   </select>
                </div>
             </div>
 
-            {/* Column 2: Order Categorization */}
+            {/* Column 2: Payment & Order Channel */}
             <div className="space-y-4">
                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Payment Mode</label>
@@ -365,20 +408,19 @@ export default function DataAdjustmentProtocol() {
                     onChange={(e) => setFilters({...filters, paymentMode: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
                   >
-                     <option>--All Modes--</option>
-                     <option>CASH</option>
-                     <option>CARD</option>
-                     <option>UPI</option>
+                     <option value="--All Payment Modes--">--All Payment Modes--</option>
+                     <option value="CASH">CASH</option>
+                     <option value="CASHLESS">CASHLESS</option>
                   </select>
                </div>
                <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bill Type</label>
+                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Order Channel</label>
                    <select 
                      value={filters.orderType}
                      onChange={(e) => setFilters({...filters, orderType: e.target.value})}
                      className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
                    >
-                      <option value="--All Types--">--All Types--</option>
+                      <option value="--All Types--">--All Channels--</option>
                       <option value="DINE-IN">DINE-IN</option>
                       {dineInSections.map(sec => (
                         <option key={sec.id || sec._id} value={sec._id}>DINE-IN ({sec.label || sec.name})</option>
@@ -414,10 +456,10 @@ export default function DataAdjustmentProtocol() {
                </div>
             </div>
 
-            {/* Column 4: Temporal & Actions */}
+            {/* Column 4: Date & Actions */}
             <div className="space-y-4 flex flex-col pl-8 border-l border-slate-100">
                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date Duration</label>
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date Range</label>
                   <div className="flex gap-2">
                      <input 
                         type="date" 
@@ -447,7 +489,7 @@ export default function DataAdjustmentProtocol() {
                            SEARCH
                         </button>
                         <button 
-                           onClick={() => { playClickSound(); setFilters({ startDate: today, endDate: today, paymentMode: '--All Modes--', orderType: '--All Types--', billNo: '', itemName: '--Filter by item--' }); }}
+                           onClick={() => { playClickSound(); setFilters({ startDate: today, endDate: today, paymentMode: '--All Payment Modes--', orderType: '--All Types--', billNo: '', itemName: '--Filter by item--' }); }}
                            className="h-9 px-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all"
                         >
                            RESET
@@ -470,7 +512,7 @@ export default function DataAdjustmentProtocol() {
       {error && (
         <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest">
            <AlertCircle size={16} />
-           {error}
+{error}
         </div>
       )}
 
@@ -479,12 +521,12 @@ export default function DataAdjustmentProtocol() {
          {/* Main Table Area */}
          <div className="flex-1 overflow-hidden flex flex-col bg-white">
             <div className="bg-slate-800 px-4 py-1.5 border-b border-black/10 flex items-center justify-between">
-               <span className="text-[10px] font-black text-white uppercase tracking-[0.25em]">Audit Registry — Live Feed</span>
+               <span className="text-[10px] font-black text-white uppercase tracking-[0.25em]">Adjusted Bills Log</span>
                <div className="flex gap-3 items-center">
                   {loading && <RefreshCw size={12} className="text-white/40 animate-spin" />}
                   <div className="flex gap-1.5 items-center">
                      <div className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`} />
-                     <span className="text-[9px] font-bold text-white/40 uppercase">{loading ? 'Syncing...' : 'Synchronized'}</span>
+                     <span className="text-[9px] font-bold text-white/40 uppercase">{loading ? 'Updating...' : 'Settings Active'}</span>
                   </div>
                </div>
             </div>
@@ -497,15 +539,15 @@ export default function DataAdjustmentProtocol() {
                            {selectedBills.length === records.length && records.length > 0 ? <CheckSquare size={16} className="text-[#E1261C] mx-auto" /> : <Square size={16} className="mx-auto" />}
                         </th>
                         <th className="px-3 py-4">Bill ID</th>
-                        <th className="px-3 py-4">Item Nodes</th>
+                        <th className="px-3 py-4">Items</th>
                         <th className="px-3 py-4">Completed At</th>
-                        <th className="px-3 py-4 text-right">Fiscal Amount</th>
-                        <th className="px-3 py-4">Mode</th>
-                        <th className="px-3 py-4">Service</th>
-                        <th className="px-3 py-4">Cashier Node</th>
+                        <th className="px-3 py-4 text-right">Bill Amount</th>
+                        <th className="px-3 py-4">Payment Mode</th>
+                        <th className="px-3 py-4">Type</th>
+                        <th className="px-3 py-4">Cashier</th>
                         <th className="px-3 py-4 text-center">Table</th>
-                        <th className="px-3 py-4 text-center">Units</th>
-                        <th className="px-3 py-4">Protocol Year</th>
+                        <th className="px-3 py-4 text-center">Qty</th>
+                        <th className="px-3 py-4">Financial Year</th>
                         <th className="px-3 py-4 text-center">Actions</th>
                      </tr>
                   </thead>
@@ -558,7 +600,7 @@ export default function DataAdjustmentProtocol() {
                  <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
                     <div className="flex flex-col items-center gap-3">
                        <HardDrive size={40} className="text-slate-200" />
-                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No matching registry records found</span>
+                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No matching bills found</span>
                     </div>
                  </div>
                )}
@@ -567,20 +609,20 @@ export default function DataAdjustmentProtocol() {
             {/* Table Footer Stats */}
             <div className="bg-slate-900 grid grid-cols-4 border-t border-white/10 p-1.5 gap-2">
                <div className="flex flex-col bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Registry Count</span>
+                  <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Total Bills</span>
                   <span className="text-sm font-black text-white tabular-nums">{records.length}</span>
                </div>
                <div className="flex flex-col bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
-                  <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Selection Audit</span>
+                  <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Selected Bills</span>
                   <span className="text-sm font-black text-amber-500 tabular-nums">{selectedBills.length}</span>
                </div>
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50 relative overflow-hidden">
                   <div className="absolute right-0 top-0 bottom-0 w-1 bg-[#E1261C]" />
-                  <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Aggregate Fiscal</span>
+                  <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Total Adjusted Sales</span>
                   <span className="text-sm font-black text-white tabular-nums" style={{ fontFamily: "system-ui, sans-serif" }}>₹{aggregateTotal.toLocaleString()}</span>
                </div>
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50">
-                  <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Selection Total</span>
+                  <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Selected Adjusted Total</span>
                   <span className="text-sm font-black text-white tabular-nums" style={{ fontFamily: "system-ui, sans-serif" }}>
                     ₹{records.filter(r => selectedBills.includes(r._id)).reduce((s, b) => s + calculateMaskedTotal(b), 0).toLocaleString()}
                   </span>
@@ -596,7 +638,7 @@ export default function DataAdjustmentProtocol() {
                <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center shadow-inner mb-2 group">
                   <Monitor size={24} className="text-slate-300 group-hover:text-[#E1261C] transition-colors" />
                </div>
-               <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest text-center">Protocol Master Node</span>
+               <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest text-center">Adjustment Settings</span>
             </div>
 
             {/* Global Switches */}
@@ -604,7 +646,7 @@ export default function DataAdjustmentProtocol() {
                <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5">
                      <Hash size={12} className="text-[#E1261C]" />
-                     Global Mask Decrement (%)
+                     Reduction Percentage (%)
                   </label>
                    <input 
                       type="number" 
@@ -621,17 +663,17 @@ export default function DataAdjustmentProtocol() {
                </div>
             </div>
 
-            {/* Targeted Replacement Manager */}
+            {/* Item Substitutions */}
             <div className="space-y-4 border-t border-slate-100 pt-6">
                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black uppercase text-slate-900 tracking-[0.15em]">Surgical Replacements</label>
+                  <label className="text-[10px] font-black uppercase text-slate-900 tracking-[0.15em]">Item Substitutions</label>
                   <div className="px-2 py-0.5 bg-[#E1261C] text-white text-[8px] font-black rounded-full uppercase">{itemReplacements.length} Rules</div>
                </div>
 
                {/* Add New Rule */}
                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
                   <SearchableSelect
-                     label="Target Item"
+                     label="Original Item"
                      placeholder="--Select Item--"
                      value={newReplacement.originalItem}
                      onChange={(val) => setNewReplacement({ ...newReplacement, originalItem: val })}
@@ -652,7 +694,7 @@ export default function DataAdjustmentProtocol() {
                      options={menuItems.map(item => item.name)}
                   />
                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1">Protocol Price <span className="text-emerald-500 normal-case font-normal">(auto-filled from menu)</span></label>
+                      <label className="text-[8px] font-black text-slate-400 uppercase flex items-center gap-1">Replacement Price <span className="text-emerald-500 normal-case font-normal">(auto-filled from menu)</span></label>
                       <input 
                          type="number" 
                          readOnly
@@ -665,7 +707,7 @@ export default function DataAdjustmentProtocol() {
                      className="w-full h-8 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded shadow-md hover:bg-[#E1261C] transition-all flex items-center justify-center gap-2"
                   >
                      <Plus size={12} />
-                     Commit Rule
+                     Add Replacement Rule
                   </button>
                </div>
 
@@ -691,7 +733,7 @@ export default function DataAdjustmentProtocol() {
                   ))}
                   {itemReplacements.length === 0 && (
                      <div className="text-center py-6 border-2 border-dashed border-slate-100 rounded-xl">
-                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">No Active Rules</span>
+                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">No Substitutions Defined</span>
                      </div>
                   )}
                </div>
@@ -703,7 +745,7 @@ export default function DataAdjustmentProtocol() {
                  className="w-full bg-gradient-to-br from-[#E1261C] to-[#A11912] text-white py-3 px-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-[0_4px_15px_rgba(225,38,28,0.3)] hover:shadow-[0_8px_20px_rgba(225,38,28,0.4)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 border-b border-black/30 flex items-center justify-center gap-2 group relative overflow-hidden"
                >
                   <Save size={16} className="group-hover:rotate-12 transition-transform" />
-                  <span className="relative z-10">Synchronize Registry</span>
+                  <span className="relative z-10">Apply Settings</span>
                </button>
 
                <button 
@@ -711,7 +753,7 @@ export default function DataAdjustmentProtocol() {
                   className="w-full h-11 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl flex items-center justify-center gap-3 hover:bg-emerald-600 hover:text-white transition-all shadow-sm group"
                >
                   <FileSpreadsheet size={18} className="group-hover:scale-110 transition-transform" />
-                  <span className="text-[9px] font-black uppercase tracking-widest">Download Snapshot</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest">Export CSV</span>
                </button>
             </div>
          </div>

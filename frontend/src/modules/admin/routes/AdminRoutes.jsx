@@ -18,7 +18,6 @@ import ProtectedRoute from '../../../components/common/ProtectedRoute';
 // Sub-pages imports
 import Categories from '../pages/menu/Categories';
 import MenuItems from '../pages/menu/MenuItems';
-import Modifiers from '../pages/menu/Modifiers';
 import ComboMeals from '../pages/menu/ComboMeals';
 import DishReplacementManagement from '../pages/menu/DishReplacementManagement';
 

@@ -7,6 +7,7 @@ const logAudit = require('../utils/auditLogger');
 const asyncHandler = require('../utils/asyncHandler');
 const { getMaskingRules, maskOrder, maskCurrencyValue, maskQuantityValue } = require('../utils/dataMask');
 const { getDailySequenceNextValue } = require('../utils/counterHelper');
+const { runInTransaction } = require('../utils/transactionHelper');
 
 // Utility helpers for timezone-aware date calculations
 const getLocalMidnight = (date, timezone) => {
@@ -127,97 +128,139 @@ const processOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  let order;
+  // Run database creation/mutation inside a transaction session
+  const populatedOrder = await runInTransaction(async (session) => {
+    const sessionOpts = session ? { session } : {};
+    const sessionOptsNew = session ? { session, new: true } : { new: true };
 
-  if (orderId) {
-    order = await Order.findById(orderId);
-  } else if (tableId) {
-    // Find active order for this table
-    order = await Order.findOne({ table: tableId, orderStatus: 'RUNNING' });
-  }
+    let order;
 
-  // Prepare KOT
-  const kotTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const newKOT = {
-    items: items.map(item => ({
-      menuItem: item.baseId || item.id,
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-      variants: item.variants || [],
-      instructions: item.instructions || ''
-    })),
-    staff: staffId,
-    time: new Date(),
-    status: 'pending',
-    total: kotTotal
-  };
+    if (orderId) {
+      order = await Order.findById(orderId).session(session);
+    } else if (tableId) {
+      // Find active order for this table
+      order = await Order.findOne({ table: tableId, orderStatus: 'RUNNING' }).session(session);
+    }
 
-  if (order) {
-    const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
-    newKOT.kotNumber = String(kotVal);
-
-    // Add KOT to existing order ATOMICALLY
-    const updatePayload = {
-      $push: { kots: newKOT },
-      $inc: { subtotal: kotTotal, totalAmount: kotTotal }
+    // Prepare KOT
+    const kotTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const newKOT = {
+      items: items.map(item => ({
+        menuItem: item.baseId || item.id,
+        itemModel: item.itemModel || 'MenuItem',
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        variants: item.variants || [],
+        instructions: item.instructions || ''
+      })),
+      staff: staffId,
+      time: new Date(),
+      status: 'pending',
+      total: kotTotal
     };
 
-    // Handle metadata updates if provided
-    if (orderType) updatePayload.orderType = orderType;
-    if (staffId) updatePayload.waiter = staffId;
-    if (customer) updatePayload.customer = normalizeCustomerPayload(customer);
+    if (order) {
+      const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
+      newKOT.kotNumber = String(kotVal);
 
-    order = await Order.findByIdAndUpdate(
-      order._id,
-      updatePayload,
-      { new: true }
-    ).populate('table waiter');
-  } else {
-    // Create new order
-    // 1. Get Counter and increment number ATOMICALLY
-    const counter = await Counter.findByIdAndUpdate(
-      counterId,
-      { $inc: { currentNum: 1 } },
-      { new: false } // Get value BEFORE increment
-    );
+      // Add KOT to existing order ATOMICALLY
+      const updatePayload = {
+        $push: { kots: newKOT },
+        $inc: { subtotal: kotTotal, totalAmount: kotTotal }
+      };
 
-    if (!counter) {
-      res.status(400);
-      throw new Error('Invalid Counter ID');
+      // Handle metadata updates if provided
+      if (orderType) updatePayload.orderType = orderType;
+      if (staffId) updatePayload.waiter = staffId;
+      if (customer) updatePayload.customer = normalizeCustomerPayload(customer);
+
+      order = await Order.findByIdAndUpdate(
+        order._id,
+        updatePayload,
+        sessionOptsNew
+      );
+    } else {
+      // Check-and-set table status atomically first if it's a Dine-in table order
+      if (tableId) {
+        const table = await Table.findOneAndUpdate(
+          { _id: tableId, status: 'blank' },
+          { status: 'running-kot' },
+          sessionOptsNew
+        );
+
+        if (!table) {
+          // Concurrency fallback: another session got the table! Find the running order
+          order = await Order.findOne({ table: tableId, orderStatus: 'RUNNING' }).session(session);
+          if (order) {
+            const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
+            newKOT.kotNumber = String(kotVal);
+
+            order = await Order.findByIdAndUpdate(
+              order._id,
+              {
+                $push: { kots: newKOT },
+                $inc: { subtotal: kotTotal, totalAmount: kotTotal }
+              },
+              sessionOptsNew
+            );
+            
+            return await Order.findById(order._id).populate('table waiter').session(session);
+          } else {
+            res.status(409);
+            throw new Error('Table is currently occupied. Please refresh and try again.');
+          }
+        }
+      }
+
+      // Create new order
+      // 1. Get Counter and increment number ATOMICALLY
+      const counter = await Counter.findByIdAndUpdate(
+        counterId,
+        { $inc: { currentNum: 1 } },
+        sessionOpts
+      );
+
+      if (!counter) {
+        res.status(400);
+        throw new Error('Invalid Counter ID');
+      }
+
+      const orderNumber = `${counter.prefix}-${String(counter.currentNum).padStart(3, '0')}`;
+
+      // Get daily token number for all orders
+      const tokenVal = await getDailySequenceNextValue('DAILY_TOKEN_COUNTER', 'TKN', 1);
+      const tokenNo = String(tokenVal);
+
+      const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
+      newKOT.kotNumber = String(kotVal);
+
+      const createdOrders = await Order.create([{
+        orderNumber,
+        tokenNo,
+        table: tableId,
+        orderType: orderType || 'DINE-IN',
+        carNumber,
+        waiter: staffId,
+        customer: normalizeCustomerPayload(customer),
+        kots: [newKOT],
+        subtotal: kotTotal,
+        totalAmount: kotTotal,
+        counter: counterId,
+        orderStatus: 'RUNNING'
+      }], sessionOpts);
+      
+      order = createdOrders[0];
+
+      // Update table pointer if dine-in
+      if (tableId) {
+        await Table.findByIdAndUpdate(tableId, { currentOrder: order._id }, sessionOpts);
+      }
     }
 
-    const orderNumber = `${counter.prefix}-${String(counter.currentNum).padStart(3, '0')}`;
+    return await Order.findById(order._id).populate('table waiter').session(session);
+  });
 
-    // Get daily token number for all orders
-    const tokenVal = await getDailySequenceNextValue('DAILY_TOKEN_COUNTER', 'TKN', 1);
-    const tokenNo = String(tokenVal);
-
-    const kotVal = await getDailySequenceNextValue('DAILY_KOT_COUNTER', 'KOT', 1);
-    newKOT.kotNumber = String(kotVal);
-
-    order = await Order.create({
-      orderNumber,
-      tokenNo,
-      table: tableId,
-      orderType: orderType || 'DINE-IN',
-      carNumber,
-      waiter: staffId,
-      customer: normalizeCustomerPayload(customer),
-      kots: [newKOT],
-      subtotal: kotTotal,
-      totalAmount: kotTotal,
-      counter: counterId,
-      orderStatus: 'RUNNING'
-    });
-
-    // Update table status if dine-in
-    if (tableId) {
-      await Table.findByIdAndUpdate(tableId, { status: 'running-kot', currentOrder: order._id });
-    }
-  }
-
-  const populatedOrder = await Order.findById(order._id).populate('table waiter');
   res.status(201).json(populatedOrder);
 });
 
@@ -404,53 +447,74 @@ const billOrder = asyncHandler(async (req, res) => {
     throw new Error('Invalid Order ID format');
   }
 
-  const order = await Order.findById(req.params.id);
-  if (!order) {
-    res.status(404);
-    throw new Error('Order not found');
-  }
+  const updatedOrder = await runInTransaction(async (session) => {
+    const sessionOpts = session ? { session } : {};
+    const sessionOptsNew = session ? { session, new: true } : { new: true };
 
-  // --- Inclusive Tax Reverse Calculation ---
-  const settings = await StoreSettings.findOne();
-  const activeTaxes = settings?.taxes?.filter(t => t.active) || [];
-  
-  let subtotal = order.totalAmount;
-  let taxes = [];
+    const order = await Order.findById(req.params.id).session(session);
+    if (!order) {
+      res.status(404);
+      throw new Error('Order not found');
+    }
 
-  if (activeTaxes.length > 0) {
-    const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
-    const baseAmount = order.totalAmount / (1 + (totalTaxRate / 100));
-    subtotal = Number(baseAmount.toFixed(2));
-    taxes = activeTaxes.map(t => ({
-      name: t.name,
-      rate: t.percentage,
-      amount: Number((baseAmount * (t.percentage / 100)).toFixed(2))
-    }));
-  }
+    if (order.orderStatus === 'COMPLETED') {
+      res.status(400);
+      throw new Error('Cannot bill a completed order');
+    }
 
-  // Atomic update with condition: only update if totalAmount hasn't changed 
-  // since we read it for the calculation. This prevents "lost updates".
-  const updatedOrder = await Order.findOneAndUpdate(
-    { _id: req.params.id, totalAmount: order.totalAmount },
-    {
-      $set: {
-        subtotal,
-        taxes,
-        orderStatus: 'BILLED',
-        billedAt: new Date()
-      }
-    },
-    { new: true }
-  ).populate('table waiter');
+    if (order.orderStatus === 'CANCELLED') {
+      res.status(400);
+      throw new Error('Cannot bill a cancelled order');
+    }
 
-  if (!updatedOrder) {
-    res.status(409);
-    throw new Error('Order total changed during billing. Please retry.');
-  }
+    // --- Inclusive Tax Reverse Calculation ---
+    const settings = await StoreSettings.findOne().session(session);
+    const activeTaxes = settings?.taxes?.filter(t => t.active) || [];
+    
+    let subtotal = order.totalAmount;
+    let taxes = [];
 
-  if (updatedOrder.table) {
-    await Table.findByIdAndUpdate(updatedOrder.table, { status: 'printed' });
-  }
+    if (activeTaxes.length > 0) {
+      const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
+      const baseAmount = order.totalAmount / (1 + (totalTaxRate / 100));
+      subtotal = Number(baseAmount.toFixed(2));
+      taxes = activeTaxes.map(t => ({
+        name: t.name,
+        rate: t.percentage,
+        amount: Number((baseAmount * (t.percentage / 100)).toFixed(2))
+      }));
+    }
+
+    // Atomic update with condition: only update if totalAmount hasn't changed 
+    // since we read it for the calculation. This prevents "lost updates".
+    const updated = await Order.findOneAndUpdate(
+      { _id: req.params.id, totalAmount: order.totalAmount },
+      {
+        $set: {
+          subtotal,
+          taxes,
+          orderStatus: 'BILLED',
+          billedAt: new Date()
+        }
+      },
+      sessionOptsNew
+    ).populate('table waiter');
+
+    if (!updated) {
+      res.status(409);
+      throw new Error('Order total changed during billing. Please retry.');
+    }
+
+    if (updated.table) {
+      await Table.findByIdAndUpdate(
+        updated.table._id || updated.table,
+        { status: 'printed' },
+        sessionOpts
+      );
+    }
+
+    return updated;
+  });
 
   res.json(updatedOrder);
 });
@@ -466,28 +530,40 @@ const settleOrder = asyncHandler(async (req, res) => {
 
   const { paymentMethod, taxes, totalAmount } = req.body;
 
-  // Use findOneAndUpdate with status check to prevent double settlement
-  const order = await Order.findOneAndUpdate(
-    { 
-      _id: req.params.id, 
-      orderStatus: { $ne: 'COMPLETED' } 
-    },
-    {
-      $set: {
-        paymentMethod,
-        taxes,
-        totalAmount,
-        paymentStatus: 'PAID',
-        orderStatus: 'COMPLETED',
-        completedAt: new Date()
-      }
-    },
-    { new: true }
-  ).populate('table waiter');
+  const settledOrder = await runInTransaction(async (session) => {
+    const sessionOpts = session ? { session } : {};
+    const sessionOptsNew = session ? { session, new: true } : { new: true };
 
-  if (order) {
+    // Use findOneAndUpdate with status check to prevent double settlement
+    const order = await Order.findOneAndUpdate(
+      { 
+        _id: req.params.id, 
+        orderStatus: { $ne: 'COMPLETED' } 
+      },
+      {
+        $set: {
+          paymentMethod,
+          taxes,
+          totalAmount,
+          paymentStatus: 'PAID',
+          orderStatus: 'COMPLETED',
+          completedAt: new Date()
+        }
+      },
+      sessionOptsNew
+    ).populate('table waiter');
+
+    if (!order) {
+      res.status(404);
+      throw new Error('Order not found or already completed');
+    }
+
     if (order.table) {
-      await Table.findByIdAndUpdate(order.table, { status: 'blank', currentOrder: null });
+      await Table.findByIdAndUpdate(
+        order.table._id || order.table,
+        { status: 'blank', currentOrder: null },
+        sessionOpts
+      );
     }
     
     await logAudit(
@@ -498,11 +574,10 @@ const settleOrder = asyncHandler(async (req, res) => {
       req.ip
     );
 
-    res.json(order);
-  } else {
-    res.status(404);
-    throw new Error('Order not found or already completed');
-  }
+    return order;
+  });
+
+  res.json(settledOrder);
 });
 
 // @desc    Cancel a KOT item
@@ -584,6 +659,10 @@ const getOrders = asyncHandler(async (req, res) => {
     if (mappedStatus) {
       query.orderStatus = mappedStatus;
     }
+  }
+
+  if (req.query.active === 'true') {
+    query.orderStatus = { $in: ['RUNNING', 'BILLED'] };
   }
 
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
@@ -698,9 +777,11 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
     };
   }
 
-  // 2. Payment Mode
-  if (paymentMode && paymentMode !== '--All Modes--') {
+  // 2. Payment Mode (Strictly CASH & CASHLESS)
+  if (paymentMode && paymentMode !== '--All Payment Modes--' && paymentMode !== '--All Modes--') {
     query.paymentMethod = paymentMode;
+  } else {
+    query.paymentMethod = { $in: ['CASH', 'CASHLESS'] };
   }
 
   // 3. Order Type (Bill Type)
@@ -734,16 +815,11 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
     query['kots.items.name'] = { $regex: itemName, $options: 'i' };
   }
 
-  // 6. Outlet Filter
-  if (outlet && outlet !== '--All Outlets--') {
-    query.outlet = outlet;
-  }
-
-  // 7. Price Range Filter
+  // 6. Price Range Filter
   if (priceRange) {
-     if (priceRange.includes('Premium')) {
+     if (priceRange.includes('Premium') || priceRange.includes('High')) {
         query.totalAmount = { $gt: 1000 };
-     } else if (priceRange.includes('Economy')) {
+     } else if (priceRange.includes('Economy') || priceRange.includes('Low')) {
         query.totalAmount = { $lt: 300 };
      }
   }

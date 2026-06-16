@@ -30,13 +30,6 @@ const normalizeMenuItem = (item) => ({
   variantGroups: item.variantGroups || []
 });
 
-const normalizeVariantGroup = (group) => ({
-  id: group._id,
-  name: group.name,
-  type: group.type,
-  options: group.options || []
-});
-
 const normalizeReplacement = (rule) => ({
   id: rule._id,
   originalDishId: rule.originalDish?._id || rule.originalDish,
@@ -79,11 +72,9 @@ export function PosProvider({ children }) {
 
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [variantGroups, setVariantGroups] = useState([]);
   const [replacements, setReplacements] = useState([]);
   const [combos, setCombos] = useState([]);
   const [staff, setStaff] = useState([]);
-  const [dishVariants, setDishVariants] = useState({});
 
   const login = (userData) => {
     setUser(userData);
@@ -102,10 +93,9 @@ export function PosProvider({ children }) {
   const fetchMenu = async () => {
     if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
     try {
-      const [catRes, itemRes, variantRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
+      const [catRes, itemRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
         api.get('/menu/categories'),
         api.get('/menu/items'),
-        api.get('/menu/variants'),
         api.get('/menu/replacements'),
         api.get('/menu/combos'),
         api.get('/staff'),
@@ -117,7 +107,6 @@ export function PosProvider({ children }) {
 
       setCategories(formattedCategories);
       setMenuItems(itemRes.data.map(normalizeMenuItem));
-      setVariantGroups(variantRes.data.map(normalizeVariantGroup));
       setReplacements(replaceRes.data.map(normalizeReplacement));
       setCombos(comboRes.data.map(normalizeCombo));
       setStaff(staffRes.data.map(s => ({
@@ -169,33 +158,11 @@ export function PosProvider({ children }) {
 
   const fetchOrders = async () => {
     try {
-      const [
-        runningOrderRes,
-        billedOrderRes,
-        runningCarRes,
-        billedCarRes,
-        runningPickupRes,
-        billedPickupRes
-      ] = await Promise.all([
-        api.get('/orders?status=running-kot'),
-        api.get('/orders?status=printed'),
-        api.get('/orders?type=CAR&status=running-kot'),
-        api.get('/orders?type=CAR&status=printed'),
-        api.get('/orders?type=PICKUP&status=running-kot'),
-        api.get('/orders?type=PICKUP&status=printed')
-      ]);
+      const { data } = await api.get('/orders?active=true');
 
-      const mergeOrdersById = (...groups) => {
-        const merged = new Map();
-        groups.flat().forEach((order) => {
-          if (order?._id) merged.set(order._id, order);
-        });
-        return Array.from(merged.values());
-      };
-
-      const activeDineInOrders = mergeOrdersById(runningOrderRes.data, billedOrderRes.data);
-      const activeCarOrders = mergeOrdersById(runningCarRes.data, billedCarRes.data);
-      const activePickupOrders = mergeOrdersById(runningPickupRes.data, billedPickupRes.data);
+      const activeDineInOrders = data.filter(order => order.orderType === 'DINE-IN');
+      const activeCarOrders = data.filter(order => order.orderType === 'CAR-SERVICE');
+      const activePickupOrders = data.filter(order => order.orderType === 'PICKUP');
 
       const tableMap = {};
       activeDineInOrders.forEach(order => {
@@ -372,38 +339,6 @@ export function PosProvider({ children }) {
     }
   };
 
-  const addVariantGroup = async (groupData) => {
-    try {
-      const { data } = await api.post('/menu/variants', groupData);
-      setVariantGroups(prev => [...prev, normalizeVariantGroup(data)]);
-      return data;
-    } catch (error) {
-      console.error('Error adding variant group:', error);
-      throw error;
-    }
-  };
-
-  const updateVariantGroup = async (id, groupData) => {
-    try {
-      const { data } = await api.put(`/menu/variants/${id}`, groupData);
-      setVariantGroups(prev => prev.map(g => g.id === id ? normalizeVariantGroup(data) : g));
-      return data;
-    } catch (error) {
-      console.error('Error updating variant group:', error);
-      throw error;
-    }
-  };
-
-  const deleteVariantGroup = async (id) => {
-    try {
-      await api.delete(`/menu/variants/${id}`);
-      setVariantGroups(prev => prev.filter(g => g.id !== id));
-    } catch (error) {
-      console.error('Error deleting variant group:', error);
-      throw error;
-    }
-  };
-
   const addReplacement = async (ruleData) => {
     try {
       const { data } = await api.post('/menu/replacements', ruleData);
@@ -467,8 +402,6 @@ export function PosProvider({ children }) {
       throw error;
     }
   };
-
-  const assignVariantsToDish = (dishId, mappings) => setDishVariants(prev => ({ ...prev, [dishId]: mappings }));
 
   const bulkUploadMenu = async (file) => {
     try {
@@ -1157,11 +1090,9 @@ export function PosProvider({ children }) {
       tables, addTable, updateTable, deleteTable, addPosTable,
       categories, addCategory, updateCategory, deleteCategory,
       menuItems, addMenuItem, updateMenuItem, deleteMenuItem, bulkUpdateMenuItems, bulkUploadMenu,
-      variantGroups, addVariantGroup, updateVariantGroup, deleteVariantGroup,
       replacements, addReplacement, updateReplacement, deleteReplacement,
       combos, addCombo, updateCombo, deleteCombo,
       staff,
-      dishVariants, assignVariantsToDish,
       user, login, logout, currentCounter, storeSettings, fetchStoreSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       orders, refreshMenu: fetchMenu, refreshOrders: fetchOrders
     }}>

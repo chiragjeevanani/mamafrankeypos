@@ -35,6 +35,9 @@ const sectionSchema = mongoose.Schema(
   }
 );
 
+// Indexes
+sectionSchema.index({ rank: 1 });
+
 const Section = mongoose.model('Section', sectionSchema);
 
 module.exports = Section;

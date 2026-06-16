@@ -8,6 +8,7 @@ const getMaskingRules = async () => {
     targetOutlet: settings.targetOutlet || 'Main Outlet (Sadar)',
     protocolPriceRange: settings.protocolPriceRange || 'Price Range: Standard',
     itemReplacements: settings.itemReplacements || [],
+    taxes: settings.taxes || []
   };
 };
 
@@ -185,11 +186,27 @@ const maskOrder = (order, rules) => {
 
   o.subtotal = Number(newSubtotal.toFixed(2));
 
-  // Scale taxes proportionally
-  o.taxes = (o.taxes || []).map(t => ({
-    ...t,
-    amount: Number(((t.amount || 0) * scale).toFixed(2))
-  }));
+  // Scale or dynamically populate taxes proportionally
+  if (!o.taxes || o.taxes.length === 0) {
+    const activeTaxes = (rules && rules.taxes || []).filter(t => t.active);
+    if (activeTaxes.length > 0) {
+      const totalTaxRate = activeTaxes.reduce((sum, t) => sum + (t.percentage || 0), 0);
+      const discountAmt = o.discount?.amount || 0;
+      const taxableAmount = Math.max(0, newSubtotal - discountAmt);
+      o.taxes = activeTaxes.map(t => ({
+        name: t.name,
+        rate: t.percentage,
+        amount: Number((taxableAmount * (t.percentage / 100)).toFixed(2))
+      }));
+    } else {
+      o.taxes = [];
+    }
+  } else {
+    o.taxes = o.taxes.map(t => ({
+      ...t,
+      amount: Number(((t.amount || 0) * scale).toFixed(2))
+    }));
+  }
 
   // Scale discount proportionally
   if (o.discount && o.discount.amount) {

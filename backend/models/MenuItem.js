@@ -59,6 +59,11 @@ const menuItemSchema = mongoose.Schema(
   }
 );
 
+// Indexes
+menuItemSchema.index({ category: 1, rank: 1 });
+menuItemSchema.index({ status: 1 });
+menuItemSchema.index({ shortCode: 1 }, { unique: true, sparse: true });
+
 const MenuItem = mongoose.model('MenuItem', menuItemSchema);
 
 module.exports = MenuItem;

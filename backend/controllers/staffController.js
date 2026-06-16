@@ -4,11 +4,11 @@ const mongoose = require('mongoose');
 const asyncHandler = require('../utils/asyncHandler');
 const crypto = require('crypto');
 
-const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
-const normalizePhone = (phone) => String(phone || '').trim();
+const normalizeEmail = (email) => email ? String(email).trim().toLowerCase() : undefined;
+const normalizePhone = (phone) => phone ? String(phone).trim() : undefined;
 const normalizeRole = (role) => String(role || '').trim();
 const normalizeName = (name) => String(name || '').trim();
-const normalizePin = (pin) => String(pin || '').trim();
+const normalizePin = (pin) => pin ? String(pin).trim() : undefined;
 
 const validateRoleExists = async (roleName) => {
   const role = await Role.findOne({ name: roleName });
@@ -94,10 +94,10 @@ const registerStaff = asyncHandler(async (req, res) => {
     }
   }
 
-  // Only check for duplicate emails on non-deleted staff
-  const staffExists = await Staff.findOne({ email, isDeleted: { $ne: true } });
+  // Only check for duplicate emails on non-deleted staff if email is provided
+  const staffExists = email ? await Staff.findOne({ email, isDeleted: { $ne: true } }) : null;
 
-  if (staffExists && email) {
+  if (email && staffExists) {
     res.status(400);
     throw new Error('Staff already exists with this email');
   }
@@ -251,6 +251,18 @@ const deleteStaff = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Cannot delete the last active Administrator account');
       }
+    }
+
+    // Restrict deleting staff with active orders
+    const Order = require('../models/Order');
+    const activeOrdersCount = await Order.countDocuments({
+      waiter: staff._id,
+      orderStatus: { $in: ['RUNNING', 'BILLED'] }
+    });
+
+    if (activeOrdersCount > 0) {
+      res.status(400);
+      throw new Error('Cannot delete staff member who is currently assigned to active running/billed orders');
     }
 
     staff.isDeleted = true;

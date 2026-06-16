@@ -32,6 +32,10 @@ const expenseSchema = mongoose.Schema(
   }
 );
 
+expenseSchema.index({ date: -1 });
+expenseSchema.index({ category: 1 });
+expenseSchema.index({ staff: 1 });
+
 const Expense = mongoose.model('Expense', expenseSchema);
 
 module.exports = Expense;

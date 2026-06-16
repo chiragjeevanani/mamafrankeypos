@@ -6,14 +6,14 @@ const {
   updateRole,
   deleteRole,
 } = require('../controllers/roleController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, checkPermission } = require('../middleware/authMiddleware');
 
 router.route('/')
-  .get(protect, admin, getRoles)
-  .post(protect, admin, createRole);
+  .get(protect, checkPermission('canManageStaff'), getRoles)
+  .post(protect, checkPermission('canManageStaff'), createRole);
 
 router.route('/:id')
-  .put(protect, admin, updateRole)
-  .delete(protect, admin, deleteRole);
+  .put(protect, checkPermission('canManageStaff'), updateRole)
+  .delete(protect, checkPermission('canManageStaff'), deleteRole);
 
 module.exports = router;

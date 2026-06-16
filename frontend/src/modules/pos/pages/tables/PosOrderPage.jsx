@@ -22,7 +22,7 @@ export default function PosOrderPage() {
   const {
     placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, applyOrderDiscount,
     orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes, storeSettings,
-    variantGroups, dishVariants, categories, menuItems, tables, sections, staff
+    categories, menuItems, combos, replacements, tables, sections, staff
   } = usePos();
 
   const [selectedCategory, setSelectedCategory] = useState('fav');
@@ -213,13 +213,71 @@ export default function PosOrderPage() {
     });
   }, [selectedCategory, searchQuery, shortCode, menuItems]);
 
+  const displayCategories = useMemo(() => {
+    return [
+      ...(categories || []),
+      { id: 'combos', name: 'Combo Meals', color: '#009688' }
+    ];
+  }, [categories]);
+
+  const displayItems = useMemo(() => {
+    const now = new Date();
+    
+    // Helper to find replacement
+    const getReplacement = (itemId) => {
+      return (replacements || []).find(r => 
+        r.originalDishId === itemId && 
+        new Date(r.startDate) <= now && 
+        new Date(r.endDate) >= now
+      );
+    };
+
+    if (selectedCategory === 'combos') {
+      const query = searchQuery.toLowerCase();
+      const codeQuery = shortCode.toLowerCase();
+
+      return (combos || [])
+        .filter(c => c.active)
+        .map(c => ({
+          id: c.id,
+          name: c.name,
+          price: c.price,
+          code: c.code || 'COMBO',
+          catId: 'combos',
+          status: 'Available',
+          itemModel: 'Combo',
+          variantGroups: [],
+          elements: c.elements
+        }))
+        .filter(c => {
+          const matchesSearch = c.name.toLowerCase().includes(query) || c.code.toLowerCase().includes(query);
+          const matchesShortCode = shortCode === '' || c.code.toLowerCase() === codeQuery;
+          return matchesSearch && matchesShortCode;
+        });
+    }
+
+    // Map through filteredItems and substitute if active rule exists
+    return filteredItems.map(item => {
+      const activeRep = getReplacement(item.id);
+      if (activeRep) {
+        // Find replacement menu item
+        const repItem = menuItems.find(i => i.id === activeRep.replacementDishId);
+        if (repItem) {
+          return {
+            ...repItem,
+            isSubstituted: true,
+            originalName: item.name
+          };
+        }
+      }
+      return item;
+    });
+  }, [selectedCategory, combos, filteredItems, menuItems, replacements, searchQuery, shortCode]);
+
   const addToCart = (item) => {
     playClickSound();
 
-    // Check if dish has variants assigned
-    const assignedVariantGroups = (item.variantGroups && item.variantGroups.length > 0)
-      ? item.variantGroups
-      : (dishVariants[item.id] || []);
+    const assignedVariantGroups = item.variantGroups || [];
     if (assignedVariantGroups.length > 0) {
       setVariantModalItem(item);
       setSelectedVariants({});
@@ -238,13 +296,11 @@ export default function PosOrderPage() {
   const confirmVariantSelection = () => {
     if (!variantModalItem) return;
 
-    const assignedMapping = (variantModalItem.variantGroups && variantModalItem.variantGroups.length > 0)
-      ? variantModalItem.variantGroups.map(g => ({ groupId: g._id || g.id, ...g }))
-      : (dishVariants[variantModalItem.id] || []);
+    const assignedMapping = (variantModalItem.variantGroups || []).map(g => ({ groupId: g._id || g.id, ...g }));
     const missingRequired = assignedMapping.find(m => m.required && !selectedVariants[m.groupId]);
 
     if (missingRequired) {
-       const groupName = variantModalItem.variantGroups?.find(g => (g._id || g.id) === missingRequired.groupId)?.name || variantGroups.find(g => g.id === missingRequired.groupId)?.name;
+       const groupName = variantModalItem.variantGroups?.find(g => (g._id || g.id) === missingRequired.groupId)?.name || '';
        window.alert(`Please select a ${groupName}`);
        return;
     }
@@ -253,7 +309,7 @@ export default function PosOrderPage() {
     const selectedVariantDetails = [];
 
     Object.entries(selectedVariants).forEach(([groupId, optionId]) => {
-       const group = variantModalItem.variantGroups?.find(g => (g._id || g.id) === groupId) || variantGroups.find(g => g.id === groupId);
+       const group = variantModalItem.variantGroups?.find(g => (g._id || g.id) === groupId);
        const option = group?.options.find(o => (o._id || o.id) === optionId);
        if (option) {
           if (option.priceType === 'fixed') {
@@ -561,12 +617,12 @@ export default function PosOrderPage() {
         {/* 1. Categories Sidebar (Left - 12%) */}
         <div className="w-[12%] bg-[#6D6D6D] flex flex-col shrink-0">
           <button className="bg-[#E1261C] text-white p-3 flex items-center justify-between font-bold text-xs uppercase tracking-wider">
-            <span>{categories.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
+            <span>{displayCategories.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
             <ChevronDown size={14} />
           </button>
-
+ 
           <div className="flex-1 overflow-y-auto">
-            {categories.map(cat => (
+            {displayCategories.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => {
@@ -614,7 +670,7 @@ export default function PosOrderPage() {
           {/* Items Grid */}
           <div className="flex-1 overflow-y-auto p-2">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {filteredItems.map(item => {
+              {displayItems.map(item => {
                 const isSoldOut = item.status === 'Out of Stock';
                 return (
                   <button
@@ -627,10 +683,13 @@ export default function PosOrderPage() {
                   >
                     <div
                       className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
-                      style={{ backgroundColor: categories.find(c => c.id === item.catId)?.color || (isSoldOut ? '#9ca3af' : '#4CAF50') }}
+                      style={{ backgroundColor: displayCategories.find(c => c.id === item.catId)?.color || (isSoldOut ? '#9ca3af' : '#4CAF50') }}
                     />
-                    <div className="flex flex-col ml-2 overflow-hidden">
+                    <div className="flex flex-col ml-2 overflow-hidden w-full">
                       <span className="text-[11px] font-bold text-gray-700 leading-tight truncate">{item.name}</span>
+                      {item.isSubstituted && (
+                        <span className="text-[8px] font-bold text-emerald-600 truncate mt-0.5">Replaces {item.originalName}</span>
+                      )}
                       <span className="text-[10px] font-black text-orange-600 mt-1">₹{item.price}</span>
                       {isSoldOut && (
                         <span className="absolute right-1 bottom-1 text-[8px] font-black text-red-600 uppercase bg-red-50 px-1 rounded">Sold Out</span>
@@ -1344,16 +1403,13 @@ export default function PosOrderPage() {
                   </div>
 
                   <div className="p-8 space-y-8 overflow-y-auto no-scrollbar max-h-[60vh]">
-                     {(variantModalItem.variantGroups?.length > 0 ? variantModalItem.variantGroups.map(g => ({ groupId: g._id || g.id, ...g })) : (dishVariants[variantModalItem.id] || [])).map(mapping => {
-                        const group = variantModalItem.variantGroups?.find(g => (g._id || g.id) === mapping.groupId) || variantGroups.find(g => g.id === mapping.groupId);
-                        if (!group) return null;
-
+                     {(variantModalItem.variantGroups || []).map(group => {
                         return (
                            <div key={group._id || group.id} className="space-y-4">
                               <div className="flex items-center justify-between px-1">
                                  <h5 className="text-[11px] font-black uppercase text-stone-900 tracking-widest flex items-center gap-2">
                                     {group.name}
-                                    {mapping.required && <span className="text-[9px] font-bold text-[#E1261C]">(Required)</span>}
+                                    {group.required && <span className="text-[9px] font-bold text-[#E1261C]">(Required)</span>}
                                  </h5>
                               </div>
                               <div className="grid grid-cols-2 gap-3">
@@ -1400,7 +1456,7 @@ export default function PosOrderPage() {
                            ₹{(() => {
                               let p = variantModalItem.price;
                               Object.entries(selectedVariants).forEach(([gid, oid]) => {
-                                 const g = variantModalItem.variantGroups?.find(vg => (vg._id || vg.id) === gid) || variantGroups.find(vg => vg.id === gid);
+                                 const g = variantModalItem.variantGroups?.find(vg => (vg._id || vg.id) === gid);
                                  const o = g?.options.find(vo => (vo._id || vo.id) === oid);
                                  if (o) {
                                     if (o.priceType === 'fixed') p = (o.priceValue !== undefined ? o.priceValue : (o.price || 0));
@@ -1458,6 +1514,11 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
         {item.variantLabel && (
           <span className="text-[9px] font-bold text-[#E1261C] uppercase tracking-tighter mt-0.5">
             ({item.variantLabel})
+          </span>
+        )}
+        {item.itemModel === 'Combo' && item.elements && (
+          <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter mt-0.5 leading-tight">
+            Includes: {item.elements.map(el => `${el.quantity}x ${el.item?.name || 'Item'}`).join(', ')}
           </span>
         )}
       </div>

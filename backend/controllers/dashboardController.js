@@ -56,97 +56,6 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   const firstDayOfWeek = getStartOfWeek(new Date(), timezone);
   const firstDayOfMonth = getStartOfMonth(new Date(), timezone);
 
-  const isAdminRequest = req.headers['x-module'] === 'admin';
-
-  if (isAdminRequest) {
-    const rules = await getMaskingRules();
-
-    // Fetch raw completed orders for the month, total customers count, and expenses
-    const [orders, totalCustomers, totalExpenses] = await Promise.all([
-      Order.find({ orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } }).populate('table waiter counter').lean(),
-      Customer.countDocuments({}),
-      Expense.aggregate([
-        { $match: { date: { $gte: firstDayOfMonth } } },
-        { $group: { _id: null, total: { $sum: '$amount' } } }
-      ])
-    ]);
-
-    // Apply backend masking engine to all orders
-    const maskedOrders = orders.map(o => maskOrder(o, rules));
-
-    // Filter orders by date ranges
-    const todayOrders = maskedOrders.filter(o => new Date(o.completedAt) >= today);
-    const weekOrders = maskedOrders.filter(o => new Date(o.completedAt) >= firstDayOfWeek);
-    const monthOrders = maskedOrders;
-
-    // Aggregate totals in-memory
-    const todayTotal = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-    let todayCount = todayOrders.length;
-    const weekTotal = weekOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-    let weekCount = weekOrders.length;
-    const monthTotal = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-    let monthCount = monthOrders.length;
-    let expensesTotal = totalExpenses[0]?.total || 0;
-
-    // Apply global mask to count & expenses
-    todayCount = maskQuantityValue(todayCount, rules);
-    weekCount = maskQuantityValue(weekCount, rules);
-    monthCount = maskQuantityValue(monthCount, rules);
-    expensesTotal = maskCurrencyValue(expensesTotal, null, rules);
-
-    // Group items for Top Selling Items (MTD)
-    const groupedItems = {};
-    monthOrders.forEach(o => {
-      if (o.kots && Array.isArray(o.kots)) {
-        o.kots.forEach(kot => {
-          if (kot.items && Array.isArray(kot.items)) {
-            kot.items.forEach(item => {
-              if (item.status !== 'cancelled') {
-                const itemName = item.name; // Already masked/renamed by backend maskOrder!
-                if (!groupedItems[itemName]) {
-                  groupedItems[itemName] = { _id: itemName, count: 0, revenue: 0 };
-                }
-                groupedItems[itemName].count += item.quantity;
-                groupedItems[itemName].revenue += item.price * item.quantity;
-              }
-            });
-          }
-        });
-      }
-    });
-
-    // Apply global quantity mask on topItems for count
-    const mappedTopItems = Object.values(groupedItems).map(item => ({
-      _id: item._id,
-      count: maskQuantityValue(item.count, rules),
-      revenue: item.revenue
-    })).sort((a, b) => b.count - a.count).slice(0, 5);
-
-    // Group hourly sales (Today)
-    const hourlyMap = {};
-    todayOrders.forEach(o => {
-      const hour = getLocalHour(o.completedAt, timezone);
-      hourlyMap[hour] = (hourlyMap[hour] || 0) + (o.totalAmount || 0);
-    });
-    const mappedHourlySales = Object.entries(hourlyMap).map(([hour, total]) => ({
-      _id: parseInt(hour, 10),
-      total: total
-    })).sort((a, b) => a._id - b._id);
-
-    return res.json({
-      sales: {
-        today: { total: todayTotal, count: todayCount },
-        week: { total: weekTotal, count: weekCount },
-        month: { total: monthTotal, count: monthCount }
-      },
-      customers: totalCustomers,
-      expenses: expensesTotal,
-      topItems: mappedTopItems,
-      hourlySales: mappedHourlySales
-    });
-  }
-
-  // Non-Admin (POS) path - uses high-performance database aggregations
   const [todayStats, weekStats, monthStats, totalCustomers, totalExpenses] = await Promise.all([
     Order.aggregate([
       { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
@@ -188,16 +97,53 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     { $sort: { '_id': 1 } }
   ]);
 
+  let todayTotal = todayStats[0]?.total || 0;
+  let weekTotal = weekStats[0]?.total || 0;
+  let monthTotal = monthStats[0]?.total || 0;
+  let todayCount = todayStats[0]?.count || 0;
+  let weekCount = weekStats[0]?.count || 0;
+  let monthCount = monthStats[0]?.count || 0;
+  let expensesTotal = totalExpenses[0]?.total || 0;
+  let mappedTopItems = topItems;
+  let mappedHourlySales = hourlySales;
+
+  const isAdminRequest = req.headers['x-module'] === 'admin';
+  if (isAdminRequest) {
+    const rules = await getMaskingRules();
+
+    // Apply global mask to count, expenses & totals
+    todayTotal = maskCurrencyValue(todayTotal, null, rules);
+    weekTotal = maskCurrencyValue(weekTotal, null, rules);
+    monthTotal = maskCurrencyValue(monthTotal, null, rules);
+    todayCount = maskQuantityValue(todayCount, rules);
+    weekCount = maskQuantityValue(weekCount, rules);
+    monthCount = maskQuantityValue(monthCount, rules);
+    expensesTotal = maskCurrencyValue(expensesTotal, null, rules);
+
+    // Apply global quantity mask on topItems for count and replace name if rule applies
+    mappedTopItems = topItems.map(item => ({
+      _id: getReplacedName(item._id, rules),
+      count: maskQuantityValue(item.count, rules),
+      revenue: maskCurrencyValue(item.revenue, null, rules)
+    }));
+
+    // Apply global mask to hourly sales totals
+    mappedHourlySales = hourlySales.map(h => ({
+      _id: h._id,
+      total: maskCurrencyValue(h.total, null, rules)
+    }));
+  }
+
   res.json({
     sales: {
-      today: { total: todayStats[0]?.total || 0, count: todayStats[0]?.count || 0 },
-      week: { total: weekStats[0]?.total || 0, count: weekStats[0]?.count || 0 },
-      month: { total: monthStats[0]?.total || 0, count: monthStats[0]?.count || 0 }
+      today: { total: todayTotal, count: todayCount },
+      week: { total: weekTotal, count: weekCount },
+      month: { total: monthTotal, count: monthCount }
     },
     customers: totalCustomers,
-    expenses: totalExpenses[0]?.total || 0,
-    topItems: topItems,
-    hourlySales: hourlySales
+    expenses: expensesTotal,
+    topItems: mappedTopItems,
+    hourlySales: mappedHourlySales
   });
 });
 

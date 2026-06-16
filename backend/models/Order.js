@@ -3,8 +3,14 @@ const mongoose = require('mongoose');
 const kotItemSchema = mongoose.Schema({
   menuItem: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'MenuItem',
+    refPath: 'itemModel',
     required: true,
+  },
+  itemModel: {
+    type: String,
+    required: true,
+    enum: ['MenuItem', 'Combo'],
+    default: 'MenuItem',
   },
   name: String, // Snapshot name
   quantity: {
@@ -151,6 +157,9 @@ orderSchema.index({ createdAt: -1 });
 orderSchema.index({ completedAt: -1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ table: 1 });
+orderSchema.index({ orderStatus: 1, createdAt: -1 });
+orderSchema.index({ counter: 1 });
+orderSchema.index({ orderStatus: 1, completedAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 

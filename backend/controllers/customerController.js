@@ -121,9 +121,41 @@ const updateCustomerStats = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Delete customer
+// @route   DELETE /api/customers/:id
+// @access  Private
+const deleteCustomer = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Customer ID format');
+  }
+
+  const customer = await Customer.findById(req.params.id);
+  if (!customer) {
+    res.status(404);
+    throw new Error('Customer not found');
+  }
+
+  // Restrict deleting customer with active orders (based on customer phone)
+  const Order = require('../models/Order');
+  const activeOrdersCount = await Order.countDocuments({
+    'customer.phone': customer.phone,
+    orderStatus: { $in: ['RUNNING', 'BILLED'] }
+  });
+
+  if (activeOrdersCount > 0) {
+    res.status(400);
+    throw new Error('Cannot delete customer who has active running/billed orders');
+  }
+
+  await customer.deleteOne();
+  res.json({ message: 'Customer removed' });
+});
+
 module.exports = {
   getCustomers,
   getCustomerByPhone,
   upsertCustomer,
   updateCustomerStats,
+  deleteCustomer,
 };

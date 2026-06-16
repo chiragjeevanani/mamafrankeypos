@@ -33,7 +33,7 @@ function WipeDataModal({ onClose }) {
       await api.post('/settings/reports/purge');
       setStep('success');
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Purge protocol failed.');
+      setErrorMsg(err.response?.data?.message || 'Purge failed.');
       setStep('verify');
     }
   };
@@ -278,6 +278,32 @@ export default function SystemSettings() {
   const [editingTaxId, setEditingTaxId] = useState(null);
   const [editingTaxRate, setEditingTaxRate] = useState('');
 
+  // Custom dialog modal state
+  const [dialog, setDialog] = useState(null);
+
+  const showAlert = (message, title = 'Notification', isError = false) => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'alert',
+        title,
+        message,
+        isError,
+        onConfirm: () => resolve(true)
+      });
+    });
+  };
+
+  const showConfirm = (message, title = 'Confirmation Required') => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'confirm',
+        title,
+        message,
+        onConfirm: (val) => resolve(val)
+      });
+    });
+  };
+
   const exportDailySalesCsv = async () => {
     try {
       setIsSaving(true);
@@ -309,12 +335,12 @@ export default function SystemSettings() {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `daily_sales_matrix_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.download = `daily_sales_report_${new Date().toISOString().slice(0, 10)}.csv`;
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (err) {
       console.error('Failed to export sales CSV:', err);
-      window.alert('ERROR: Export failed. Unable to fetch daily sales.');
+      await showAlert('Unable to fetch daily sales records.', 'Export Failed', true);
     } finally {
       setIsSaving(false);
     }
@@ -326,7 +352,7 @@ export default function SystemSettings() {
       const { data: attendance } = await api.get('/staff/attendance?date=all');
       
       const rows = [
-        ['Staff Name', 'Date', 'Check In', 'Check Out', 'Shift Status', 'Terminal Node'],
+        ['Staff Name', 'Date', 'Check In', 'Check Out', 'Shift Status', 'Terminal'],
         ...attendance.map(log => [
           getReplacedName(log.staffName),
           log.date ? new Date(log.date).toLocaleDateString() : '',
@@ -346,7 +372,7 @@ export default function SystemSettings() {
       URL.revokeObjectURL(link.href);
     } catch (err) {
       console.error('Failed to export attendance CSV:', err);
-      window.alert('ERROR: Export failed. Unable to fetch attendance logs.');
+      await showAlert('Unable to fetch staff attendance logs.', 'Export Failed', true);
     } finally {
       setIsSaving(false);
     }
@@ -541,7 +567,8 @@ export default function SystemSettings() {
   };
 
   const deleteCounter = async (id) => {
-    if (!window.confirm('Delete this counter?')) return;
+    const confirmed = await showConfirm('Are you sure you want to delete this billing counter?', 'Delete Counter');
+    if (!confirmed) return;
     try {
       await api.delete(`/settings/counters/${id}`);
       setCounters(prev => prev.filter(c => c.id !== id));
@@ -582,7 +609,7 @@ export default function SystemSettings() {
     { id: 'payment',       label: 'Taxation & Billing',  icon: CreditCard },
     { id: 'printers',      label: 'Printers & KOT',      icon: Printer    },
     { id: 'security',      label: 'Staff Permissions',   icon: Shield     },
-    { id: 'notifications', label: 'Alert Protocols',     icon: Bell       },
+    { id: 'notifications', label: 'Alert Settings',      icon: Bell       },
     { id: 'reports',       label: 'Reports & Reset',      icon: BarChart3  },
   ];
 
@@ -599,7 +626,7 @@ export default function SystemSettings() {
       };
       await api.put('/settings/store', payload);
       setIsSaving(false);
-      window.alert('CONFIGURATION SUCCESS: Store settings updated successfully.');
+      await showAlert('Store settings updated successfully.', 'Success');
     } catch (error) {
       console.error('Error saving settings:', error);
       setIsSaving(false);
@@ -610,8 +637,8 @@ export default function SystemSettings() {
     <div className="p-8 space-y-8 animate-in fade-in duration-500 overflow-y-auto no-scrollbar max-h-full">
        <div className="flex items-center justify-between">
         <div>
-           <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">System Core Configuration</h1>
-           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Configure global protocols, security frameworks, and hardware routing</p>
+           <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">System Settings</h1>
+           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Configure store preferences, tables, billing, and system parameters</p>
         </div>
         <button 
           onClick={handleCommit}
@@ -729,7 +756,7 @@ export default function SystemSettings() {
                         <div className="pt-8 border-t border-slate-50 flex items-center gap-4">
                            <Zap size={16} className="text-amber-500" />
                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose max-w-lg">
-                               Caution: Modifying regional protocols may affect historical data indexing and billing reconciliation logic.
+                               Caution: Changing currency, symbol, or timezone formats will update receipt printing and dashboard calculations.
                            </p>
                         </div>
                      </motion.div>
@@ -747,9 +774,8 @@ export default function SystemSettings() {
                            <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
                               <Lock size={24} />
                            </div>
-                           <div>
-                              <h3 className="text-sm font-black uppercase tracking-tight">Access Control Protocol</h3>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Authentication and permission layers</p>
+                           <div className="border-b border-slate-100 pb-2">
+                              <h3 className="text-sm font-black uppercase tracking-tight">Access Control</h3>
                            </div>
                         </div>
 
@@ -763,7 +789,7 @@ export default function SystemSettings() {
                                  </div>
                               </div>
                               <button 
-                                onClick={() => window.alert('SECURITY: Connecting to multi-factor authentication gateway...')}
+                                onClick={async () => await showAlert('Connecting to multi-factor authentication gateway...', 'Security Setup')}
                                 className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all"
                               >CONFIGURE</button>
                            </div>
@@ -772,12 +798,12 @@ export default function SystemSettings() {
                               <div className="flex items-center gap-4">
                                  <Key size={20} className="text-slate-900" />
                                  <div>
-                                    <h4 className="text-[11px] font-black uppercase tracking-tight">Protocol API Access</h4>
+                                    <h4 className="text-[11px] font-black uppercase tracking-tight">API Access</h4>
                                     <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight">Management of secure communication tokens</p>
                                  </div>
                               </div>
                               <button 
-                                onClick={() => window.alert('SECURITY: Regenerating secure terminal handshaking keys...')}
+                                onClick={async () => await showAlert('Regenerating secure terminal handshaking keys...', 'Security Setup')}
                                 className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all"
                               >MANAGE KEYS</button>
                            </div>
@@ -875,7 +901,10 @@ export default function SystemSettings() {
 
                               {/* Delete */}
                               <button
-                                onClick={() => deleteCounter(c.id)}
+                                onClick={async () => {
+                                   const confirmed = await showConfirm('Are you sure you want to remove this counter?', 'Delete Counter');
+                                   if (confirmed) deleteCounter(c.id);
+                                }}
                                 disabled={counters.length === 1}
                                 className="flex items-center justify-center w-7 h-7 rounded-sm text-slate-300 hover:bg-rose-50 hover:text-rose-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                                 title="Delete counter"
@@ -1058,15 +1087,15 @@ export default function SystemSettings() {
                                     <div 
                                       onClick={async (e) => {
                                         e.stopPropagation();
-                                        if (window.confirm(`Delete ${sec.label} and all its tables?`)) {
-                                           clearTableMessages();
-                                           try {
-                                             await deleteSection(sec._id);
-                                             if (activeTableSection === sec._id) setActiveTableSection(sections.find(s => s._id !== sec._id)?._id || '');
-                                             setTableSuccess('Section deleted successfully.');
-                                           } catch (error) {
-                                             setTableError(error.response?.data?.message || 'Unable to delete section.');
-                                           }
+                                        clearTableMessages();
+                                        const confirmed = await showConfirm(`Are you sure you want to delete the dining section "${sec.label}" and all its tables?`, 'Delete Section');
+                                        if (!confirmed) return;
+                                        try {
+                                          await deleteSection(sec._id);
+                                          if (activeTableSection === sec._id) setActiveTableSection(sections.find(s => s._id !== sec._id)?._id || '');
+                                          setTableSuccess('Section deleted successfully.');
+                                        } catch (error) {
+                                          setTableError(error.response?.data?.message || 'Unable to delete section.');
                                         }
                                       }}
                                       className="p-1 hover:bg-rose-500 rounded-sm"
@@ -1243,14 +1272,14 @@ export default function SystemSettings() {
                                     </button>
                                     <button 
                                       onClick={async () => {
-                                         if (window.confirm(`Delete table ${table.name}?`)) {
-                                            clearTableMessages();
-                                            try {
-                                              await deleteTable(table._id);
-                                              setTableSuccess('Table deleted successfully.');
-                                            } catch (error) {
-                                              setTableError(error.response?.data?.message || 'Unable to delete table.');
-                                            }
+                                         clearTableMessages();
+                                         const confirmed = await showConfirm(`Are you sure you want to delete table "${table.name}"?`, 'Delete Table');
+                                         if (!confirmed) return;
+                                         try {
+                                           await deleteTable(table._id);
+                                           setTableSuccess('Table deleted successfully.');
+                                         } catch (error) {
+                                           setTableError(error.response?.data?.message || 'Unable to delete table.');
                                          }
                                       }}
                                       className="p-1.5 bg-white border border-slate-100 rounded-sm text-slate-400 hover:text-rose-600 hover:border-rose-100"
@@ -1290,16 +1319,16 @@ export default function SystemSettings() {
                           <CreditCard size={24} />
                         </div>
                         <div>
-                          <h3 className="text-sm font-black uppercase tracking-tight">⚖️ Tax Management Protocol</h3>
+                          <h3 className="text-sm font-black uppercase tracking-tight">⚖️ Tax Management</h3>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                            Configure dynamic tax structures and legislative compliance
+                            Configure store tax rates and compliance parameters
                           </p>
                         </div>
                       </div>
 
                       {/* --- 1. Add New Tax Protocol --- */}
                       <div className="bg-slate-50 border border-slate-100 rounded-sm p-6 space-y-4">
-                         <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3 mb-4">Initialize New Tax Unit</h4>
+                         <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3 mb-4">Add New Tax Rate</h4>
                          {taxError && (
                            <div className="rounded-sm border border-rose-100 bg-rose-50 px-4 py-3 flex items-start gap-3 text-rose-600">
                              <AlertCircle size={14} className="mt-0.5 shrink-0" />
@@ -1318,7 +1347,7 @@ export default function SystemSettings() {
                                />
                             </div>
                             <div className="space-y-2">
-                               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Percentage Matrix (%)</label>
+                               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Percentage (%)</label>
                                <input 
                                  type="number" 
                                  placeholder="0.00"
@@ -1332,15 +1361,15 @@ export default function SystemSettings() {
                                 setTaxError('');
                                 const rateNum = Number(newTax.rate);
                                 if (!newTax.name.trim() || isNaN(rateNum)) {
-                                  setTaxError('ERROR: Incomplete or invalid tax percentage.');
+                                  setTaxError('Error: Incomplete or invalid tax percentage.');
                                   return;
                                 }
                                 if (rateNum < 0) {
-                                  setTaxError('ERROR: Tax percentage must be a valid non-negative number.');
+                                  setTaxError('Error: Tax percentage must be a valid non-negative number.');
                                   return;
                                 }
                                 if (appliedTaxes.some(t => t.name.toLowerCase() === newTax.name.trim().toLowerCase())) {
-                                  setTaxError('ERROR: Identity duplication detected.');
+                                  setTaxError('Error: Tax configuration name already exists.');
                                   return;
                                 }
                                 addTax(newTax.name.trim().toUpperCase(), newTax.rate);
@@ -1348,7 +1377,7 @@ export default function SystemSettings() {
                               }}
                               className="bg-slate-900 text-white h-[42px] px-6 rounded-sm text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10"
                             >
-                               <Plus size={14} /> Initialize Unit
+                               <Plus size={14} /> Create Tax
                             </button>
                          </div>
                       </div>
@@ -1372,7 +1401,7 @@ export default function SystemSettings() {
                                       className="py-12 flex flex-col items-center justify-center gap-2 text-slate-200"
                                    >
                                       <Shield size={32} />
-                                      <span className="text-[10px] font-black uppercase tracking-widest">No active tax protocols established</span>
+                                      <span className="text-[10px] font-black uppercase tracking-widest">No active tax configurations found</span>
                                    </motion.div>
                                 ) : appliedTaxes.map((tax, idx) => (
                                   <motion.div
@@ -1405,7 +1434,7 @@ export default function SystemSettings() {
                                             : 'bg-slate-50 text-slate-400 border-slate-100'
                                         }`}
                                       >
-                                        {tax.enabled ? 'OPERATIONAL' : 'OFFLINE'}
+                                        {tax.enabled ? 'ACTIVE' : 'INACTIVE'}
                                       </button>
                                     </div>
                                     <div className="flex items-center gap-2 opacity-20 group-hover:opacity-100 transition-all">
@@ -1415,7 +1444,7 @@ export default function SystemSettings() {
                                             setTaxError('');
                                             const rateVal = Number(editingTaxRate);
                                             if (isNaN(rateVal) || rateVal < 0) {
-                                              setTaxError('ERROR: Tax percentage must be non-negative.');
+                                              setTaxError('Error: Tax percentage must be non-negative.');
                                               return;
                                             }
                                             updateTax(tax.id, { rate: rateVal });
@@ -1439,8 +1468,9 @@ export default function SystemSettings() {
                                         </button>
                                       )}
                                       <button 
-                                        onClick={() => {
-                                          if (window.confirm(`SECURITY PROTOCOL: Authenticate deletion of ${tax.name} matrix?`)) {
+                                        onClick={async () => {
+                                          const confirmed = await showConfirm(`Are you sure you want to delete the "${tax.name}" tax configuration?`, 'Delete Tax');
+                                          if (confirmed) {
                                              deleteTax(tax.id);
                                           }
                                         }}
@@ -1511,7 +1541,7 @@ export default function SystemSettings() {
 
                       {/* Danger Zone Integration */}
                       <div className="pt-8 border-t border-slate-100">
-                        <h4 className="text-[11px] font-black uppercase tracking-widest text-rose-600 mb-4">Critical Protocols</h4>
+                        <h4 className="text-[11px] font-black uppercase tracking-widest text-rose-600 mb-4">Critical Settings</h4>
                         <DangerZone />
                       </div>
                     </motion.div>
@@ -1538,6 +1568,59 @@ export default function SystemSettings() {
                   All system configurations are currently operating under the latest protocol version (v2.4.0). Commit changes to synchronize with secondary terminals.
                </p>
             </div>
+            
+            {/* Styled React custom dialog overlay */}
+            <AnimatePresence>
+               {dialog && (
+                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                   <motion.div 
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     onClick={() => setDialog(null)}
+                     className="absolute inset-0 bg-[#1e1e1e]/60 backdrop-blur-sm"
+                   />
+                   <motion.div 
+                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                     animate={{ opacity: 1, scale: 1, y: 0 }}
+                     exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                     className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden flex flex-col p-6 border border-stone-200"
+                   >
+                     <div className="flex items-center gap-3 mb-4">
+                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${dialog.isError ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                         <AlertCircle size={16} />
+                       </div>
+                       <h3 className="text-sm font-extrabold uppercase text-stone-900">{dialog.title || 'Notification'}</h3>
+                     </div>
+                     
+                     <p className="text-xs text-stone-600 font-bold mb-6 uppercase tracking-wider leading-relaxed">{dialog.message}</p>
+                     
+                     <div className="flex items-center gap-3 justify-end">
+                       {dialog.type === 'confirm' && (
+                         <button
+                           onClick={() => {
+                             dialog.onConfirm(false);
+                             setDialog(null);
+                           }}
+                           className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                         >
+                           Cancel
+                         </button>
+                       )}
+                       <button
+                         onClick={() => {
+                           dialog.onConfirm(true);
+                           setDialog(null);
+                         }}
+                         className="px-4 py-2.5 bg-[#E1261C] hover:bg-[#c81e17] text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                       >
+                         Confirm
+                       </button>
+                     </div>
+                   </motion.div>
+                 </div>
+               )}
+            </AnimatePresence>
          </div>
       </div>
     </div>

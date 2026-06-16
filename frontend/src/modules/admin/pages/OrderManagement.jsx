@@ -10,20 +10,58 @@ import { usePos } from '../../pos/context/PosContext';
 import api from '../../../utils/api';
 
 export default function OrderManagement() {
-  const { orders } = usePos();
+  const { orders, carOrders, pickupOrders } = usePos();
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  const orderList = Object.values(orders || {});
+  // Custom dialog state for styled React alert/prompt modals
+  const [dialog, setDialog] = useState(null);
+
+  const showAlert = (message, title = 'Notification', isError = false) => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'alert',
+        title,
+        message,
+        isError,
+        onConfirm: () => resolve(true)
+      });
+    });
+  };
+
+  const showPrompt = (message, title = 'Input Required', placeholder = 'Enter details...') => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'prompt',
+        title,
+        message,
+        placeholder,
+        onConfirm: (val) => resolve(val || '')
+      });
+    });
+  };
+
+  const orderList = [
+    ...Object.values(orders || {}),
+    ...Object.values(carOrders || {}),
+    ...Object.values(pickupOrders || {})
+  ];
 
   const filteredOrders = orderList.filter(order => {
     const orderId = order._id || order.id || '';
     const tableName = order.table?.name || order.table || '';
+    const carNum = order.carNumber || '';
+    const custName = order.customer?.name || '';
+    
     const matchesStatus = filterStatus === 'all' || 
-                         (order.source || '').toLowerCase().includes(filterStatus.toLowerCase());
+                         (order.source || '').toLowerCase().includes(filterStatus.toLowerCase()) ||
+                         (order.orderType || '').toLowerCase().includes(filterStatus.toLowerCase());
+                         
     const matchesSearch = orderId.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         tableName.toLowerCase().includes(searchQuery.toLowerCase());
+                         tableName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         carNum.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         custName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -104,7 +142,11 @@ export default function OrderManagement() {
                            </div>
                         </td>
                         <td className="px-5 py-3.5">
-                           <span className="text-[12px] font-bold text-stone-800">{order.table?.name || order.table || 'Takeaway'}</span>
+                           <span className="text-[12px] font-bold text-stone-800">
+                             {order.orderType === 'PICKUP' ? 'Takeaway' : 
+                              (order.orderType === 'CAR-SERVICE' ? `Car ${order.carNumber || ''}` : 
+                              (order.table?.name || order.table || 'Takeaway'))}
+                           </span>
                         </td>
                         <td className="px-5 py-3.5">
                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${
@@ -129,11 +171,14 @@ export default function OrderManagement() {
                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button className="p-1.5 text-stone-400 hover:text-[#E1261C] bg-white border border-stone-200 rounded-lg shadow-sm transition-all"><Eye size={12} /></button>
                               <button 
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
-                                  api.post(`/orders/${order._id || order.id}/bill`).then(() => {
-                                    window.alert(`PROTOCOL: Thermal receipt queued for Order #${order.orderNumber || order.orderNum}`);
-                                  });
+                                  try {
+                                    await api.post(`/orders/${order._id || order.id}/bill`);
+                                    showAlert(`Receipt generated for Order #${order.orderNumber || order.id.slice(-4)}`, 'Receipt Queued');
+                                  } catch (err) {
+                                    showAlert(`Failed to generate receipt: ${err.message}`, 'Print Failed', true);
+                                  }
                                 }}
                                 className="p-1.5 text-stone-400 hover:text-blue-600 bg-white border border-stone-200 rounded-lg shadow-sm transition-all"
                               ><Printer size={12} /></button>
@@ -191,68 +236,74 @@ export default function OrderManagement() {
                         <p className="text-sm font-black text-stone-800">{selectedOrder.source}</p>
                      </div>
                      <div className="bg-stone-50 border border-stone-100 rounded-xl p-3">
-                        <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">Table</p>
-                        <p className="text-sm font-black text-stone-800">{selectedOrder.table ? `Table ${selectedOrder.table}` : 'Takeaway'}</p>
-                     </div>
-                     <div className="bg-stone-50 border border-stone-100 rounded-xl p-3">
-                        <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">Total</p>
-                        <p className="text-sm font-black text-[#E1261C]">₹{(selectedOrder.totalAmount || selectedOrder.total || 0).toLocaleString()}</p>
-                     </div>
+                         <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">Location / Type</p>
+                         <p className="text-sm font-black text-stone-800">
+                           {selectedOrder.orderType === 'PICKUP' ? 'Takeaway' : 
+                            (selectedOrder.orderType === 'CAR-SERVICE' ? `Car ${selectedOrder.carNumber || ''}` : 
+                            (selectedOrder.table?.name || selectedOrder.table || 'Takeaway'))}
+                         </p>
+                      </div>
+                      <div className="bg-stone-50 border border-stone-100 rounded-xl p-3">
+                         <p className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">Total</p>
+                         <p className="text-sm font-black text-[#E1261C]">₹{(selectedOrder.totalAmount || selectedOrder.total || 0).toLocaleString()}</p>
+                      </div>
                   </div>
                   <div className="flex items-center justify-between px-1">
                      <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">Order Status</p>
                      <span className="text-[11px] font-bold text-stone-700">{selectedOrder.orderStatus}</span>
                   </div>
-
+ 
                   <div className="bg-stone-50 p-4 border border-stone-100 rounded-xl">
                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-3">Order Items</h4>
                      <div className="space-y-2 max-h-[180px] overflow-y-auto no-scrollbar">
                         {(selectedOrder.kots || []).map((kot, kIdx) => (
-                          <div key={kIdx} className="space-y-1">
-                            <p className="text-[9px] font-bold text-stone-400">KOT #{kot.kotNumber}</p>
-                            {kot.items.map((item, iIdx) => (
-                              <div key={iIdx} className="flex items-center justify-between pl-2">
-                                <span className="text-sm font-semibold text-stone-700">{item.name}</span>
-                                <span className="text-sm font-bold text-stone-500">x{item.quantity}</span>
-                              </div>
-                            ))}
-                          </div>
+                           <div key={kIdx} className="space-y-1">
+                             <p className="text-[9px] font-bold text-stone-400">KOT #{kot.kotNumber}</p>
+                             {kot.items.map((item, iIdx) => (
+                               <div key={iIdx} className="flex items-center justify-between pl-2">
+                                 <span className="text-sm font-semibold text-stone-700">{item.name}</span>
+                                 <span className="text-sm font-bold text-stone-500">x{item.quantity}</span>
+                               </div>
+                             ))}
+                           </div>
                         ))}
                         <div className="border-t border-stone-200 pt-2.5 mt-2 flex items-center justify-between">
-                           <span className="text-sm font-black text-stone-800">Grand Total</span>
-                           <span className="text-sm font-black text-[#E1261C]">₹{selectedOrder.totalAmount || selectedOrder.total}</span>
+                            <span className="text-sm font-black text-stone-800">Grand Total</span>
+                            <span className="text-sm font-black text-[#E1261C]">₹{selectedOrder.totalAmount || selectedOrder.total}</span>
                         </div>
                      </div>
                   </div>
-
+ 
                   <div className="flex items-center gap-2.5">
                      <button 
                         onClick={async () => {
-                          const reason = window.prompt('ENTER CANCELLATION PROTOCOL REASON:');
+                          const reason = await showPrompt('Enter reason for cancelling this order:', 'Cancel Order');
                           if (reason) {
                             try {
                               await api.post(`/orders/${selectedOrder._id || selectedOrder.id}/cancel`, { reason });
-                              window.alert('PROTOCOL SUCCESS: Order record terminated.');
+                              await showAlert('Order cancelled successfully.', 'Order Cancelled');
                               setSelectedOrder(null);
-                              // Refresh orders (ideally via context or direct fetch)
                               window.location.reload(); 
                             } catch (err) {
-                              window.alert(`PROTOCOL FAILURE: ${err.response?.data?.message || 'Unauthorized access'}`);
+                              showAlert(err.response?.data?.message || 'Unauthorized access', 'Cancellation Failed', true);
                             }
                           }
                         }}
-                        className="flex-1 py-3 bg-white border border-rose-200 text-rose-500 text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-rose-50"
+                        className="flex-1 py-3 bg-white border border-rose-200 hover:bg-rose-50 text-rose-500 text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
                      >
                         <Trash2 size={14} />
                         Cancel Order
                      </button>
                      <button 
-                        onClick={() => {
-                          api.post(`/orders/${selectedOrder._id || selectedOrder.id}/bill`).then(() => {
-                            window.alert('PROTOCOL: Sales terminal receipt generated.');
-                          });
+                        onClick={async () => {
+                          try {
+                            await api.post(`/orders/${selectedOrder._id || selectedOrder.id}/bill`);
+                            showAlert('Receipt generated successfully.', 'Receipt Printed');
+                          } catch (err) {
+                            showAlert(err.message, 'Printing Failed', true);
+                          }
                         }}
-                        className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-stone-900/15 hover:bg-[#4E342E]"
+                        className="flex-1 py-3 bg-[#E1261C] hover:bg-[#c81e17] text-white text-[11px] font-bold rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-stone-900/15 cursor-pointer"
                      >
                         <Receipt size={14} />
                         Print Receipt
@@ -263,6 +314,73 @@ export default function OrderManagement() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Styled React custom dialog overlay */}
+      <AnimatePresence>
+        {dialog && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDialog(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-xl shadow-2xl relative overflow-hidden flex flex-col p-6 border border-stone-200"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${dialog.isError ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                  <AlertCircle size={16} />
+                </div>
+                <h3 className="text-sm font-extrabold uppercase text-stone-900">{dialog.title || 'Notification'}</h3>
+              </div>
+              
+              <p className="text-xs text-stone-600 font-semibold mb-6 uppercase tracking-wider leading-relaxed">{dialog.message}</p>
+              
+              {dialog.type === 'prompt' && (
+                <input
+                  type="text"
+                  placeholder={dialog.placeholder || 'Enter details...'}
+                  id="custom-dialog-input"
+                  className="w-full bg-stone-50 border border-stone-200 py-2.5 px-4 text-xs font-bold uppercase rounded-lg outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] mb-6 placeholder:text-stone-300"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      dialog.onConfirm(e.target.value);
+                      setDialog(null);
+                    }
+                  }}
+                />
+              )}
+                        <div className="flex items-center gap-3 justify-end">
+                {dialog.type !== 'alert' && (
+                  <button
+                    onClick={() => setDialog(null)}
+                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    const inputVal = document.getElementById('custom-dialog-input')?.value;
+                    dialog.onConfirm(inputVal);
+                    setDialog(null);
+                  }}
+                  className="px-4 py-2 bg-[#E1261C] hover:bg-[#c81e17] text-white text-[10px] font-black uppercase tracking-wider rounded-lg transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

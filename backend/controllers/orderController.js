@@ -665,6 +665,19 @@ const getOrders = asyncHandler(async (req, res) => {
     query.orderStatus = { $in: ['RUNNING', 'BILLED'] };
   }
 
+  if (req.query.search) {
+    const searchVal = String(req.query.search).trim();
+    if (searchVal) {
+      const searchRegex = new RegExp(searchVal, 'i');
+      query.$or = [
+        { orderNumber: searchRegex },
+        { 'customer.name': searchRegex },
+        { 'customer.phone': searchRegex },
+        { carNumber: searchRegex }
+      ];
+    }
+  }
+
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
   

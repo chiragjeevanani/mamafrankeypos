@@ -31,6 +31,32 @@ export default function StaffManagement() {
     pin: ''
   });
 
+  // Custom dialog modal state
+  const [dialog, setDialog] = useState(null);
+
+  const showAlert = (message, title = 'Notification', isError = false) => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'alert',
+        title,
+        message,
+        isError,
+        onConfirm: () => resolve(true)
+      });
+    });
+  };
+
+  const showConfirm = (message, title = 'Confirmation Required') => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'confirm',
+        title,
+        message,
+        onConfirm: (val) => resolve(val)
+      });
+    });
+  };
+
   useEffect(() => {
     fetchStaff();
     fetchRoles();
@@ -129,14 +155,17 @@ export default function StaffManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this staff member record?')) {
-      try {
-        setError('');
-        await api.delete(`/staff/${id}`);
-        await fetchStaff();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to delete staff member');
-      }
+    const confirmed = await showConfirm('Are you sure you want to delete this staff member record? This will revoke their login credentials.', 'Terminate Service');
+    if (!confirmed) return;
+
+    try {
+      setError('');
+      await api.delete(`/staff/${id}`);
+      await fetchStaff();
+      showAlert('Staff member removed successfully.', 'Success');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete staff member');
+      showAlert(err.response?.data?.message || 'Failed to delete staff member', 'Deletion Failed', true);
     }
   };
 
@@ -156,19 +185,19 @@ export default function StaffManagement() {
        <div className="flex items-center justify-between">
         <div>
            <div className="flex items-center gap-2.5 mb-1">
-             <Users size={18} className="text-[#E1261C]" />
-             <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">Staff Management</h1>
+              <Users size={18} className="text-[#E1261C]" />
+              <h1 className="text-xl font-black uppercase tracking-tight text-stone-800">Staff Management</h1>
            </div>
            <p className="text-xs text-stone-400 font-semibold">Manage your kitchen team, floor staff, and management access</p>
         </div>
          <div className="flex items-center gap-2">
             <button 
               onClick={() => { playClickSound(); navigate('/admin/staff/roles'); }}
-              className="h-10 px-4 bg-white text-stone-500 rounded-xl text-[11px] font-bold uppercase tracking-wider hover:text-stone-800 transition-all border border-stone-200 shadow-sm"
+              className="h-10 px-4 bg-white text-stone-500 rounded-xl text-[11px] font-bold uppercase tracking-wider hover:text-stone-800 transition-all border border-stone-200 shadow-sm cursor-pointer"
             >Roles Setup</button>
             <button 
               onClick={() => { playClickSound(); handleOpenModal(); }}
-              className="h-10 px-4 bg-[#E1261C] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-[0.98] transition-all"
+              className="h-10 px-4 bg-[#E1261C] text-white rounded-xl text-[11px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-[0.98] transition-all cursor-pointer"
             >
                <UserPlus size={14} />
                Add Member
@@ -203,7 +232,7 @@ export default function StaffManagement() {
                <Shield size={48} />
             </div>
             <ShieldCheck size={22} className="text-amber-400 mb-3" />
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#999]">Access Gate</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#999]">Terminal Access</h3>
             <p className="text-lg font-black mt-1">SECURE</p>
             <p className="text-[9px] font-semibold text-[#666] uppercase mt-2">All terminals active</p>
          </div>
@@ -273,17 +302,17 @@ export default function StaffManagement() {
                 <div className="grid grid-cols-2 gap-2 mt-5">
                    <button 
                      onClick={() => { playClickSound(); handleOpenModal(member); }}
-                     className="py-2.5 bg-stone-800 text-white text-[10px] font-bold uppercase tracking-wider rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+                     className="py-2.5 bg-stone-800 text-white text-[10px] font-bold uppercase tracking-wider rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] cursor-pointer"
                    >
                       <Edit3 size={12} />
                       Edit Profile
                    </button>
                    <button 
                      onClick={() => { playClickSound(); handleDelete(member._id); }}
-                     className="py-2.5 bg-white text-stone-400 text-[10px] font-bold uppercase tracking-wider rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-stone-200 hover:border-rose-100 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+                     className="py-2.5 bg-white text-stone-400 text-[10px] font-bold uppercase tracking-wider rounded-xl hover:bg-rose-50 hover:text-rose-500 transition-all border border-stone-200 hover:border-rose-100 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] cursor-pointer"
                    >
                       <Trash2 size={12} />
-                      Terminate
+                      Delete
                    </button>
                 </div>
             </div>
@@ -314,12 +343,12 @@ export default function StaffManagement() {
                       </div>
                       <div>
                          <h3 className="text-[13px] font-black uppercase tracking-tight text-white">
-                            {editingMember ? 'Update Staff Member' : 'New Staff Onboarding'}
+                            {editingMember ? 'Update Staff Member' : 'Add New Staff Member'}
                          </h3>
-                         <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">Staff Management Access</p>
+                         <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">Staff Account Details</p>
                       </div>
                    </div>
-                   <button onClick={() => { playClickSound(); setIsModalOpen(false); }} className="p-2 text-stone-500 hover:text-white transition-colors"><X size={18} /></button>
+                   <button onClick={() => { playClickSound(); setIsModalOpen(false); }} className="p-2 text-stone-500 hover:text-white transition-colors cursor-pointer"><X size={18} /></button>
                 </div>
 
                <form onSubmit={handleSave} className="p-6 space-y-5">
@@ -369,14 +398,14 @@ export default function StaffManagement() {
                      </div>
 
                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Duty Status</label>
+                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Status</label>
                         <select 
                            className="w-full bg-stone-50 border border-stone-200 px-3 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
                            value={formData.status}
                            onChange={(e) => setFormData({...formData, status: e.target.value})}
                         >
-                           <option value="Active">Active Service</option>
-                           <option value="Inactive">Terminated / Off Duty</option>
+                           <option value="Active">Active</option>
+                           <option value="Inactive">Inactive</option>
                         </select>
                      </div>
 
@@ -405,7 +434,7 @@ export default function StaffManagement() {
                      </div>
 
                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Security Key (Password)</label>
+                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Password</label>
                         <input 
                            type="password" 
                            className="w-full bg-stone-50 border border-stone-200 px-4 py-2.5 text-[12px] font-bold text-stone-800 rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/20 focus:border-[#E1261C] transition-all"
@@ -417,7 +446,7 @@ export default function StaffManagement() {
                      </div>
 
                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">Access PIN (4 Digits)</label>
+                        <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider ml-1">POS PIN (4 Digits)</label>
                         <input 
                            type="text" 
                            maxLength="4"
@@ -434,19 +463,72 @@ export default function StaffManagement() {
                       <button 
                          type="button"
                          onClick={() => { playClickSound(); setIsModalOpen(false); }}
-                         className="flex-1 py-3 bg-white border border-stone-200 text-stone-500 text-[11px] font-bold uppercase tracking-wider rounded-xl hover:text-stone-800 hover:bg-stone-50 transition-all shadow-sm active:scale-[0.98]"
+                         className="flex-1 py-3 bg-white border border-stone-200 text-stone-500 text-[11px] font-bold uppercase tracking-wider rounded-xl hover:text-stone-800 hover:bg-stone-50 transition-all shadow-sm cursor-pointer"
                       >Cancel</button>
                       <button 
                          type="submit"
                          onClick={playClickSound}
                          disabled={isSaving}
-                         className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:bg-[#4E342E]"
+                         className="flex-1 py-3 bg-[#E1261C] text-white text-[11px] font-bold uppercase tracking-wider rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 transition-all active:scale-[0.98] hover:bg-[#4E342E] cursor-pointer"
                       >
                          <Save size={14} />
-                         {isSaving ? 'Saving...' : (editingMember ? 'Update Staff Member' : 'Onboard Member')}
+                         {isSaving ? 'Saving...' : (editingMember ? 'Update Staff Member' : 'Add Staff Member')}
                       </button>
                    </div>
                </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Styled React custom dialog overlay */}
+      <AnimatePresence>
+        {dialog && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDialog(null)}
+              className="absolute inset-0 bg-[#1e1e1e]/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden flex flex-col p-6 border border-stone-200"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${dialog.isError ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                  <AlertCircle size={16} />
+                </div>
+                <h3 className="text-sm font-extrabold uppercase text-stone-900">{dialog.title || 'Notification'}</h3>
+              </div>
+              
+              <p className="text-xs text-stone-600 font-bold mb-6 uppercase tracking-wider leading-relaxed">{dialog.message}</p>
+              
+              <div className="flex items-center gap-3 justify-end">
+                {dialog.type === 'confirm' && (
+                  <button
+                    onClick={() => {
+                      dialog.onConfirm(false);
+                      setDialog(null);
+                    }}
+                    className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    dialog.onConfirm(true);
+                    setDialog(null);
+                  }}
+                  className="px-4 py-2.5 bg-[#E1261C] hover:bg-[#c81e17] text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Confirm
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

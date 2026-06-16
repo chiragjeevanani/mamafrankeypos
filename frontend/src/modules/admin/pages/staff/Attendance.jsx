@@ -41,7 +41,7 @@ export default function Attendance() {
       setRecords(data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to sync attendance pulse');
+      setError('Failed to load attendance records');
       setLoading(false);
     }
   };
@@ -92,7 +92,7 @@ export default function Attendance() {
       }
       setIsModalOpen(false);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to commit shift override');
+      setFormError(err.response?.data?.message || 'Failed to save attendance updates');
     }
   };
 
@@ -105,19 +105,19 @@ export default function Attendance() {
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500 overflow-y-auto no-scrollbar max-h-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 underline decoration-transparent">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-stone-800 tracking-tight uppercase">Attendance Pulse</h1>
-          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mt-1">Real-Time Personnel Shift Synchronization</p>
+          <h1 className="text-2xl font-black text-stone-800 tracking-tight uppercase">Staff Attendance</h1>
+          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mt-1">Real-time shift log and status overrides</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="h-10 px-4 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-emerald-100 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            {records.filter(r => r.status === 'In').length} UNITS ACTIVE
+            {records.filter(r => r.status === 'In').length} ACTIVE STAFF
           </div>
           <button 
             onClick={() => { playClickSound(); fetchAttendance(selectedDate); }}
-            className="h-10 w-10 bg-white border border-stone-200 text-stone-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-stone-50 active:scale-95 transition-all"
+            className="h-10 w-10 bg-white border border-stone-200 text-stone-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-stone-50 active:scale-95 transition-all cursor-pointer animate-in"
           >
             <Clock size={16} />
           </button>
@@ -129,7 +129,7 @@ export default function Attendance() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#E1261C] transition-colors" size={16} />
           <input 
             type="text" 
-            placeholder="FILTER ACTIVE PERSONNEL..."
+            placeholder="Filter staff members..."
             className="w-full bg-stone-50 border-stone-100 rounded-xl py-3 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/10 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -138,7 +138,7 @@ export default function Attendance() {
         <div className="flex items-center">
           <input 
             type="date"
-            className="bg-stone-50 border border-stone-200 rounded-xl py-3 px-4 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/10"
+            className="bg-stone-50 border border-stone-200 rounded-xl py-3 px-4 text-[11px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/10 cursor-pointer"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
@@ -156,11 +156,11 @@ export default function Attendance() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-stone-50/50 border-b border-stone-100">
-              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Personnel Node</th>
-              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Inbound Signal</th>
-              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Outbound Signal</th>
-              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Terminal Origin</th>
-              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest text-right">Status Protocol</th>
+              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Staff Member</th>
+              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Check-In Time</th>
+              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Check-Out Time</th>
+              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">Terminal</th>
+              <th className="px-6 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest text-right">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-50">
@@ -169,14 +169,14 @@ export default function Attendance() {
                 <td colSpan="5" className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-8 h-8 border-4 border-stone-100 border-t-[#E1261C] rounded-full animate-spin" />
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Syncing Shift Nodes...</span>
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Syncing Attendance Logs...</span>
                   </div>
                 </td>
               </tr>
             ) : filteredRecords.length === 0 ? (
               <tr>
                 <td colSpan="5" className="px-6 py-20 text-center">
-                  <span className="text-[10px] font-bold text-stone-300 uppercase tracking-widest">No active shift signals detected</span>
+                  <span className="text-[10px] font-bold text-stone-300 uppercase tracking-widest">No attendance records found</span>
                 </td>
               </tr>
             ) : filteredRecords.map((record) => (
@@ -212,10 +212,10 @@ export default function Attendance() {
                   <div className="flex items-center justify-end gap-3">
                     <button 
                       onClick={() => { playClickSound(); handleOpenModal(record); }}
-                      className="p-2 opacity-0 group-hover:opacity-100 hover:bg-stone-100 text-stone-400 hover:text-stone-900 rounded-lg transition-all border border-transparent hover:border-stone-200"
+                      className="p-2 opacity-0 group-hover:opacity-100 hover:bg-stone-100 text-stone-400 hover:text-stone-900 rounded-lg transition-all border border-transparent hover:border-stone-200 cursor-pointer"
                     ><Edit2 size={14} /></button>
                     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${record.status === 'In' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-stone-50 text-stone-400 border border-stone-100'}`}>
-                      {record.status === 'In' ? 'Shift Active' : 'Shift Ended'}
+                      {record.status === 'In' ? 'On Duty' : 'Off Duty'}
                     </span>
                   </div>
                 </td>
@@ -244,9 +244,9 @@ export default function Attendance() {
                 <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#2C2C2C]">
                    <div className="flex items-center gap-3 text-white">
                       <Clock size={16} className="text-[#E1261C]" />
-                      <h3 className="text-[11px] font-black uppercase tracking-widest">Shift Override Protocol</h3>
+                      <h3 className="text-[11px] font-black uppercase tracking-widest">Edit Attendance Record</h3>
                    </div>
-                   <button onClick={() => setIsModalOpen(false)} className="text-stone-500 hover:text-white transition-colors"><X size={18} /></button>
+                   <button onClick={() => setIsModalOpen(false)} className="text-stone-500 hover:text-white transition-colors cursor-pointer"><X size={18} /></button>
                 </div>
 
                 <form onSubmit={handleSave} className="p-8 space-y-6">
@@ -258,7 +258,7 @@ export default function Attendance() {
                   )}
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Personnel Name</label>
+                      <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Staff Name</label>
                       <input 
                         type="text" 
                         readOnly
@@ -280,12 +280,12 @@ export default function Attendance() {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Status</label>
                         <select 
-                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/10"
+                          className="w-full bg-stone-50 border border-stone-200 p-4 text-[13px] font-black uppercase rounded-xl outline-none focus:ring-2 focus:ring-[#E1261C]/10 cursor-pointer"
                           value={formData.status}
                           onChange={(e) => setFormData({...formData, status: e.target.value})}
                         >
-                          <option value="In">Shift Active</option>
-                          <option value="Out">Shift Ended</option>
+                          <option value="In">On Duty</option>
+                          <option value="Out">Off Duty</option>
                         </select>
                       </div>
                     </div>
@@ -315,12 +315,12 @@ export default function Attendance() {
                     <button 
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="flex-1 py-3.5 bg-white border border-stone-200 text-stone-500 text-[11px] font-black uppercase tracking-widest rounded-xl hover:text-stone-800 transition-all"
-                    >Abort</button>
+                      className="flex-1 py-3.5 bg-white border border-stone-200 text-stone-500 text-[11px] font-black uppercase tracking-widest rounded-xl hover:text-stone-800 transition-all cursor-pointer"
+                    >Cancel</button>
                     <button 
                       type="submit"
-                      className="flex-1 py-3.5 bg-[#E1261C] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-stone-900/10 hover:bg-black transition-all"
-                    >Commit Override</button>
+                      className="flex-1 py-3.5 bg-[#E1261C] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-stone-900/10 hover:bg-black transition-all cursor-pointer"
+                    >Save Changes</button>
                   </div>
                 </form>
             </motion.div>

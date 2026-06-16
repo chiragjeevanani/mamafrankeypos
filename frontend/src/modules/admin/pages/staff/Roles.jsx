@@ -12,6 +12,32 @@ export default function Roles() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
 
+  // Custom dialog modal state
+  const [dialog, setDialog] = useState(null);
+
+  const showAlert = (message, title = 'Notification', isError = false) => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'alert',
+        title,
+        message,
+        isError,
+        onConfirm: () => resolve(true)
+      });
+    });
+  };
+
+  const showConfirm = (message, title = 'Confirmation Required') => {
+    return new Promise((resolve) => {
+      setDialog({
+        type: 'confirm',
+        title,
+        message,
+        onConfirm: (val) => resolve(val)
+      });
+    });
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -41,7 +67,7 @@ export default function Roles() {
       setRoles(data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch security matrices');
+      setError('Failed to fetch role definitions');
       setLoading(false);
     }
   };
@@ -112,13 +138,16 @@ export default function Roles() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('PROTOCOL: Proceed with security matrix deletion? This will impact all personnel assigned to this layer.')) {
-      try {
-        await api.delete(`/roles/${id}`);
-        fetchRoles();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to delete role');
-      }
+    const confirmed = await showConfirm('Are you sure you want to delete this role? This will impact all staff assigned to this role.', 'Delete Role');
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/roles/${id}`);
+      fetchRoles();
+      showAlert('Role deleted successfully.', 'Success');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete role');
+      showAlert(err.response?.data?.message || 'Failed to delete role', 'Deletion Failed', true);
     }
   };
 
@@ -150,17 +179,17 @@ export default function Roles() {
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-500 overflow-y-auto no-scrollbar max-h-full">
-      <div className="flex items-center justify-between underline decoration-transparent">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-stone-800 tracking-tight uppercase">Security Matrices</h1>
-          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mt-1">Permission Architectures & Access Shields</p>
+          <h1 className="text-2xl font-black text-stone-800 tracking-tight uppercase">Staff Roles</h1>
+          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] mt-1">Manage roles and permissions</p>
         </div>
         <button 
           onClick={() => { playClickSound(); handleOpenModal(); }}
-          className="h-10 px-6 bg-[#E1261C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-95 transition-all outline-none"
+          className="h-10 px-6 bg-[#E1261C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-stone-900/10 active:scale-95 transition-all outline-none cursor-pointer"
         >
           <Plus size={14} />
-          Define New Role
+          Add New Role
         </button>
       </div>
 
@@ -174,8 +203,8 @@ export default function Roles() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {loading ? (
           <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4">
-             <div className="w-8 h-8 border-4 border-stone-100 border-t-[#E1261C] rounded-full animate-spin" />
-             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Scanning Security Layers...</p>
+              <div className="w-8 h-8 border-4 border-stone-100 border-t-[#E1261C] rounded-full animate-spin" />
+              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Loading Roles...</p>
           </div>
         ) : roles.length === 0 ? (
           <div className="col-span-full py-20 text-center text-stone-400 font-bold uppercase tracking-widest text-[10px]">
@@ -186,12 +215,12 @@ export default function Roles() {
             <div className="absolute top-0 right-0 p-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
               <button 
                 onClick={() => { playClickSound(); handleOpenModal(role); }}
-                className="p-2 hover:bg-stone-50 text-stone-400 hover:text-stone-900 rounded-lg transition-all outline-none border border-transparent hover:border-stone-100"
+                className="p-2 hover:bg-stone-50 text-stone-400 hover:text-stone-900 rounded-lg transition-all outline-none border border-transparent hover:border-stone-100 cursor-pointer"
               ><Edit2 size={14} /></button>
               {!role.isSystemRole && (
                 <button 
                   onClick={() => { playClickSound(); handleDelete(role._id); }}
-                  className="p-2 hover:bg-rose-50 text-stone-400 hover:text-rose-600 rounded-lg transition-all outline-none border border-transparent hover:border-rose-100"
+                  className="p-2 hover:bg-rose-50 text-stone-400 hover:text-rose-600 rounded-lg transition-all outline-none border border-transparent hover:border-stone-100 cursor-pointer"
                 ><Trash2 size={14} /></button>
               )}
             </div>
@@ -202,7 +231,7 @@ export default function Roles() {
                </div>
                <div>
                   <h4 className="text-sm font-black text-stone-800 uppercase tracking-tight leading-none mb-1">{role.name}</h4>
-                  <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">{role.isSystemRole ? 'System Integrity Layer' : 'Custom Defined Layer'}</p>
+                  <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">{role.isSystemRole ? 'System Role' : 'Custom Role'}</p>
                </div>
             </div>
             
@@ -222,9 +251,9 @@ export default function Roles() {
 
             <button 
               onClick={() => { playClickSound(); handleOpenModal(role); }}
-              className="w-full py-2.5 bg-stone-50 text-stone-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-stone-900 hover:text-white transition-all outline-none border border-stone-100"
+              className="w-full py-2.5 bg-stone-50 text-stone-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-stone-900 hover:text-white transition-all outline-none border border-stone-100 cursor-pointer"
             >
-              Modify Security Matrix
+              Edit Role & Permissions
             </button>
           </div>
         ))}
@@ -253,12 +282,12 @@ export default function Roles() {
                       </div>
                       <div>
                          <h3 className="text-[13px] font-black uppercase tracking-tight text-white">
-                            {editingRole ? 'Configure Security Matrix' : 'Initialize New Access Layer'}
+                            {editingRole ? 'Edit Role' : 'Create New Role'}
                          </h3>
-                         <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">Authorization Protocol v4.0</p>
+                         <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">Role Permissions</p>
                       </div>
                    </div>
-                   <button onClick={() => { playClickSound(); setIsModalOpen(false); }} className="p-2 text-stone-500 hover:text-white transition-colors"><X size={18} /></button>
+                   <button onClick={() => { playClickSound(); setIsModalOpen(false); }} className="p-2 text-stone-500 hover:text-white transition-colors cursor-pointer"><X size={18} /></button>
                 </div>
 
                 <form onSubmit={handleSave} className="flex flex-col h-[70vh]">
@@ -271,7 +300,7 @@ export default function Roles() {
                     )}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Role Designation</label>
+                        <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Role Name</label>
                         <input 
                           type="text" 
                           required
@@ -324,18 +353,71 @@ export default function Roles() {
                     <button 
                       type="button"
                       onClick={() => { playClickSound(); setIsModalOpen(false); }}
-                      className="flex-1 py-3.5 bg-white border border-stone-200 text-stone-500 text-[11px] font-black uppercase tracking-widest rounded-xl hover:text-stone-800 transition-all shadow-sm"
-                    >Abort Configuration</button>
+                      className="flex-1 py-3.5 bg-white border border-stone-200 text-stone-500 text-[11px] font-black uppercase tracking-widest rounded-xl hover:text-stone-800 transition-all shadow-sm cursor-pointer"
+                    >Cancel</button>
                     <button 
                       type="submit"
                       onClick={playClickSound}
-                      className="flex-1 py-3.5 bg-[#E1261C] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-black"
+                      className="flex-1 py-3.5 bg-[#E1261C] text-white text-[11px] font-black uppercase tracking-widest rounded-xl shadow-xl shadow-stone-900/15 flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-black cursor-pointer"
                     >
                       <Save size={16} />
-                      Commit Changes
+                      Save Changes
                     </button>
                   </div>
                 </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Styled React custom dialog overlay */}
+      <AnimatePresence>
+        {dialog && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDialog(null)}
+              className="absolute inset-0 bg-[#1e1e1e]/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative overflow-hidden flex flex-col p-6 border border-stone-200"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${dialog.isError ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                  <AlertCircle size={16} />
+                </div>
+                <h3 className="text-sm font-extrabold uppercase text-stone-900">{dialog.title || 'Notification'}</h3>
+              </div>
+              
+              <p className="text-xs text-stone-600 font-bold mb-6 uppercase tracking-wider leading-relaxed">{dialog.message}</p>
+              
+              <div className="flex items-center gap-3 justify-end">
+                {dialog.type === 'confirm' && (
+                  <button
+                    onClick={() => {
+                      dialog.onConfirm(false);
+                      setDialog(null);
+                    }}
+                    className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    dialog.onConfirm(true);
+                    setDialog(null);
+                  }}
+                  className="px-4 py-2.5 bg-[#E1261C] hover:bg-[#c81e17] text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  Confirm
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

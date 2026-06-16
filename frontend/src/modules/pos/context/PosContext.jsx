@@ -916,6 +916,7 @@ export function PosProvider({ children }) {
 
   const updateSection = async (id, sectionData) => {
     try {
+      const oldSection = sections.find(s => s._id === id);
       const { data } = await api.put(`/tables/sections/${id}`, sectionData);
       // Optimistic update: update the matching section in local state
       setSections(prev => prev.map(sec => sec._id === id ? {
@@ -923,6 +924,14 @@ export function PosProvider({ children }) {
         rank: data.rank ?? sec.rank, status: data.status || sec.status,
         type: data.type || sec.type
       } : sec));
+
+      // Sync tables' sectionId if the section name slug changed
+      if (oldSection && oldSection.id !== data.name) {
+        setTables(prev => prev.map(t => t.sectionId === oldSection.id ? {
+          ...t, sectionId: data.name
+        } : t));
+      }
+
       return data;
     } catch (error) {
       console.error("Error updating section:", error);
@@ -932,9 +941,16 @@ export function PosProvider({ children }) {
 
   const deleteSection = async (id) => {
     try {
+      const section = sections.find(s => s._id === id);
       const { data } = await api.delete(`/tables/sections/${id}`);
       // Optimistic update: remove the section from local state
       setSections(prev => prev.filter(sec => sec._id !== id));
+
+      // Remove tables belonging to the deleted section
+      if (section) {
+        setTables(prev => prev.filter(t => t.sectionId !== section.name));
+      }
+
       return data;
     } catch (error) {
       console.error("Error deleting section:", error);

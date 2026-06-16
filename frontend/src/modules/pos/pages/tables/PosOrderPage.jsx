@@ -8,7 +8,6 @@ import {
   Ticket, Wallet, CheckCircle2, ShoppingBag, Truck, X, Check, ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import PosTopNavbar from '../../components/PosTopNavbar';
 import { usePos } from '../../context/PosContext';
 import { printKOTReceipt } from '../../utils/printKOT';
 import { printBillReceipt } from '../../utils/printBill';
@@ -610,8 +609,7 @@ export default function PosOrderPage() {
   };
 
   return (
-    <div className="h-screen bg-[#F4F4F7] flex flex-col font-sans text-gray-800 overflow-hidden">
-      <PosTopNavbar />
+    <div className="h-full bg-[#F4F4F7] flex flex-col font-sans text-gray-800 overflow-hidden">
 
       <div className="flex-1 flex overflow-hidden">
         {/* 1. Categories Sidebar (Left - 12%) */}

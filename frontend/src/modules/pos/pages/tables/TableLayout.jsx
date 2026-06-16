@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layers, LayoutGrid, Monitor, Users } from 'lucide-react';
 import { usePos } from '../../context/PosContext';
 
@@ -11,6 +12,7 @@ const statusClass = {
 };
 
 export default function TableLayout() {
+  const navigate = useNavigate();
   const { tables, sections } = usePos();
   const [selectedZone, setSelectedZone] = useState('all');
 
@@ -33,11 +35,36 @@ export default function TableLayout() {
 
   return (
     <div className="h-full flex flex-col bg-[#F4F4F7] animate-in fade-in duration-500 overflow-hidden">
-      <header className="px-8 py-6 bg-white border-b border-slate-200 shrink-0">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-black uppercase tracking-tight text-slate-900">Table Layout & Occupancy</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Real-time dashboard for table status and service flow</p>
+      <header className="px-8 py-4 bg-white border-b border-slate-200 shrink-0">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
+          <div className="flex items-center gap-6">
+            <h1 className="text-base font-bold text-gray-700 uppercase tracking-tight">Tables</h1>
+            <div className="flex border-b border-transparent">
+              <button 
+                onClick={() => { navigate('/pos/tables'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
+              >
+                Grid View
+              </button>
+              <button 
+                onClick={() => { navigate('/pos/tables/layout'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-[#E1261C] border-b-2 border-[#E1261C] outline-none"
+              >
+                Floor Layout
+              </button>
+              <button 
+                onClick={() => { navigate('/pos/tables/list'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
+              >
+                Registry List
+              </button>
+              <button 
+                onClick={() => { navigate('/pos/tables/reservations'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
+              >
+                Reservations
+              </button>
+            </div>
           </div>
           <div className="flex bg-slate-50 p-1 border border-slate-100 rounded">
             <button

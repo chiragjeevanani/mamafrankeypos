@@ -1,13 +1,40 @@
 import { Calendar, Plus, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Reservations() {
+  const navigate = useNavigate();
   return (
     <div className="h-full flex flex-col bg-[#F8F9FB] animate-in fade-in duration-500 overflow-hidden">
-      <header className="px-8 py-6 bg-white border-b border-slate-200 shrink-0">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-black uppercase tracking-tight text-slate-900">Restaurant Reservations</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Reservation backend is not configured yet</p>
+      <header className="px-8 py-4 bg-white border-b border-slate-200 shrink-0">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-6">
+            <h1 className="text-base font-bold text-gray-700 uppercase tracking-tight">Tables</h1>
+            <div className="flex border-b border-transparent">
+              <button 
+                onClick={() => { navigate('/pos/tables'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
+              >
+                Grid View
+              </button>
+              <button 
+                onClick={() => { navigate('/pos/tables/layout'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
+              >
+                Floor Layout
+              </button>
+              <button 
+                onClick={() => { navigate('/pos/tables/list'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
+              >
+                Registry List
+              </button>
+              <button 
+                onClick={() => { navigate('/pos/tables/reservations'); }} 
+                className="px-3 py-2 text-xs font-black uppercase tracking-wider text-[#E1261C] border-b-2 border-[#E1261C] outline-none"
+              >
+                Reservations
+              </button>
+            </div>
           </div>
           <button
             disabled

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { Calendar, CheckCircle2, Download, Eye, Receipt, RefreshCw, Search } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../../../utils/api';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
@@ -10,10 +11,16 @@ const getItemCount = (order) =>
 
 export default function CompletedOrders() {
   const [orders, setOrders] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamVal = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(searchParamVal);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const lastFetchedAt = useRef(null); // Cache: skip re-fetch if data < 60s old
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
 
   const fetchOrders = async (force = false) => {
     // Skip if we recently fetched and this isn't a forced refresh
@@ -100,7 +107,10 @@ export default function CompletedOrders() {
               placeholder="Search by order, table, payment, or amount..."
               className="w-full bg-slate-50 border border-slate-100 rounded py-2.5 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white transition-all"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setSearchParams(event.target.value ? { search: event.target.value } : {});
+              }}
             />
           </div>
           <button

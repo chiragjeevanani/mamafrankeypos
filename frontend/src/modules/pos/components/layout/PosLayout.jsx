@@ -1,13 +1,12 @@
 import { usePos } from '../../context/PosContext';
 import { Outlet } from 'react-router-dom';
-import PosSidebar from '../navigation/PosSidebar';
 import { useState, useMemo } from 'react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, MoreVertical, X, Plus, Minus } from 'lucide-react';
+import PosTopNavbar from '../PosTopNavbar';
 
 export default function PosLayout() {
-  const { isSidebarOpen, closeSidebar } = usePos();
   const [acceptingOrder, setAcceptingOrder] = useState(null);
   const [deliveryTime, setDeliveryTime] = useState(30);
   const [prepTime, setPrepTime] = useState(0);
@@ -30,17 +29,9 @@ export default function PosLayout() {
 
   return (
     <div className="flex h-screen bg-[#F4F4F7] overflow-hidden relative">
-      {/* Overlay for Sidebar */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/40 z-[90] transition-opacity duration-300"
-          onClick={closeSidebar}
-        />
-      )}
-
-      <PosSidebar isOpen={isSidebarOpen} />
       
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <PosTopNavbar />
         {/* Structural Dropdown Incoming Orders Panel - As per UI Reference */}
         <AnimatePresence>
           {incomingOrders.length > 0 && (

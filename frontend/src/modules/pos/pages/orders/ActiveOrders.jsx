@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Clock, Receipt, RefreshCw, Search, Timer, Utensils } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { usePos } from '../../context/PosContext';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
@@ -20,9 +21,15 @@ const getOrderAge = (order) => {
 export default function ActiveOrders() {
   // Read orders directly from context — already kept fresh by the 15s heartbeat
   const { orders, carOrders, pickupOrders, refreshOrders } = usePos();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamVal = searchParams.get('search') || '';
   const [activeTab, setActiveTab] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParamVal);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
 
   // Merge all active order maps into a flat list
   const allOrders = useMemo(() => {
@@ -105,7 +112,10 @@ export default function ActiveOrders() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setSearchParams(event.target.value ? { search: event.target.value } : {});
+              }}
               placeholder="Search order, table, customer..."
               className="w-full bg-slate-50 border border-slate-100 rounded py-2.5 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white transition-all"
             />

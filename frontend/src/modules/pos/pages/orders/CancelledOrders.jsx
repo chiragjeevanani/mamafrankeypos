@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Eye, RefreshCw, Search, ShieldAlert, XCircle } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../../../utils/api';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
 export default function CancelledOrders() {
   const [orders, setOrders] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamVal = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(searchParamVal);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('search') || '');
+  }, [searchParams]);
 
   const fetchOrders = async () => {
     try {
@@ -66,7 +73,10 @@ export default function CancelledOrders() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setSearchParams(event.target.value ? { search: event.target.value } : {});
+            }}
             placeholder="Search cancelled orders..."
             className="w-full bg-slate-50 border border-slate-100 rounded py-2.5 pl-10 pr-4 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 focus:ring-rose-600 focus:bg-white transition-all"
           />

@@ -390,7 +390,7 @@ export default function DataAdjustmentProtocol() {
                   <select 
                     value={priceRange}
                     onChange={(e) => setPriceRange(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
+                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
                   >
                      <option value="Price Range: Standard">All Bills</option>
                      <option value="Price Range: Premium">High Value (&gt; ₹1000)</option>
@@ -406,7 +406,7 @@ export default function DataAdjustmentProtocol() {
                   <select 
                     value={filters.paymentMode}
                     onChange={(e) => setFilters({...filters, paymentMode: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
+                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
                   >
                      <option value="--All Payment Modes--">--All Payment Modes--</option>
                      <option value="CASH">CASH</option>
@@ -418,7 +418,7 @@ export default function DataAdjustmentProtocol() {
                    <select 
                      value={filters.orderType}
                      onChange={(e) => setFilters({...filters, orderType: e.target.value})}
-                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3"
+                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
                    >
                       <option value="--All Types--">--All Channels--</option>
                       <option value="DINE-IN">DINE-IN</option>
@@ -438,7 +438,7 @@ export default function DataAdjustmentProtocol() {
                   <select 
                      value={filters.itemName}
                      onChange={(e) => setFilters({...filters, itemName: e.target.value})}
-                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 transition-all"
+                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
                   >
                      <option>--Filter by item--</option>
                      {menuItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
@@ -451,7 +451,7 @@ export default function DataAdjustmentProtocol() {
                      placeholder="####" 
                      value={filters.billNo}
                      onChange={(e) => setFilters({...filters, billNo: e.target.value})}
-                     className="w-full bg-slate-50 border border-slate-200 h-9 rounded-md px-3 text-[11px] font-black uppercase" 
+                     className="w-full bg-slate-50 border border-slate-200 h-9 rounded-md px-3 text-[11px] font-black uppercase outline-none focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm" 
                   />
                </div>
             </div>
@@ -466,7 +466,7 @@ export default function DataAdjustmentProtocol() {
                         value={filters.startDate} 
                         max={today}
                         onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                        className="flex-1 bg-white border border-slate-200 h-9 px-3 text-[10px] font-bold uppercase rounded-md outline-none focus:border-[#E1261C]/50" 
+                        className="flex-1 bg-slate-50 border border-slate-200 h-9 px-3 text-[10px] font-bold uppercase rounded-md outline-none focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer" 
                      />
                      <input 
                         type="date" 
@@ -474,7 +474,7 @@ export default function DataAdjustmentProtocol() {
                         min={filters.startDate}
                         max={today}
                         onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                        className="flex-1 bg-white border border-slate-200 h-9 px-3 text-[10px] font-bold uppercase rounded-md outline-none focus:border-[#E1261C]/50" 
+                        className="flex-1 bg-slate-50 border border-slate-200 h-9 px-3 text-[10px] font-bold uppercase rounded-md outline-none focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer" 
                      />
                   </div>
                </div>
@@ -483,14 +483,14 @@ export default function DataAdjustmentProtocol() {
                      <div className="flex gap-2 pt-1 w-full">
                         <button 
                            onClick={() => { playClickSound(); fetchBills(); }}
-                           className="flex-1 h-9 bg-gradient-to-br from-[#E1261C] to-[#C11F17] text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
+                           className="flex-1 h-9 bg-gradient-to-br from-[#E1261C] to-[#C11F17] hover:from-[#f03228] hover:to-[#d1241b] text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 cursor-pointer"
                         >
                            <Search size={14} />
                            SEARCH
                         </button>
                         <button 
                            onClick={() => { playClickSound(); setFilters({ startDate: today, endDate: today, paymentMode: '--All Payment Modes--', orderType: '--All Types--', billNo: '', itemName: '--Filter by item--' }); }}
-                           className="h-9 px-4 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all"
+                           className="h-9 px-4 bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all hover:-translate-y-0.5 cursor-pointer"
                         >
                            RESET
                         </button>
@@ -532,6 +532,11 @@ export default function DataAdjustmentProtocol() {
             </div>
             
             <div className="flex-1 overflow-auto bg-white relative">
+               {loading && (
+                 <div className="sticky top-0 z-20 h-0.5 w-full bg-[#E1261C]/10 overflow-hidden">
+                   <div className="h-full bg-[#E1261C] animate-pulse w-full" />
+                 </div>
+               )}
                <table className="w-full text-left border-collapse min-w-[1200px]">
                   <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100">
                      <tr>
@@ -569,8 +574,33 @@ export default function DataAdjustmentProtocol() {
                            </td>
                            <td className="px-3 py-3 font-bold text-slate-500">{new Date(bill.completedAt).toLocaleString()}</td>
                            <td className="px-3 py-3 text-right font-black text-slate-900">₹{maskedTotal.toFixed(2)}</td>
-                           <td className="px-3 py-3 font-bold uppercase text-slate-500">{bill.paymentMethod || 'N/A'}</td>
-                           <td className="px-3 py-3 font-bold uppercase text-slate-500">{bill.orderType}</td>
+                            <td className="px-3 py-3 font-bold uppercase text-slate-500">
+                              {bill.paymentMethod === 'CASHLESS' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-100 uppercase">
+                                  <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                                  CASHLESS
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black tracking-widest bg-slate-100 text-slate-700 border border-slate-200 uppercase">
+                                  <span className="w-1 h-1 rounded-full bg-slate-400" />
+                                  CASH
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 font-bold uppercase text-slate-500">
+                              {(() => {
+                                const type = bill.orderType?.toUpperCase();
+                                let badgeStyle = 'bg-slate-100 text-slate-700 border-slate-200';
+                                if (type === 'DINE-IN') badgeStyle = 'bg-blue-50 text-blue-700 border-blue-100';
+                                if (type === 'PICKUP') badgeStyle = 'bg-purple-50 text-purple-700 border-purple-100';
+                                if (type === 'CAR-SERVICE') badgeStyle = 'bg-amber-50 text-amber-700 border-amber-100';
+                                return (
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black tracking-wider border ${badgeStyle}`}>
+                                    {type}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                            <td className="px-3 py-3 font-bold uppercase text-slate-600">{bill.waiter?.name || 'SYSTEM'}</td>
                            <td className="px-3 py-3 text-center font-bold text-slate-500">
                               {bill.orderType === 'PICKUP' ? 'PICKUP' : (bill.table?.name || bill.carNumber || 'CAR')}
@@ -597,12 +627,20 @@ export default function DataAdjustmentProtocol() {
                   </tbody>
                </table>
                {records.length === 0 && !loading && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-                    <div className="flex flex-col items-center gap-3">
-                       <HardDrive size={40} className="text-slate-200" />
-                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No matching bills found</span>
-                    </div>
-                 </div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                     <div className="flex flex-col items-center gap-3">
+                        <HardDrive size={40} className="text-slate-200" />
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No matching bills found</span>
+                     </div>
+                  </div>
+               )}
+               {records.length === 0 && loading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                     <div className="flex flex-col items-center gap-3">
+                        <RefreshCw size={36} className="text-[#E1261C] animate-spin" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Loading secure bills...</span>
+                     </div>
+                  </div>
                )}
             </div>
 
@@ -643,23 +681,35 @@ export default function DataAdjustmentProtocol() {
 
             {/* Global Switches */}
             <div className="space-y-4">
-               <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5">
-                     <Hash size={12} className="text-[#E1261C]" />
-                     Reduction Percentage (%)
-                  </label>
-                   <input 
-                      type="number" 
-                      value={decreasePct}
-                      min="0"
-                      max="100"
-                      step="1"
-                      onChange={(e) => {
-                        const val = Math.min(100, Math.max(0, Number(e.target.value)));
-                        setDecreasePct(String(val));
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 h-10 rounded-lg text-center text-sm font-black text-slate-800 focus:border-[#E1261C] transition-all outline-none" 
-                   />
+               <div className="space-y-3 bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300">
+                  <div className="flex items-center gap-1.5">
+                     <span className="text-[10px] font-black text-[#E1261C] tracking-widest uppercase"># Reduction Percentage (%)</span>
+                  </div>
+                  <div className="relative">
+                     <input 
+                        type="number" 
+                        value={decreasePct}
+                        min="0"
+                        max="100"
+                        step="1"
+                        onChange={(e) => {
+                          const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                          setDecreasePct(String(val));
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 h-12 rounded-lg text-center text-lg font-black text-slate-800 focus:border-[#E1261C] focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#E1261C]/10" 
+                     />
+                  </div>
+                  <div className="pt-1">
+                     <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={decreasePct}
+                        onChange={(e) => setDecreasePct(e.target.value)}
+                        className="w-full accent-[#E1261C] h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none"
+                     />
+                  </div>
                </div>
             </div>
 
@@ -704,7 +754,7 @@ export default function DataAdjustmentProtocol() {
                    </div>
                   <button 
                      onClick={addReplacementRule}
-                     className="w-full h-8 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded shadow-md hover:bg-[#E1261C] transition-all flex items-center justify-center gap-2"
+                     className="w-full h-8 bg-slate-900 hover:bg-[#E1261C] text-white text-[9px] font-black uppercase tracking-widest rounded shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                      <Plus size={12} />
                      Add Replacement Rule
@@ -714,20 +764,25 @@ export default function DataAdjustmentProtocol() {
                {/* Active Rules List */}
                <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
                   {itemReplacements.map((rule, i) => (
-                     <div key={i} className="bg-white border border-slate-100 rounded-lg p-2.5 flex items-center justify-between group hover:border-[#E1261C] transition-all relative overflow-hidden">
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-200 group-hover:bg-[#E1261C]" />
-                        <div className="flex flex-col gap-0.5">
-                           <span className="text-[9px] font-black text-slate-800 uppercase truncate max-w-[120px]">{rule.originalItem}</span>
-                           <div className="flex items-center gap-1">
-                              <span className="text-[8px] font-bold text-slate-400 uppercase">➜ {rule.replacedWith}</span>
-                              <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1 rounded">₹{rule.replacedPrice}</span>
+                     <div 
+                        key={i} 
+                        className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between group hover:border-[#E1261C] hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 relative overflow-hidden"
+                     >
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-200 group-hover:bg-[#E1261C] transition-colors" />
+                        <div className="flex flex-col gap-1 pl-1">
+                           <span className="text-[10px] font-extrabold text-slate-800 uppercase truncate max-w-[150px]">{rule.originalItem}</span>
+                           <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] font-black text-[#E1261C] uppercase tracking-wider bg-rose-50 px-1 rounded-sm">REPLACED WITH</span>
+                              <span className="text-[9px] font-bold text-slate-500 uppercase truncate max-w-[100px]">{rule.replacedWith}</span>
+                              <span className="text-[9px] font-black text-emerald-600 bg-emerald-50/80 px-1.5 py-0.2 rounded border border-emerald-100">₹{rule.replacedPrice}</span>
                            </div>
                         </div>
                         <button 
                            onClick={() => removeReplacementRule(i)}
-                           className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
+                           className="p-2 text-slate-400 hover:text-[#E1261C] hover:bg-rose-50 rounded-lg transition-all active:scale-90 cursor-pointer"
+                           title="Delete rule"
                         >
-                           <Trash2 size={14} />
+                           <Trash2 size={13} />
                         </button>
                      </div>
                   ))}
@@ -774,10 +829,8 @@ export default function DataAdjustmentProtocol() {
             </div>
 
             {/* Modal Receipt Body */}
-            <div className="flex-1 overflow-y-auto p-6 bg-slate-50 flex flex-col items-center">
-              <div className="w-full bg-white border border-slate-200 shadow-sm rounded-lg p-6 font-mono text-[11px] text-slate-800 flex flex-col relative">
-                {/* Visual Thermal Receipt Top Border Jagged Effect */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-slate-100 to-transparent" />
+            <div className="flex-1 overflow-y-auto py-8 px-6 bg-slate-100 flex flex-col items-center">
+              <div className="w-full receipt-paper-jagged p-6 font-mono text-[11px] text-slate-800 flex flex-col">
                 
                 {/* Branding */}
                 <div className="text-center mb-4">

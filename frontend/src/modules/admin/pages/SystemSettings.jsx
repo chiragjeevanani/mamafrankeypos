@@ -604,13 +604,10 @@ export default function SystemSettings() {
 
   const settingsGroups = [
     { id: 'general',       label: 'Store Preferences',   icon: Sliders    },
-    { id: 'tables',        label: 'Table Management',    icon: Table      },
-    { id: 'billing',       label: 'Billing Settings',    icon: CreditCard },
-    { id: 'payment',       label: 'Taxation & Billing',  icon: CreditCard },
-    { id: 'printers',      label: 'Printers & KOT',      icon: Printer    },
-    { id: 'security',      label: 'Staff Permissions',   icon: Shield     },
-    { id: 'notifications', label: 'Alert Settings',      icon: Bell       },
-    { id: 'reports',       label: 'Reports & Reset',      icon: BarChart3  },
+    { id: 'tables',        label: 'Table Configuration', icon: Table      },
+    { id: 'billing',       label: 'Counter Series',      icon: Layout     },
+    { id: 'payment',       label: 'Tax Settings',        icon: CreditCard },
+    { id: 'reports',       label: 'Reset & Reports',     icon: BarChart3  },
   ];
 
   const handleCommit = async () => {
@@ -758,55 +755,6 @@ export default function SystemSettings() {
                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose max-w-lg">
                                Caution: Changing currency, symbol, or timezone formats will update receipt printing and dashboard calculations.
                            </p>
-                        </div>
-                     </motion.div>
-                  )}
-
-                  {section === 'security' && (
-                     <motion.div 
-                        key="security"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6"
-                     >
-                        <div className="flex items-center gap-4 mb-8">
-                           <div className="w-12 h-12 bg-slate-50 rounded-sm flex items-center justify-center text-slate-900">
-                              <Lock size={24} />
-                           </div>
-                           <div className="border-b border-slate-100 pb-2">
-                              <h3 className="text-sm font-black uppercase tracking-tight">Access Control</h3>
-                           </div>
-                        </div>
-
-                        <div className="space-y-6">
-                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                 <Shield size={20} className="text-slate-900" />
-                                 <div>
-                                    <h4 className="text-[11px] font-black uppercase tracking-tight">Two-Factor Auth (2FA)</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight">Secondary verification for all admin logins</p>
-                                 </div>
-                              </div>
-                              <button 
-                                onClick={async () => await showAlert('Connecting to multi-factor authentication gateway...', 'Security Setup')}
-                                className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all"
-                              >CONFIGURE</button>
-                           </div>
-
-                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                 <Key size={20} className="text-slate-900" />
-                                 <div>
-                                    <h4 className="text-[11px] font-black uppercase tracking-tight">API Access</h4>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest leading-tight">Management of secure communication tokens</p>
-                                 </div>
-                              </div>
-                              <button 
-                                onClick={async () => await showAlert('Regenerating secure terminal handshaking keys...', 'Security Setup')}
-                                className="px-3 py-1 bg-white border border-slate-200 text-slate-900 text-[8px] font-black uppercase tracking-widest rounded-sm active:scale-95 transition-all"
-                              >MANAGE KEYS</button>
-                           </div>
                         </div>
                      </motion.div>
                   )}
@@ -1513,7 +1461,7 @@ export default function SystemSettings() {
                         <div>
                           <h3 className="text-sm font-black uppercase tracking-tight">📊 Reports & System Reset</h3>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                            Extract business intelligence and manage data integrity
+                            Export sales data, attendance logs, and manage system resets
                           </p>
                         </div>
                       </div>
@@ -1525,7 +1473,7 @@ export default function SystemSettings() {
                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-between">
                              <div className="flex items-center gap-3">
                                 <Database size={16} className="text-slate-400" />
-                                <span className="text-[10px] font-black uppercase tracking-tight">Daily Sales Matrix</span>
+                                <span className="text-[10px] font-black uppercase tracking-tight">Daily Sales Report</span>
                              </div>
                              <button onClick={exportDailySalesCsv} className="text-[9px] font-black text-slate-900 border border-slate-200 px-3 py-1 rounded-sm hover:bg-white transition-all uppercase cursor-pointer">Export CSV</button>
                           </div>
@@ -1547,7 +1495,7 @@ export default function SystemSettings() {
                     </motion.div>
                   )}
 
-                  {(section !== 'general' && section !== 'security' && section !== 'billing' && section !== 'tables' && section !== 'reports') && (
+                  {(section !== 'general' && section !== 'billing' && section !== 'tables' && section !== 'reports' && section !== 'payment') && (
                      <motion.div 
                         key="others"
                         initial={{ opacity: 0 }}
@@ -1555,8 +1503,8 @@ export default function SystemSettings() {
                         className="py-20 text-center space-y-4"
                      >
                         <Database size={48} className="mx-auto text-slate-100" />
-                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300">Module Synchronizing</h3>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Establishing hardware handshakes and registry links</p>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-300">Section Not Found</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">The requested settings section is not configured.</p>
                      </motion.div>
                   )}
                </AnimatePresence>

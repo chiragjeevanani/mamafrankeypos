@@ -383,7 +383,7 @@ export default function DataAdjustmentProtocol() {
       <div className="bg-white p-6 border-b border-slate-200 shadow-sm">
          <div className="grid grid-cols-4 gap-x-8 gap-y-6">
             
-            {/* Column 1: Bill Value Filter */}
+            {/* Column 1: Bill Value & Order Channel */}
             <div className="space-y-4">
                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Filter by Bill Value</label>
@@ -395,22 +395,6 @@ export default function DataAdjustmentProtocol() {
                      <option value="Price Range: Standard">All Bills</option>
                      <option value="Price Range: Premium">High Value (&gt; ₹1000)</option>
                      <option value="Price Range: Economy">Low Value (&lt; ₹300)</option>
-                  </select>
-               </div>
-            </div>
-
-            {/* Column 2: Payment & Order Channel */}
-            <div className="space-y-4">
-               <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Payment Mode</label>
-                  <select 
-                    value={filters.paymentMode}
-                    onChange={(e) => setFilters({...filters, paymentMode: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
-                  >
-                     <option value="--All Payment Modes--">--All Payment Modes--</option>
-                     <option value="CASH">CASH</option>
-                     <option value="CASHLESS">CASHLESS</option>
                   </select>
                </div>
                <div className="space-y-1.5">
@@ -431,8 +415,20 @@ export default function DataAdjustmentProtocol() {
                 </div>
             </div>
 
-            {/* Column 3: Item Search */}
+            {/* Column 2: Payment Mode & Filter by Item */}
             <div className="space-y-4">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Payment Mode</label>
+                  <select 
+                    value={filters.paymentMode}
+                    onChange={(e) => setFilters({...filters, paymentMode: e.target.value})}
+                    className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
+                  >
+                     <option value="--All Payment Modes--">--All Payment Modes--</option>
+                     <option value="CASH">CASH</option>
+                     <option value="CASHLESS">CASHLESS</option>
+                  </select>
+               </div>
                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Filter by Item</label>
                   <select 
@@ -444,6 +440,10 @@ export default function DataAdjustmentProtocol() {
                      {menuItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
                   </select>
                </div>
+            </div>
+
+            {/* Column 3: Bill No & Date Range */}
+            <div className="space-y-4">
                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Bill No Search</label>
                   <input 
@@ -454,10 +454,6 @@ export default function DataAdjustmentProtocol() {
                      className="w-full bg-slate-50 border border-slate-200 h-9 rounded-md px-3 text-[11px] font-black uppercase outline-none focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm" 
                   />
                </div>
-            </div>
-
-            {/* Column 4: Date & Actions */}
-            <div className="space-y-4 flex flex-col pl-8 border-l border-slate-100">
                <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date Range</label>
                   <div className="flex gap-2">
@@ -478,24 +474,28 @@ export default function DataAdjustmentProtocol() {
                      />
                   </div>
                </div>
-               <div className="flex-1 flex flex-col justify-end">
-                  <div className="flex items-center gap-3">
-                     <div className="flex gap-2 pt-1 w-full">
-                        <button 
-                           onClick={() => { playClickSound(); fetchBills(); }}
-                           className="flex-1 h-9 bg-gradient-to-br from-[#E1261C] to-[#C11F17] hover:from-[#f03228] hover:to-[#d1241b] text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 cursor-pointer"
-                        >
-                           <Search size={14} />
-                           SEARCH
-                        </button>
-                        <button 
-                           onClick={() => { playClickSound(); setFilters({ startDate: today, endDate: today, paymentMode: '--All Payment Modes--', orderType: '--All Types--', billNo: '', itemName: '--Filter by item--' }); }}
-                           className="h-9 px-4 bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all hover:-translate-y-0.5 cursor-pointer"
-                        >
-                           RESET
-                        </button>
-                     </div>
-                  </div>
+            </div>
+
+            {/* Column 4: Date & Actions */}
+            <div className="space-y-4 flex flex-col pl-8 border-l border-slate-100">
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-transparent select-none tracking-wider pointer-events-none">Search Action</label>
+                  <button 
+                     onClick={() => { playClickSound(); fetchBills(); }}
+                     className="w-full h-9 bg-gradient-to-br from-[#E1261C] to-[#C11F17] hover:from-[#f03228] hover:to-[#d1241b] text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 cursor-pointer"
+                  >
+                     <Search size={14} />
+                     SEARCH
+                  </button>
+               </div>
+               <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-transparent select-none tracking-wider pointer-events-none">Reset Action</label>
+                  <button 
+                     onClick={() => { playClickSound(); setFilters({ startDate: today, endDate: today, paymentMode: '--All Payment Modes--', orderType: '--All Types--', billNo: '', itemName: '--Filter by item--' }); }}
+                     className="w-full h-9 bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-md active:scale-95 transition-all hover:-translate-y-0.5 cursor-pointer"
+                  >
+                     RESET
+                  </button>
                </div>
             </div>
 

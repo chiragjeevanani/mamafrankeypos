@@ -137,9 +137,6 @@ const maskOrder = (order, rules) => {
           .filter(r => r.qty > 0)
           .reduce((s, r) => s + r.price * r.qty, 0);
 
-        // Target reached — stop
-        if (runningSubtotal <= targetSubtotal) break;
-
         // Pick the cheapest item that still has units (qty > 0)
         const available = activeItems.filter(r => r.qty > 0);
         if (available.length === 0) break;
@@ -150,7 +147,21 @@ const maskOrder = (order, rules) => {
             ? a.price - b.price
             : (b.price * b.qty) - (a.price * a.qty)
         );
+
+        const cheapestItemPrice = available[0].price;
+        const nextSubtotal = runningSubtotal - cheapestItemPrice;
+
+        // Stop if removing the unit overshoots the target such that the current subtotal
+        // is closer to the target than the next subtotal would be
+        if (Math.abs(runningSubtotal - targetSubtotal) < Math.abs(nextSubtotal - targetSubtotal)) {
+          break;
+        }
+
         available[0].qty -= 1;
+
+        if (nextSubtotal <= targetSubtotal) {
+          break;
+        }
       }
     }
 

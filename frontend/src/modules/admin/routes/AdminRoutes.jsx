@@ -9,7 +9,6 @@ import OrderManagement from '../pages/OrderManagement';
 import SystemSettings from '../pages/SystemSettings';
 import AuditLogs from '../pages/AuditLogs';
 import AnalyticsDashboard from '../pages/AnalyticsDashboard';
-import CustomerManagement from '../pages/CustomerManagement';
 import AdminLoginPage from '../pages/AdminLoginPage';
 import DataVisibility from '../pages/DataVisibility';
 import DataAdjustmentProtocol from '../pages/DataAdjustmentProtocol';
@@ -29,7 +28,6 @@ import Roles from '../pages/staff/Roles';
 import Attendance from '../pages/staff/Attendance';
 
 import SalesReports from '../pages/reports/SalesReports';
-import CustomerReports from '../pages/reports/CustomerReports';
 
 export default function AdminRoutes() {
   return (
@@ -67,10 +65,8 @@ export default function AdminRoutes() {
         
         {/* Reports & Analytics */}
         <Route path="reports/sales" element={<SalesReports />} />
-        <Route path="reports/customers" element={<CustomerReports />} />
         
         {/* Misc & Settings */}
-        <Route path="customers" element={<CustomerManagement />} />
         <Route path="tables" element={<Navigate to="/admin/settings/tables" replace />} />
         <Route path="analytics" element={<AnalyticsDashboard />} />
         <Route path="audit" element={<AuditLogs />} />

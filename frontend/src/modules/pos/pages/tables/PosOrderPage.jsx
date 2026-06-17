@@ -1252,11 +1252,21 @@ export default function PosOrderPage() {
                                     const isSelected = selectedVariants[group._id || group.id] === (opt._id || opt.id);
                                     return (
                                        <button
-                                         key={opt._id || opt.id}
+                                          key={opt._id || opt.id}
                                           type="button"
                                           onClick={() => {
                                              playClickSound();
-                                             setSelectedVariants(prev => ({ ...prev, [group._id || group.id]: (opt._id || opt.id) }));
+                                             setSelectedVariants(prev => {
+                                                const groupId = group._id || group.id;
+                                                const optionId = opt._id || opt.id;
+                                                const next = { ...prev };
+                                                if (next[groupId] === optionId) {
+                                                   delete next[groupId];
+                                                } else {
+                                                   next[groupId] = optionId;
+                                                }
+                                                return next;
+                                             });
                                           }}
                                           className={`group relative p-4 rounded-2xl border-2 transition-all text-left ${
                                              isSelected

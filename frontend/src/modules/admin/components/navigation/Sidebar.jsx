@@ -53,7 +53,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             { label: 'Cancelled Orders', path: '/admin/orders/cancelled' },
           ]
         },
-        { label: 'Customer CRM', path: '/admin/customers', icon: Users },
       ]
     },
     {
@@ -88,7 +87,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           subItems: [
             { label: 'Financials', path: '/admin/finance' },
             { label: 'Sales Reports', path: '/admin/reports/sales' },
-            { label: 'Customer Reports', path: '/admin/reports/customer-reports' },
             { label: 'System Settings', path: '/admin/settings' },
           ]
         },

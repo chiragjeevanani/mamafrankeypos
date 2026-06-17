@@ -575,11 +575,7 @@ export default function PosOrderPage() {
       if (isPickupMode) {
         const finalOrder = orderData || activeOrder;
         if (finalOrder) {
-          let finalPaymentMethod = paymentMode;
-          if (paymentMode === 'Other') {
-            finalPaymentMethod = otherPaymentDetails?.type || 'UPI';
-          }
-          await settleOrder(finalOrder, finalPaymentMethod, {
+          await settleOrder(finalOrder, paymentMode, {
             total,
             taxes: appliedTaxes,
             isPickupOrder: true
@@ -931,164 +927,7 @@ export default function PosOrderPage() {
 
           {/* Bottom Area (Sticky) */}
           <div className="bg-[#424242] shrink-0 flex flex-col relative">
-            {/* Arrow Extender Tab (hidden in pickup mode) */}
-            {!isPickupMode && (
-              <button
-                onClick={() => { playClickSound(); setIsExtraMenuOpen(!isExtraMenuOpen); }}
-                className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#424242] text-white p-1 rounded-t-md border-t border-x border-white/10 hover:brightness-125 transition-all shadow-lg z-20 flex items-center justify-center w-8 h-4"
-              >
-                <ChevronUp size={14} className={`transition-transform duration-300 ${isExtraMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-            )}
 
-            {/* Extra Menu (Summary Panel Revealed by Extender) - hidden in pickup mode */}
-            <AnimatePresence>
-              {!isPickupMode && isExtraMenuOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="bg-[#424242] border-b border-white/10 overflow-hidden z-10"
-                >
-                  <div className="flex flex-col text-white/90 text-[11px] font-bold divide-y divide-white/5 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-                    {/* Sub Total */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Sub Total</span>
-                      <span className="text-gray-300 ml-auto mr-12">{totalItemCount}</span>
-                      <span className="tabular-nums font-black">{subTotal.toFixed(2)}</span>
-                    </div>
-
-                    {/* Discount */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Discount</span>
-                        <button
-                          onClick={() => { playClickSound(); setIsDiscountModalOpen(true); }}
-                          className="text-[#00BCD4] underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
-                        >
-                          More
-                        </button>
-                      </div>
-                      <span className="tabular-nums text-gray-400">({(discount + bogoDiscount).toFixed(2)})</span>
-                    </div>
-
-                    {/* Delivery Charge */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Car Service Charge</span>
-                      <input
-                        type="number"
-                        value={deliveryCharge || ''}
-                        placeholder="0"
-                        onChange={(e) => setDeliveryCharge(e.target.value)}
-                        className="bg-[#555555] border-none rounded w-16 px-2 py-1 text-right text-xs focus:ring-1 focus:ring-[#00BCD4] outline-none font-black tabular-nums"
-                      />
-                    </div>
-
-                    {/* Container Charges */}
-                    <div className="flex items-center justify-between px-4 py-2.5 group">
-                      <div className="flex items-center gap-2">
-                        <Plus size={12} className="text-gray-500 border border-gray-500 rounded-full p-0.5" />
-                        <span className="text-gray-400">Container Charges</span>
-                      </div>
-                      <input
-                        type="number"
-                        value={containerCharge || ''}
-                        placeholder="0"
-                        onChange={(e) => setContainerCharge(e.target.value)}
-                        className="bg-[#555555] border-none rounded w-16 px-2 py-1 text-right text-xs focus:ring-1 focus:ring-[#00BCD4] outline-none font-black tabular-nums"
-                      />
-                    </div>
-
-                    {/* Service Charge */}
-                    <div className="flex items-center justify-between px-4 py-2.5 group">
-                      <div className="flex items-center gap-2">
-                         <div className="rotate-45 text-gray-400"><RefreshCw size={12} strokeWidth={3} /></div>
-                         <span className="text-gray-400">Service Charge</span>
-                      </div>
-                      <input
-                        type="number"
-                        value={serviceCharge || ''}
-                        placeholder="0"
-                        onChange={(e) => setServiceCharge(e.target.value)}
-                        className="bg-[#555555] border-none rounded w-16 px-2 py-1 text-right text-xs focus:ring-1 focus:ring-[#00BCD4] outline-none font-black tabular-nums"
-                      />
-                    </div>
-
-                    {/* Discount */}
-                    {(discount > 0 || activeOrder?.discount?.amount > 0) && (
-                      <div className="flex items-center justify-between px-4 py-2.5 group">
-                        <div className="flex items-center gap-2">
-                           <span className="text-gray-400">Discount</span>
-                           <button
-                             onClick={() => { playClickSound(); setIsDiscountModalOpen(true); }}
-                             className="text-yellow-400 underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
-                           >
-                             Modify
-                           </button>
-                        </div>
-                        <span className="text-red-400 tabular-nums">-{Math.max(discount, activeOrder?.discount?.amount || 0).toFixed(2)}</span>
-                      </div>
-                    )}
-
-                    {/* Tax */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                         <span className="text-gray-400">Tax</span>
-                          <button
-                            onClick={() => { playClickSound(); setIsTaxModalOpen(true); }}
-                            className="text-[#00BCD4] underline underline-offset-2 hover:text-[#E1261C] text-[10px]"
-                          >
-                            More
-                          </button>
-                      </div>
-                      <span className="tabular-nums">{tax.toFixed(2)}</span>
-                    </div>
-
-                    {/* Round Off */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Round Off</span>
-                      <span className="tabular-nums">{roundOff < 0 ? roundOff.toFixed(2) : `+${roundOff.toFixed(2)}`}</span>
-                    </div>
-
-                    {/* Customer Paid */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Customer Paid</span>
-                      <input
-                        type="number"
-                        value={customerPaid || ''}
-                        placeholder="0"
-                        onChange={(e) => setCustomerPaid(e.target.value)}
-                        className="bg-[#555555] border-none rounded w-16 px-2 py-1 text-right text-xs focus:ring-1 focus:ring-[#00BCD4] outline-none font-black tabular-nums"
-                      />
-                    </div>
-
-                    {/* Return to Customer */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Return to Customer</span>
-                      <input
-                        type="number"
-                        value={manualReturnAmount || ''}
-                        placeholder="0.00"
-                        onChange={(e) => setManualReturnAmount(e.target.value)}
-                        className="bg-[#555555] border-none rounded w-16 px-2 py-1 text-right text-xs focus:ring-1 focus:ring-[#2EB886] outline-none font-black tabular-nums text-[#2EB886]"
-                      />
-                    </div>
-
-                    {/* Tip */}
-                    <div className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-gray-400">Tip</span>
-                      <input
-                        type="number"
-                        value={tipAmount || ''}
-                        placeholder="0.00"
-                        onChange={(e) => setTipAmount(e.target.value)}
-                        className="bg-[#555555] border-none rounded w-16 px-2 py-1 text-right text-xs focus:ring-1 focus:ring-[#00BCD4] outline-none font-black tabular-nums text-[#00BCD4]"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* FIXED ROWS (Row 1-3) */}
             <div className="p-2 flex flex-col gap-2">
@@ -1112,28 +951,33 @@ export default function PosOrderPage() {
               )}
 
               {/* Row 2: Payment Methods */}
-              <div className="flex items-center justify-between px-2 py-1 border-y border-white/5">
-                {['Cash', 'Card', 'Due', 'Other', 'Part'].map(method => (
-                  <label key={method} className="flex items-center gap-1.5 cursor-pointer group">
-                     <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
-                        <div className={`w-full h-full rounded-full ${paymentMode === method ? 'bg-white' : 'group-hover:bg-white/10'}`} />
-                     </div>
-                     <input
-                       type="radio"
-                       className="hidden"
-                       name="payment"
-                       value={method}
-                       checked={paymentMode === method}
-                       onChange={() => {
-                         playClickSound();
-                         setPaymentMode(method);
-                         if (method === 'Other') setIsOtherPaymentModalOpen(true);
-                       }}
-                     />
-                     <span className={`font-bold text-[10px] transition-colors ${paymentMode === method ? 'text-white' : 'text-white/60'}`}>{method}</span>
-                  </label>
-                ))}
-              </div>
+              {isPickupMode && (
+                <div className="flex items-center justify-between px-2 py-1 border-y border-white/5">
+                  {[
+                    { id: 'Cash', label: 'Cash' },
+                    { id: 'UPI', label: 'UPI' },
+                    { id: 'CASHLESS', label: 'Cashless' }
+                  ].map(option => (
+                    <label key={option.id} className="flex items-center gap-1.5 cursor-pointer group">
+                       <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 flex items-center justify-center p-0.5">
+                          <div className={`w-full h-full rounded-full ${paymentMode === option.id ? 'bg-white' : 'group-hover:bg-white/10'}`} />
+                       </div>
+                       <input
+                         type="radio"
+                         className="hidden"
+                         name="payment"
+                         value={option.id}
+                         checked={paymentMode === option.id}
+                         onChange={() => {
+                           playClickSound();
+                           setPaymentMode(option.id);
+                         }}
+                       />
+                       <span className={`font-bold text-[10px] transition-colors ${paymentMode === option.id ? 'text-white' : 'text-white/60'}`}>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Always Visible Action Buttons (Row 4) */}

@@ -179,6 +179,28 @@ const getSalesReport = asyncHandler(async (req, res) => {
   result.trends = result.trends || [];
   result.topItems = result.topItems || [];
   result.paymentBreakdown = result.paymentBreakdown || [];
+  if (result.paymentBreakdown.length > 0) {
+    const groupedPayments = {};
+    result.paymentBreakdown.forEach(p => {
+      let method = 'OTHER';
+      const rawMethod = String(p._id || '').toUpperCase();
+      if (rawMethod.startsWith('CASH')) {
+        method = 'CASH';
+      } else if (rawMethod.startsWith('UPI')) {
+        method = 'UPI';
+      } else if (rawMethod.startsWith('CASHLESS')) {
+        method = 'CASHLESS';
+      } else {
+        method = p._id || 'OTHER';
+      }
+      if (!groupedPayments[method]) {
+        groupedPayments[method] = { _id: method, revenue: 0, count: 0 };
+      }
+      groupedPayments[method].revenue += (p.revenue || 0);
+      groupedPayments[method].count += (p.count || 0);
+    });
+    result.paymentBreakdown = Object.values(groupedPayments);
+  }
   result.hourlySales = result.hourlySales || [];
   result.cancellations = result.cancellations || [];
   result.taxSummary = result.taxSummary || [];

@@ -48,7 +48,7 @@ export default function SalesReports() {
       setData(reportRes.data);
       setOptions(prev => ({
         ...prev,
-        waiters: staffRes.data.data || staffRes.data,
+        waiters: (staffRes.data.data || staffRes.data || []).filter(w => w.role?.toLowerCase() === 'waiter'),
         tables: tableRes.data
       }));
       setLoading(false);
@@ -209,7 +209,7 @@ export default function SalesReports() {
         </div>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 bg-white p-4 border border-slate-100 rounded-sm shadow-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 bg-white p-4 border border-slate-100 rounded-sm shadow-sm">
           <div className="space-y-1">
             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
             <input 
@@ -268,17 +268,6 @@ export default function SalesReports() {
             >
               <option value="">All Waiters</option>
               {options.waiters.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Outlet</label>
-            <select 
-              name="outlet"
-              value={filters.outlet}
-              onChange={handleFilterChange}
-              className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
-            >
-              {options.outlets.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
           <div className="flex items-end">
@@ -458,6 +447,7 @@ export default function SalesReports() {
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="revenue"
+                  nameKey="_id"
                 >
                   {maskedPaymentBreakdown.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

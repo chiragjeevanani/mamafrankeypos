@@ -15,7 +15,8 @@ const getSalesReport = asyncHandler(async (req, res) => {
     orderType, 
     waiter, 
     table, 
-    outlet 
+    outlet,
+    biller
   } = req.query;
 
   // 1. Build Match Filter
@@ -76,6 +77,14 @@ const getSalesReport = asyncHandler(async (req, res) => {
   }
 
   if (outlet) matchStage.outlet = outlet;
+
+  if (biller) {
+    if (!mongoose.Types.ObjectId.isValid(biller)) {
+      res.status(400);
+      throw new Error('Invalid Biller ID format');
+    }
+    matchStage.biller = new mongoose.Types.ObjectId(biller);
+  }
 
   // Execute database aggregation pipeline
   const stats = await Order.aggregate([

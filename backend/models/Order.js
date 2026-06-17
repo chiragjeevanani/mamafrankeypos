@@ -138,6 +138,10 @@ const orderSchema = mongoose.Schema(
     },
     billedAt: Date,
     completedAt: Date,
+    biller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Staff',
+    },
     counter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Counter',

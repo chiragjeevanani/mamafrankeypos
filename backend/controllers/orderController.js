@@ -334,6 +334,7 @@ const updateOrder = asyncHandler(async (req, res) => {
       order.paymentStatus = 'PAID';
       order.paymentMethod = req.body.paymentMethod || 'CASH';
       order.completedAt = new Date();
+      order.biller = req.user?._id;
       if (order.table) {
         await Table.findByIdAndUpdate(order.table, { status: 'blank', currentOrder: null });
       }
@@ -547,7 +548,8 @@ const settleOrder = asyncHandler(async (req, res) => {
           totalAmount,
           paymentStatus: 'PAID',
           orderStatus: 'COMPLETED',
-          completedAt: new Date()
+          completedAt: new Date(),
+          biller: req.user?._id
         }
       },
       sessionOptsNew

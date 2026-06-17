@@ -25,6 +25,19 @@ export default function SalesReports() {
     paymentMethod: '',
     orderType: '',
     waiter: '',
+    biller: '',
+    table: '',
+    outlet: ''
+  });
+
+  // Temp Filters for inputs (only applied on Apply click)
+  const [tempFilters, setTempFilters] = useState({
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    paymentMethod: '',
+    orderType: '',
+    waiter: '',
+    biller: '',
     table: '',
     outlet: ''
   });
@@ -32,6 +45,7 @@ export default function SalesReports() {
   // Filter Options (to be fetched)
   const [options, setOptions] = useState({
     waiters: [],
+    billers: [],
     tables: [],
     outlets: ['Main Outlet (Sadar)']
   });
@@ -46,9 +60,11 @@ export default function SalesReports() {
       ]);
 
       setData(reportRes.data);
+      const staffList = staffRes.data.data || staffRes.data || [];
       setOptions(prev => ({
         ...prev,
-        waiters: (staffRes.data.data || staffRes.data || []).filter(w => w.role?.toLowerCase() === 'waiter'),
+        waiters: staffList.filter(w => w.role?.toLowerCase() === 'waiter'),
+        billers: staffList.filter(w => w.role?.toLowerCase() === 'biller'),
         tables: tableRes.data
       }));
       setLoading(false);
@@ -65,7 +81,7 @@ export default function SalesReports() {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setTempFilters(prev => ({ ...prev, [name]: value }));
   };
 
   // Data Masking Memos
@@ -209,13 +225,13 @@ export default function SalesReports() {
         </div>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 bg-white p-4 border border-slate-100 rounded-sm shadow-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 bg-white p-4 border border-slate-100 rounded-sm shadow-sm">
           <div className="space-y-1">
             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
             <input 
               type="date" 
               name="startDate"
-              value={filters.startDate}
+              value={tempFilters.startDate}
               onChange={handleFilterChange}
               className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
             />
@@ -225,7 +241,7 @@ export default function SalesReports() {
             <input 
               type="date" 
               name="endDate"
-              value={filters.endDate}
+              value={tempFilters.endDate}
               onChange={handleFilterChange}
               className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
             />
@@ -234,7 +250,7 @@ export default function SalesReports() {
             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Payment</label>
             <select 
               name="paymentMethod"
-              value={filters.paymentMethod}
+              value={tempFilters.paymentMethod}
               onChange={handleFilterChange}
               className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
             >
@@ -248,7 +264,7 @@ export default function SalesReports() {
             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Type</label>
             <select 
               name="orderType"
-              value={filters.orderType}
+              value={tempFilters.orderType}
               onChange={handleFilterChange}
               className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
             >
@@ -262,7 +278,7 @@ export default function SalesReports() {
             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Waiter</label>
             <select 
               name="waiter"
-              value={filters.waiter}
+              value={tempFilters.waiter}
               onChange={handleFilterChange}
               className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
             >
@@ -270,9 +286,21 @@ export default function SalesReports() {
               {options.waiters.map(w => <option key={w._id} value={w._id}>{w.name}</option>)}
             </select>
           </div>
+          <div className="space-y-1">
+            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Biller</label>
+            <select 
+              name="biller"
+              value={tempFilters.biller}
+              onChange={handleFilterChange}
+              className="w-full h-8 px-2 border border-slate-200 rounded-sm text-[10px] font-bold outline-none focus:border-slate-900 transition-all"
+            >
+              <option value="">All Billers</option>
+              {options.billers.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+            </select>
+          </div>
           <div className="flex items-end">
             <button 
-              onClick={fetchData}
+              onClick={() => setFilters({ ...tempFilters })}
               className="w-full h-8 bg-slate-100 text-slate-900 rounded-sm text-[9px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
             >
               Apply

@@ -19,28 +19,31 @@ const runVerification = async () => {
     console.log('Cleaning up existing test staff...');
     const staffRes = await axios.get(`${API_URL}/staff`, authHeader);
     const staffList = staffRes.data.data || staffRes.data;
+    console.log('Fetched staff list:', JSON.stringify(staffList, null, 2));
     for (const s of staffList) {
-      if (s.name === 'Test Waiter' || s.name === 'Test Biller') {
+      if (s.name === 'Test Waiter' || s.name === 'Test Biller' || s.email === 'testwaiter@mamafrankey.com' || s.email === 'testbiller@mamafrankey.com') {
         await axios.delete(`${API_URL}/staff/${s._id}`, authHeader);
       }
     }
 
     // Create Test Waiter
-    console.log('2. Creating Test Waiter with PIN 9991...');
+    const waiterEmail = `testwaiter_${Date.now()}@mamafrankey.com`;
+    console.log(`2. Creating Test Waiter with PIN 9991 and email ${waiterEmail}...`);
     await axios.post(`${API_URL}/staff`, {
       name: 'Test Waiter',
       role: 'Waiter',
-      email: 'testwaiter@mamafrankey.com',
+      email: waiterEmail,
       pin: '9991'
     }, authHeader);
     console.log('✅ Test Waiter created');
 
     // Create Test Biller
-    console.log('3. Creating Test Biller with PIN 9992...');
+    const billerEmail = `testbiller_${Date.now()}@mamafrankey.com`;
+    console.log(`3. Creating Test Biller with PIN 9992 and email ${billerEmail}...`);
     await axios.post(`${API_URL}/staff`, {
       name: 'Test Biller',
       role: 'Biller',
-      email: 'testbiller@mamafrankey.com',
+      email: billerEmail,
       pin: '9992'
     }, authHeader);
     console.log('✅ Test Biller created');
@@ -72,7 +75,7 @@ const runVerification = async () => {
     const finalStaffRes = await axios.get(`${API_URL}/staff`, authHeader);
     const finalStaffList = finalStaffRes.data.data || finalStaffRes.data;
     for (const s of finalStaffList) {
-      if (s.name === 'Test Waiter' || s.name === 'Test Biller') {
+      if (s.name === 'Test Waiter' || s.name === 'Test Biller' || s.email === 'testwaiter@mamafrankey.com' || s.email === 'testbiller@mamafrankey.com') {
         await axios.delete(`${API_URL}/staff/${s._id}`, authHeader);
       }
     }

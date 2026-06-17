@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Search, Plus, Minus, Trash2, Receipt, ArrowLeft,
-  ChevronDown, User, Users, Edit3, Bell,
+  ChevronDown, User, Users,
   ChevronUp, Star, Wine, Soup, Apple, Zap, RefreshCw,
   Save, Printer, FileText, Send, PauseCircle, Split,
   Ticket, Wallet, CheckCircle2, ShoppingBag, Truck, X, Check, ClipboardList
@@ -754,16 +754,7 @@ export default function PosOrderPage() {
                 )}
               </div>
             )}
-            {!isPickupMode && (
-              <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-                <Edit3 size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
-              </div>
-            )}
-            {!isPickupMode && (
-              <div onClick={playClickSound} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
-                <Bell size={20} className="text-gray-400 group-hover:text-[#E1261C] transition-colors" />
-              </div>
-            )}
+
             {!isPickupMode && !isCarServiceMode && <div className="flex-1 flex items-center justify-center"></div>}
             {!isPickupMode && !isCarServiceMode && (
               <div className="w-[20%] bg-[#FFD600] flex items-center justify-center font-bold text-sm shadow-inner">{tableInfo.section}</div>
@@ -1199,7 +1190,9 @@ export default function PosOrderPage() {
 
               {/* List */}
               <div className="py-2">
-                {(staff || []).map((waiter) => (
+                {(staff || [])
+                  .filter((s) => s.role?.toLowerCase() === 'waiter')
+                  .map((waiter) => (
                   <button
                     key={waiter.id || waiter._id}
                     onClick={() => { playClickSound(); setSelectedWaiter(waiter); }}

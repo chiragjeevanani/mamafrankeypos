@@ -86,9 +86,6 @@ export default function TableView() {
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementTarget, setSettlementTarget] = useState(null);
   const [showUpiQR, setShowUpiQR] = useState(false);
-  const [showCashlessOptions, setShowCashlessOptions] = useState(false);
-  const [cashlessType, setCashlessType] = useState('Card');
-  const [txnRef, setTxnRef] = useState('');
   const [showCashCalculator, setShowCashCalculator] = useState(false);
   const [cashTendered, setCashTendered] = useState('');
   const [tableNotice, setTableNotice] = useState(null);
@@ -238,25 +235,17 @@ export default function TableView() {
       appliedTaxes: taxesArr.map(t => ({ ...t, base: subTotal - tax })), // STORE TAXES
     });
     setShowUpiQR(false);
-    setShowCashlessOptions(false);
     setShowCashCalculator(false);
     setCashTendered('');
-    setCashlessType('Card');
-    setTxnRef('');
     setSettlementNotice('');
     setShowSettlementModal(true);
   };
 
-  const handleSettlement = async (mode, subType = null) => {
+  const handleSettlement = async (mode) => {
     if (!settlementTarget) return;
 
     if (mode === 'upi' && !showUpiQR) {
       setShowUpiQR(true);
-      return;
-    }
-
-    if (mode === 'cashless' && !showCashlessOptions) {
-      setShowCashlessOptions(true);
       return;
     }
 
@@ -270,17 +259,6 @@ export default function TableView() {
       setSettlementNotice('');
     }
 
-    if (mode === 'cashless') {
-      if (!String(subType || cashlessType || '').trim()) {
-        setSettlementNotice('Select a cashless payment method before settlement.');
-        return;
-      }
-      if (!String(txnRef || '').trim()) {
-        setSettlementNotice('Enter a reference or machine id before confirming cashless settlement.');
-        return;
-      }
-    }
-
     if (mode === 'cash' && Number(cashTendered) < settlementTarget.total) {
       setSettlementNotice('Cash received must be at least equal to the bill total.');
       return;
@@ -289,7 +267,7 @@ export default function TableView() {
     let paymentMethod = 'Cash';
     if (mode === 'upi') paymentMethod = 'UPI';
     else if (mode === 'cashless') {
-      paymentMethod = `Cashless (${subType || cashlessType}${txnRef ? ` - Ref: ${txnRef}` : ''})`;
+      paymentMethod = 'CASHLESS';
     } else if (mode === 'cash' && cashTendered) {
       paymentMethod = `Cash (Tendered: ₹${cashTendered})`;
     }
@@ -304,7 +282,6 @@ export default function TableView() {
       setShowSettlementModal(false);
       setSettlementTarget(null);
       setShowUpiQR(false);
-      setShowCashlessOptions(false);
       setShowCashCalculator(false);
       setSettlementNotice('');
       setTableNotice({ type: 'success', text: `Settlement completed for ${settlementTarget.name}.` });
@@ -1015,7 +992,7 @@ export default function TableView() {
                   </div>
                 )}
 
-                {!showUpiQR && !showCashlessOptions && !showCashCalculator && (
+                {!showUpiQR && !showCashCalculator && (
                   <>
                     {[
                       { id: 'cash', label: 'Cash', icon: Wallet },
@@ -1073,61 +1050,6 @@ export default function TableView() {
                         className="flex-2 py-3 bg-[#E1261C] text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:brightness-110 shadow-lg shadow-red-200"
                       >
                         Verify & Settle
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {showCashlessOptions && (
-                  <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="w-full bg-slate-50 rounded-xl p-4 mb-4 border border-slate-100 flex flex-col items-center">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Total Amount</p>
-                      <h4 className="text-2xl font-black text-slate-900 tracking-tighter">₹{settlementTarget.total}</h4>
-                    </div>
-
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Select Method</p>
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {[
-                        { id: 'Card', icon: CreditCard },
-                        { id: 'Wallet', icon: Smartphone },
-                        { id: 'G-Pay', icon: Smartphone },
-                        { id: 'Other', icon: Info }
-                      ].map(method => (
-                        <button
-                          key={method.id}
-                          onClick={() => setCashlessType(method.id)}
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-all ${cashlessType === method.id ? 'bg-[#E1261C] border-[#E1261C] text-white shadow-md' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'}`}
-                        >
-                          <method.icon size={14} />
-                          <span className="text-[11px] font-black uppercase">{method.id}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="mb-6">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Reference ID / Machine ID</label>
-                      <input 
-                        type="text"
-                        placeholder="E.G. LAST 4 DIGITS"
-                        value={txnRef}
-                        onChange={(e) => setTxnRef(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-[#E1261C]/20"
-                      />
-                    </div>
-
-                    <div className="flex gap-2 w-full">
-                      <button 
-                        onClick={() => setShowCashlessOptions(false)}
-                        className="flex-1 py-3 border border-slate-200 rounded-xl text-[11px] font-black text-slate-500 uppercase tracking-wide hover:bg-slate-50"
-                      >
-                        Back
-                      </button>
-                      <button 
-                        onClick={() => handleSettlement('cashless')}
-                        className="flex-2 py-3 bg-[#E1261C] text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:brightness-110 shadow-lg shadow-red-200 flex items-center justify-center gap-2"
-                      >
-                        <Check size={16} strokeWidth={3} />
-                        Confirm & Settle
                       </button>
                     </div>
                   </div>

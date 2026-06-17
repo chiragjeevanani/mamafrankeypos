@@ -263,7 +263,7 @@ export default function GenerateBill() {
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { method: 'Cash', icon: Banknote },
-                    { method: 'Card', icon: CreditCard },
+                    { method: 'Cashless', icon: CreditCard },
                     { method: 'UPI', icon: Smartphone }
                   ].map((item) => (
                     <button

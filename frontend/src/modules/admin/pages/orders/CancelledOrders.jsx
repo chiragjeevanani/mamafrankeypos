@@ -3,6 +3,7 @@ import { AlertCircle, Download, Eye, RefreshCw, Search, XCircle } from 'lucide-r
 import api from '../../../../utils/api';
 import AdminModal from '../../components/ui/AdminModal';
 import { maskQuantity, maskCurrency, calculateMaskedOrderTotal, getReplacedName } from '../../utils/dataMask';
+import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -190,45 +191,7 @@ export default function CancelledOrders() {
               </div>
             </div>
 
-            <div className="border border-slate-100 rounded-sm p-4 max-h-60 overflow-y-auto bg-slate-50">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Order Items</label>
-              <div className="space-y-2">
-                {viewingOrder.kots.flatMap(k => k.items).map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-0">
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-800 uppercase">{item.name}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-slate-400 font-bold">Qty: {maskQuantity(item.quantity)}</span>
-                      <span className="text-slate-900 font-black">₹{maskCurrency(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-4 border border-slate-100 rounded-sm">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Order Summary</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {maskQuantity(viewingOrder.kots.reduce((acc, k) => acc + k.items.length, 0))} Items
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-bold uppercase">Subtotal</span>
-                  <span className="text-slate-900 font-black">₹{maskCurrency(viewingOrder.subtotal).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-bold uppercase">Taxes</span>
-                  <span className="text-slate-900 font-black">₹{maskCurrency(viewingOrder.totalAmount - viewingOrder.subtotal).toFixed(2)}</span>
-                </div>
-                <div className="pt-2 border-t border-slate-50 flex justify-between text-sm">
-                  <span className="text-slate-900 font-black uppercase">Total</span>
-                  <span className="text-rose-600 font-black">₹{calculateMaskedOrderTotal(viewingOrder).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
+            <OnscreenInvoice order={viewingOrder} />
           </div>
         )}
       </AdminModal>

@@ -7,6 +7,7 @@ import {
 import { usePos } from '../../context/PosContext';
 import api from '../../../../utils/api';
 import { printBillReceipt } from '../../utils/printBill';
+import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
 
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
@@ -227,39 +228,11 @@ export default function GenerateBill() {
               <h3 className="text-xs font-black uppercase tracking-[0.3em]">Select a bill</h3>
             </div>
           ) : (
-            <div className="max-w-md mx-auto space-y-8">
-              <div className="bg-white border border-slate-200 rounded-lg p-8 shadow-2xl shadow-slate-900/5 relative">
-                <div className="text-center mb-8">
-                  <h2 className="text-lg font-extrabold uppercase tracking-tighter text-slate-900">Time To Eat Invoice</h2>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Terminal #01 | {new Date().toLocaleDateString()}</p>
-                </div>
+            <div className="max-w-md mx-auto space-y-6">
+              <OnscreenInvoice order={selectedOrder} storeSettings={storeSettings} />
 
-                <div className="space-y-4 mb-8">
-                  <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Source</span>
-                    <span className="text-[11px] font-black text-slate-900 uppercase">{getDisplayName(selectedOrder)}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-50 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoice</span>
-                    <span className="text-[11px] font-black text-slate-900 uppercase">{selectedOrder.orderNumber}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mb-8">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-600 uppercase">
-                    <span>Items Subtotal</span>
-                    <span>{formatMoney(billSummary.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] font-bold text-slate-600 uppercase">
-                    <span>Tax</span>
-                    <span>{formatMoney(billSummary.tax)}</span>
-                  </div>
-                  <div className="pt-4 border-t-2 border-double border-slate-200 flex justify-between">
-                    <span className="text-base font-extrabold text-slate-900 uppercase tracking-tighter">Amount Due</span>
-                    <span className="text-xl font-extrabold text-blue-600 tracking-tighter">{formatMoney(billSummary.total)}</span>
-                  </div>
-                </div>
-
+              <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-md">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Select Payment Method</div>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { method: 'Cash', icon: Banknote },

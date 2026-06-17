@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, Banknote, Calculator, ChevronRight, CreditCard,
   Printer, Receipt, RefreshCw, Send, Smartphone, Table
@@ -17,35 +18,47 @@ const getItemCount = (order) =>
 const getDisplayName = (order) => order.table?.name || order.carNumber || order.orderType || 'Order';
 
 export default function GenerateBill() {
-  const { user, storeSettings, calculateTaxes, orders, carOrders, pickupOrders, refreshOrders } = usePos();
+  const { user, storeSettings, calculateTaxes, orders, carOrders, pickupOrders, refreshOrders, saveOrder, settleOrder } = usePos();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchVal = searchParams.get('search') || '';
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
 
-  // Derive billed orders from context — already kept fresh by the 15s heartbeat
+  // Derive active orders from context — already kept fresh by the 15s heartbeat
   const orders_list = useMemo(() => {
     const dineIn = Object.values(orders || {});
     const car = Object.values(carOrders || {});
     const pickup = Object.values(pickupOrders || {});
-    return [...dineIn, ...car, ...pickup].filter(
-      o => o.orderStatus === 'BILLED' || o.status === 'printed' || o.billPrinted
-    );
+    return [...dineIn, ...car, ...pickup];
   }, [orders, carOrders, pickupOrders]);
 
-  // Auto-select first available billed order
+  // Filter orders by search query parameter
+  const filteredOrdersList = useMemo(() => {
+    const val = searchVal.trim().toLowerCase();
+    if (!val) return orders_list;
+    return orders_list.filter(o => 
+      o.orderNumber?.toLowerCase().includes(val) ||
+      o.table?.name?.toLowerCase().includes(val) ||
+      o.carNumber?.toLowerCase().includes(val) ||
+      o._id?.toLowerCase().includes(val)
+    );
+  }, [orders_list, searchVal]);
+
+  // Auto-select first available order
   const billableOrders = useMemo(() => {
-    if (!selectedOrder && orders_list.length > 0) {
-      setSelectedOrder(orders_list[0]);
+    if (!selectedOrder && filteredOrdersList.length > 0) {
+      setSelectedOrder(filteredOrdersList[0]);
     } else if (selectedOrder) {
       // Keep selection in sync if the order still exists
-      const stillExists = orders_list.find(o => (o._id || o.id) === (selectedOrder._id || selectedOrder.id));
-      if (!stillExists && orders_list.length > 0) setSelectedOrder(orders_list[0]);
+      const stillExists = filteredOrdersList.find(o => (o._id || o.id) === (selectedOrder._id || selectedOrder.id));
+      if (!stillExists && filteredOrdersList.length > 0) setSelectedOrder(filteredOrdersList[0]);
       else if (!stillExists) setSelectedOrder(null);
     }
-    return orders_list;
-  }, [orders_list]);
+    return filteredOrdersList;
+  }, [filteredOrdersList, selectedOrder]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -65,22 +78,41 @@ export default function GenerateBill() {
     };
   }, [calculateTaxes, selectedOrder]);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!selectedOrder) return;
-    printBillReceipt(
-      selectedOrder,
-      { name: getDisplayName(selectedOrder) },
-      {
-        total: billSummary.total,
-        subTotal: billSummary.subtotal,
-        tax: billSummary.tax,
-        discount: selectedOrder.discount?.amount || 0,
-        billerName: user?.name,
-        storeInfo: storeSettings,
-        orderNumber: selectedOrder.orderNumber,
-        appliedTaxes: billSummary.taxes
+    try {
+      setProcessing(true);
+      setError('');
+      let orderToPrint = selectedOrder;
+
+      // If the order is not yet billed/printed, save/bill it first
+      if (selectedOrder.orderStatus !== 'BILLED') {
+        const isCarOrder = selectedOrder.orderType === 'CAR-SERVICE';
+        const isPickupOrder = selectedOrder.orderType === 'PICKUP';
+        const billed = await saveOrder(selectedOrder._id, { isCarOrder, isPickupOrder });
+        orderToPrint = billed;
+        setSelectedOrder(billed);
       }
-    );
+
+      printBillReceipt(
+        orderToPrint,
+        { name: getDisplayName(orderToPrint) },
+        {
+          total: orderToPrint.totalAmount || orderToPrint.total,
+          subTotal: orderToPrint.subtotal || orderToPrint.total,
+          tax: orderToPrint.taxes?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0,
+          discount: orderToPrint.discount?.amount || 0,
+          billerName: user?.name,
+          storeInfo: storeSettings,
+          orderNumber: orderToPrint.orderNumber,
+          appliedTaxes: orderToPrint.taxes || []
+        }
+      );
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to generate bill for printing');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleFinalize = async () => {
@@ -88,13 +120,14 @@ export default function GenerateBill() {
     try {
       setProcessing(true);
       setError('');
-      await api.post(`/orders/${selectedOrder._id}/settle`, {
-        paymentMethod,
+      await settleOrder(selectedOrder._id, paymentMethod, {
         taxes: billSummary.taxes,
-        totalAmount: billSummary.total
+        total: billSummary.total,
+        isCarOrder: selectedOrder.orderType === 'CAR-SERVICE',
+        isPickupOrder: selectedOrder.orderType === 'PICKUP'
       });
       // Refresh orders from backend after settlement
-      await handleRefresh();
+      await refreshOrders();
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to settle selected bill');
     } finally {
@@ -115,6 +148,14 @@ export default function GenerateBill() {
               <Calculator size={14} />
               <span className="text-[9px] font-black uppercase tracking-widest">{billableOrders.length} Pending</span>
             </div>
+            {searchVal && (
+              <button
+                onClick={() => setSearchParams({})}
+                className="h-9 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[9px] font-black uppercase tracking-widest transition-all border border-slate-200"
+              >
+                Clear Search
+              </button>
+            )}
             <button
               onClick={handleRefresh}
               className="h-9 px-4 bg-slate-900 text-white rounded text-[9px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg flex items-center gap-2 outline-none"
@@ -133,35 +174,47 @@ export default function GenerateBill() {
           <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-6">Pending Bill Requests</h2>
           <div className="space-y-4">
             {billableOrders.length === 0 ? (
-              <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">No printed bills pending settlement</div>
-            ) : billableOrders.map((order) => (
-              <button
-                key={order._id}
-                onClick={() => setSelectedOrder(order)}
-                className={`w-full text-left p-6 rounded-lg border transition-all relative overflow-hidden group ${
-                  selectedOrder?._id === order._id ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-900/20' : 'bg-white border-slate-100 hover:border-blue-600'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
-                      selectedOrder?._id === order._id ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white'
-                    }`}>
-                      <Table size={24} />
+              <div className="py-20 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">No active orders pending settlement</div>
+            ) : billableOrders.map((order) => {
+              const isBilled = order.orderStatus === 'BILLED' || order.status === 'printed';
+              return (
+                <button
+                  key={order._id}
+                  onClick={() => setSelectedOrder(order)}
+                  className={`w-full text-left p-6 rounded-lg border transition-all relative overflow-hidden group ${
+                    selectedOrder?._id === order._id ? 'bg-slate-900 border-slate-900 text-white shadow-xl shadow-slate-900/20' : 'bg-white border-slate-100 hover:border-blue-600'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
+                        selectedOrder?._id === order._id ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-blue-600 group-hover:text-white'
+                      }`}>
+                        <Table size={24} />
+                      </div>
+                      <div>
+                        <h3 className={`text-base font-black uppercase tracking-tight ${selectedOrder?._id === order._id ? 'text-white' : 'text-slate-900'}`}>{getDisplayName(order)}</h3>
+                        <p className={`text-[9px] font-bold uppercase tracking-widest ${selectedOrder?._id === order._id ? 'text-white/60' : 'text-slate-400'}`}>{getItemCount(order)} items | {order.orderNumber}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                            isBilled 
+                              ? (selectedOrder?._id === order._id ? 'bg-white/20 text-white border border-white/30' : 'bg-emerald-50 text-emerald-600 border border-emerald-100')
+                              : (selectedOrder?._id === order._id ? 'bg-white/20 text-white border border-white/30' : 'bg-amber-50 text-amber-600 border border-amber-100')
+                          }`}>
+                            {isBilled ? 'Printed / Billed' : 'Running / Active'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className={`text-base font-black uppercase tracking-tight ${selectedOrder?._id === order._id ? 'text-white' : 'text-slate-900'}`}>{getDisplayName(order)}</h3>
-                      <p className={`text-[9px] font-bold uppercase tracking-widest ${selectedOrder?._id === order._id ? 'text-white/60' : 'text-slate-400'}`}>{getItemCount(order)} items | {order.orderNumber}</p>
+                    <div className="text-right">
+                      <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${selectedOrder?._id === order._id ? 'text-white/60' : 'text-slate-400'}`}>Total Due</p>
+                      <span className={`text-lg font-black tracking-tighter ${selectedOrder?._id === order._id ? 'text-white' : 'text-slate-950'}`}>{formatMoney(order.totalAmount)}</span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${selectedOrder?._id === order._id ? 'text-white/60' : 'text-slate-400'}`}>Total Due</p>
-                    <span className={`text-lg font-black tracking-tighter ${selectedOrder?._id === order._id ? 'text-white' : 'text-slate-950'}`}>{formatMoney(order.totalAmount)}</span>
-                  </div>
-                </div>
-                {selectedOrder?._id === order._id && <div className="absolute top-2 right-2 p-1 bg-white/20 rounded-full"><ChevronRight size={14} /></div>}
-              </button>
-            ))}
+                  {selectedOrder?._id === order._id && <div className="absolute top-2 right-2 p-1 bg-white/20 rounded-full"><ChevronRight size={14} /></div>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -230,10 +283,11 @@ export default function GenerateBill() {
               <div className="flex gap-4">
                 <button
                   onClick={handlePrint}
-                  className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center gap-3 hover:bg-slate-50 transition-all outline-none"
+                  disabled={processing}
+                  className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center justify-center gap-3 hover:bg-slate-50 transition-all outline-none disabled:opacity-50"
                 >
                   <Printer size={16} />
-                  Print Receipt
+                  {selectedOrder.orderStatus !== 'BILLED' ? 'Save & Print Bill' : 'Print Receipt'}
                 </button>
                 <button
                   onClick={handleFinalize}

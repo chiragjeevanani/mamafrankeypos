@@ -338,32 +338,6 @@ export default function TableView() {
       <div className="bg-white px-4 py-1.5 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <h1 className="text-base font-bold text-gray-700 uppercase tracking-tight">Tables</h1>
-          <div className="flex border-b border-transparent">
-            <button 
-              onClick={() => { playClickSound(); navigate('/pos/tables'); }} 
-              className="px-3 py-2 text-xs font-black uppercase tracking-wider text-[#E1261C] border-b-2 border-[#E1261C] outline-none"
-            >
-              Grid View
-            </button>
-            <button 
-              onClick={() => { playClickSound(); navigate('/pos/tables/layout'); }} 
-              className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
-            >
-              Floor Layout
-            </button>
-            <button 
-              onClick={() => { playClickSound(); navigate('/pos/tables/list'); }} 
-              className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
-            >
-              Registry List
-            </button>
-            <button 
-              onClick={() => { playClickSound(); navigate('/pos/tables/reservations'); }} 
-              className="px-3 py-2 text-xs font-black uppercase tracking-wider text-slate-400 hover:text-slate-900 outline-none"
-            >
-              Reservations
-            </button>
-          </div>
         </div>
         
         <div className="flex items-center gap-1.5">

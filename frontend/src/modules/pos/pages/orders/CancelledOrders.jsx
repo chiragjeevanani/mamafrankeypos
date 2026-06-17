@@ -2,16 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Eye, RefreshCw, Search, ShieldAlert, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../../../utils/api';
+import { usePos } from '../../context/PosContext';
+import { playClickSound } from '../../utils/sounds';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
 export default function CancelledOrders() {
+  const { storeSettings, calculateTaxes } = usePos();
   const [orders, setOrders] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamVal = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(searchParamVal);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
@@ -119,7 +123,11 @@ export default function CancelledOrders() {
                   <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded inline-block bg-slate-100 text-slate-500 border border-slate-200">
                     Cancelled
                   </span>
-                  <button className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded transition-all outline-none">
+                  <button 
+                    onClick={() => { playClickSound(); setSelectedOrderDetails(order); }}
+                    className="p-2 hover:bg-slate-100 text-slate-400 hover:text-slate-900 rounded transition-all outline-none"
+                    title="View Details"
+                  >
                     <Eye size={16} />
                   </button>
                 </div>
@@ -138,6 +146,139 @@ export default function CancelledOrders() {
           </div>
         </div>
       </div>
+
+      {/* Detail View Modal */}
+      {selectedOrderDetails && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider">Cancelled Order Detail</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Order ID: {selectedOrderDetails.orderNumber}</p>
+              </div>
+              <button 
+                onClick={() => setSelectedOrderDetails(null)}
+                className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 p-6 overflow-y-auto no-scrollbar space-y-6">
+              {/* Metadata Grid */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Type / Destination</span>
+                  <span className="text-xs font-black text-slate-700 uppercase">{selectedOrderDetails.table?.name || selectedOrderDetails.carNumber || selectedOrderDetails.orderType}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Biller / Waiter</span>
+                  <span className="text-xs font-black text-slate-700 uppercase">{selectedOrderDetails.waiter?.name || 'POS Terminal'}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Created At</span>
+                  <span className="text-xs font-bold text-slate-600">{new Date(selectedOrderDetails.createdAt).toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Cancelled At</span>
+                  <span className="text-xs font-bold text-rose-600">{new Date(selectedOrderDetails.cancelledAt || selectedOrderDetails.updatedAt).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {selectedOrderDetails.customer && (selectedOrderDetails.customer.name || selectedOrderDetails.customer.phone) && (
+                <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100/50">
+                  <h4 className="text-[10px] font-black text-blue-700 uppercase tracking-wider mb-2">Customer Details</h4>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Name</span>
+                      <span className="font-bold text-slate-700">{selectedOrderDetails.customer.name || 'Walk-in'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Phone</span>
+                      <span className="font-bold text-slate-700">{selectedOrderDetails.customer.phone || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Items Table */}
+              <div>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Ordered Items</h4>
+                <div className="border border-slate-100 rounded-lg overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-100">
+                        <th className="px-4 py-2.5 font-black text-slate-500 uppercase tracking-wider">Item Name</th>
+                        <th className="px-4 py-2.5 font-black text-slate-500 uppercase tracking-wider text-center">Qty</th>
+                        <th className="px-4 py-2.5 font-black text-slate-500 uppercase tracking-wider text-right">Price</th>
+                        <th className="px-4 py-2.5 font-black text-slate-500 uppercase tracking-wider text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {(selectedOrderDetails.kots || []).flatMap(kot => kot.items || []).map((item, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/40 text-slate-700 line-through">
+                          <td className="px-4 py-3 font-semibold uppercase">
+                            {item.name}
+                            <span className="ml-2 text-[8px] font-black bg-rose-100 text-rose-600 px-1 py-0.5 rounded">CANCELLED</span>
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold">{item.quantity}</td>
+                          <td className="px-4 py-3 text-right font-bold">{formatMoney(item.price)}</td>
+                          <td className="px-4 py-3 text-right font-bold">{formatMoney(item.price * item.quantity)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Cancellation reason */}
+              <div className="bg-rose-50 border border-rose-100 p-4 rounded-lg">
+                <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest block mb-1">Cancellation Reason</span>
+                <p className="text-xs font-bold text-rose-700">{selectedOrderDetails.cancellationReason || 'Cleared from POS terminal'}</p>
+              </div>
+
+              {/* Pricing Summary */}
+              <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-500 font-bold uppercase">
+                  <span>Subtotal</span>
+                  <span>{formatMoney(selectedOrderDetails.subtotal)}</span>
+                </div>
+                {selectedOrderDetails.discount?.amount > 0 && (
+                  <div className="flex justify-between text-rose-500 font-bold uppercase">
+                    <span>Discount ({selectedOrderDetails.discount.value}{selectedOrderDetails.discount.type === 'PERCENTAGE' ? '%' : ' Rs'})</span>
+                    <span>-{formatMoney(selectedOrderDetails.discount.amount)}</span>
+                  </div>
+                )}
+                {(selectedOrderDetails.taxes || []).map((tax, idx) => (
+                  <div key={idx} className="flex justify-between text-slate-500 font-bold uppercase">
+                    <span>{tax.name} ({tax.rate || tax.percentage}%)</span>
+                    <span>{formatMoney(tax.amount)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-sm font-black text-slate-900 uppercase pt-2 border-t border-dashed border-slate-200">
+                  <span>Grand Total</span>
+                  <span className="text-blue-600">{formatMoney(selectedOrderDetails.totalAmount)}</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSelectedOrderDetails(null)}
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

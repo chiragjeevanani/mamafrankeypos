@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Search, BookOpen, Wallet, LayoutGrid, Power, Phone, User, 
-  FileText, History, SlidersHorizontal, UserPlus, Star, Receipt, Banknote, CheckCircle2, XCircle, Clock
+  Search, Wallet, LayoutGrid, Power, Phone, 
+  FileText, Receipt, Banknote, History, Clock, CheckCircle2, XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePos } from '../context/PosContext';
@@ -10,18 +10,16 @@ import logo from '../../../assets/time-to-eat.png';
 
 export default function PosTopNavbar() {
   const navigate = useNavigate();
-  const { logout, toggleCustomerSection, storeSettings } = usePos();
+  const { logout, storeSettings } = usePos();
   const [searchBillNo, setSearchBillNo] = useState('');
 
   // Dropdown states
-  const [isCrmOpen, setIsCrmOpen] = useState(false);
   const [isFinanceOpen, setIsFinanceOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
 
   const handleSearchSubmit = (e) => {
     if (e.key === 'Enter' && searchBillNo.trim()) {
       playClickSound();
-      // Navigate to active orders page with the search query param
       navigate(`/pos/orders/active?search=${encodeURIComponent(searchBillNo.trim())}`);
       setSearchBillNo('');
     }
@@ -58,12 +56,10 @@ export default function PosTopNavbar() {
       </div>
 
       <div className="flex items-center gap-1.5 text-[11px]">
-        <ToolbarIcon onClick={() => { playClickSound(); navigate('/pos/menu'); }} label="Management" icon={<BookOpen size={18} />} />
-        
         {/* Finance / Cash Dropdown */}
         <div className="relative">
           <button 
-            onClick={() => { playClickSound(); setIsFinanceOpen(!isFinanceOpen); setIsCrmOpen(false); setIsOrdersOpen(false); }}
+            onClick={() => { playClickSound(); setIsFinanceOpen(!isFinanceOpen); setIsOrdersOpen(false); }}
             className={`p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group ${isFinanceOpen ? 'bg-white/8' : ''}`}
             title="Finance & Register"
           >
@@ -82,13 +78,6 @@ export default function PosTopNavbar() {
                   Generate Bill
                 </button>
                 <button
-                  onClick={() => { playClickSound(); setIsFinanceOpen(false); navigate('/pos/billing/register'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <Banknote size={14} className="text-slate-400" />
-                  Cash Register
-                </button>
-                <button
                   onClick={() => { playClickSound(); setIsFinanceOpen(false); navigate('/pos/billing/history'); }}
                   className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
                 >
@@ -100,12 +89,10 @@ export default function PosTopNavbar() {
           )}
         </div>
 
-        <ToolbarIcon onClick={() => { playClickSound(); navigate('/pos/dashboard'); }} label="Dashboard" icon={<LayoutGrid size={18} />} />
-        
         {/* Orders Dropdown */}
         <div className="relative">
           <button 
-            onClick={() => { playClickSound(); setIsOrdersOpen(!isOrdersOpen); setIsCrmOpen(false); setIsFinanceOpen(false); }}
+            onClick={() => { playClickSound(); setIsOrdersOpen(!isOrdersOpen); setIsFinanceOpen(false); }}
             className={`p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group ${isOrdersOpen ? 'bg-white/8' : ''}`}
             title="Orders Hub"
           >
@@ -137,56 +124,6 @@ export default function PosTopNavbar() {
                   <XCircle size={14} className="text-slate-400" />
                   Cancelled Orders
                 </button>
-              </div>
-            </>
-          )}
-        </div>
-        
-        {/* CRM / User Dropdown */}
-        <div className="relative">
-          <button 
-            onClick={() => { playClickSound(); setIsCrmOpen(!isCrmOpen); setIsFinanceOpen(false); setIsOrdersOpen(false); }}
-            className={`p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group ${isCrmOpen ? 'bg-white/8' : ''}`}
-            title="CRM & Customers"
-          >
-            <User size={20} className={`text-slate-300 group-hover:text-blue-400 transition-colors ${isCrmOpen ? 'text-blue-400' : ''}`} />
-          </button>
-          
-          {isCrmOpen && (
-            <>
-              <div className="fixed inset-0 z-[60]" onClick={() => setIsCrmOpen(false)} />
-              <div className="absolute right-0 mt-2 w-48 bg-[#1C1E22] border border-white/8 rounded-lg shadow-xl overflow-hidden z-[70] py-1 font-sans text-left">
-                <button
-                  onClick={() => { playClickSound(); setIsCrmOpen(false); navigate('/pos/customers/list'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <User size={14} className="text-slate-400" />
-                  Customer List
-                </button>
-                <button
-                  onClick={() => { playClickSound(); setIsCrmOpen(false); navigate('/pos/customers/add'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <UserPlus size={14} className="text-slate-400" />
-                  Add Customer
-                </button>
-                <button
-                  onClick={() => { playClickSound(); setIsCrmOpen(false); navigate('/pos/customers/loyalty'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <Star size={14} className="text-slate-400" />
-                  Loyalty Points
-                </button>
-                
-                {window.location.pathname.includes('/pos/order/') && (
-                  <button
-                    onClick={() => { playClickSound(); setIsCrmOpen(false); toggleCustomerSection(); }}
-                    className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-blue-400 transition-all border-t border-white/5 uppercase tracking-wider flex items-center gap-2"
-                  >
-                    <SlidersHorizontal size={14} className="text-slate-400" />
-                    Toggle CRM Panel
-                  </button>
-                )}
               </div>
             </>
           )}

@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Clock, Receipt, RefreshCw, Search, Timer, Utensils } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usePos } from '../../context/PosContext';
+import { playClickSound } from '../../utils/sounds';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -26,6 +27,7 @@ export default function ActiveOrders() {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState(searchParamVal);
   const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
@@ -67,6 +69,29 @@ export default function ActiveOrders() {
       return statusMatch && (!query || text.includes(query));
     });
   }, [activeTab, allOrders, searchQuery]);
+
+  const handleShowDetails = (order) => {
+    playClickSound();
+    const isCarOrder = order.orderType === 'CAR-SERVICE';
+    const isPickupOrder = order.orderType === 'PICKUP';
+    const identifier = order.table?.name || order.carNumber || order._id;
+    navigate(`/pos/order/${identifier}`, {
+      state: {
+        fromCarService: isCarOrder,
+        fromPickup: isPickupOrder,
+        waiter: order.waiter
+      }
+    });
+  };
+
+  const handleActionClick = (order, readyForCheckout) => {
+    playClickSound();
+    if (readyForCheckout) {
+      navigate(`/pos/billing/generate?search=${order.orderNumber}`);
+    } else {
+      handleShowDetails(order);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#F8F9FB] animate-in fade-in duration-500">
@@ -172,10 +197,16 @@ export default function ActiveOrders() {
                   </div>
 
                   <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex gap-2">
-                    <button className="flex-1 py-2 bg-white border border-slate-200 rounded text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-all">
+                    <button 
+                      onClick={() => handleShowDetails(order)}
+                      className="flex-1 py-2 bg-white border border-slate-200 rounded text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-all active:scale-95"
+                    >
                       Show Details
                     </button>
-                    <button className={`flex-1 py-2 rounded text-[9px] font-black uppercase tracking-widest text-white transition-all shadow-md ${readyForCheckout ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+                    <button 
+                      onClick={() => handleActionClick(order, readyForCheckout)}
+                      className={`flex-1 py-2 rounded text-[9px] font-black uppercase tracking-widest text-white transition-all shadow-md active:scale-95 ${readyForCheckout ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                    >
                       {readyForCheckout ? 'Collect Payment' : 'Monitor KOT'}
                     </button>
                   </div>

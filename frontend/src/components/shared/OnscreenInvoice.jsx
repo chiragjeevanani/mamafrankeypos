@@ -42,12 +42,15 @@ export default function OnscreenInvoice({ order, storeSettings: propStoreSetting
   let subTotal = order.subtotal || 0;
   let taxes = order.taxes || [];
 
+  const discountAmount = order.discount?.amount || 0;
+  const couponCode = order.discount?.couponCode || '';
+  
   if ((!subTotal || taxes.length === 0) && totalAmount > 0) {
     const activeTaxes = (settings?.taxes || []).filter(t => t.active);
     if (activeTaxes.length > 0) {
       const totalTaxRate = activeTaxes.reduce((sum, t) => sum + (t.percentage || t.rate || 0), 0);
       const baseAmount = totalAmount / (1 + (totalTaxRate / 100));
-      subTotal = Number(baseAmount.toFixed(2));
+      subTotal = totalAmount + discountAmount;
       taxes = activeTaxes.map(t => ({
         name: t.name,
         rate: t.percentage || t.rate,
@@ -59,11 +62,19 @@ export default function OnscreenInvoice({ order, storeSettings: propStoreSetting
     }
   }
 
-  const discountAmount = order.discount?.amount || 0;
-  const couponCode = order.discount?.couponCode || '';
   const totalTaxAmount = taxes.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  const calculatedGrandTotal = subTotal + totalTaxAmount - discountAmount;
+  // Convert old exclusive subtotal to inclusive if detected
+  let displaySubTotal = subTotal;
+  const isExclusive = displaySubTotal > 0 && Math.abs(displaySubTotal + totalTaxAmount - totalAmount) < 2.0;
+  if (isExclusive) {
+    displaySubTotal += totalTaxAmount;
+    if (Math.abs(displaySubTotal - totalAmount) < 1.0 && discountAmount > 0) {
+      displaySubTotal += discountAmount;
+    }
+  }
+
+  const calculatedGrandTotal = displaySubTotal - discountAmount;
   const finalWhole = Math.round(order.totalAmount || calculatedGrandTotal);
   const roundOff = (finalWhole - (order.totalAmount || calculatedGrandTotal)).toFixed(2);
 
@@ -131,7 +142,7 @@ export default function OnscreenInvoice({ order, storeSettings: propStoreSetting
                   <span className="flex-1 font-bold text-slate-800 uppercase leading-tight">{item.name}</span>
                   <span className="w-10 text-right">{item.quantity}</span>
                   <span className="w-14 text-right">{Number(item.price).toFixed(2)}</span>
-                  <span className="w-16 text-right">{basePriceTotal.toFixed(2)}</span>
+                  <span className="w-16 text-right">{itemTotalInclusive.toFixed(2)}</span>
                 </div>
                 {item.variantLabel && (
                   <div className="pl-8 text-[9px] text-slate-500 italic">({item.variantLabel})</div>
@@ -154,7 +165,7 @@ export default function OnscreenInvoice({ order, storeSettings: propStoreSetting
           <span>TOTAL QTY: {allItems.reduce((sum, i) => sum + i.quantity, 0)}</span>
           <div className="w-1/2 flex justify-between">
             <span>SUB TOTAL</span>
-            <span className="font-bold">{subTotal.toFixed(2)}</span>
+            <span className="font-bold">{displaySubTotal.toFixed(2)}</span>
           </div>
         </div>
 

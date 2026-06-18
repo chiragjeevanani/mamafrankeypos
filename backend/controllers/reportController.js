@@ -96,7 +96,14 @@ const getSalesReport = asyncHandler(async (req, res) => {
             $group: {
               _id: null,
               totalRevenue: { $sum: '$totalAmount' },
-              netRevenue: { $sum: '$subtotal' },
+              netRevenue: { 
+                $sum: { 
+                  $subtract: [
+                    '$totalAmount', 
+                    { $reduce: { input: '$taxes', initialValue: 0, in: { $add: ['$$value', '$$this.amount'] } } }
+                  ] 
+                } 
+              },
               taxAmount: { $sum: { $reduce: { input: '$taxes', initialValue: 0, in: { $add: ['$$value', '$$this.amount'] } } } },
               orderCount: { $sum: 1 },
               avgOrderValue: { $avg: '$totalAmount' }

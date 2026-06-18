@@ -313,9 +313,17 @@ export default function SystemSettings() {
         ['Order ID', 'Date', 'Type', 'Table/Car', 'Status', 'Subtotal (INR)', 'Tax (INR)', 'Discount (INR)', 'Total (INR)'],
         ...orders.map(order => {
           const total = order.totalAmount || 0;
-          const discount = order.discountAmount || 0;
-          const subtotal = order.subtotal || (total + discount);
-          const tax = order.taxAmount || 0;
+          const discount = order.discount?.amount || order.discountAmount || 0;
+          const tax = order.taxes?.reduce((sum, t) => sum + Number(t.amount || 0), 0) || order.taxAmount || 0;
+          
+          let subtotal = order.subtotal || (total + discount);
+          const isExclusive = subtotal > 0 && Math.abs(subtotal + tax - total) < 2.0;
+          if (isExclusive) {
+            subtotal += tax;
+            if (Math.abs(subtotal - total) < 1.0 && discount > 0) {
+              subtotal += discount;
+            }
+          }
           
           return [
             order.orderNumber,

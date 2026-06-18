@@ -119,7 +119,7 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
     const basePriceTotal = itemTotalInclusive / (1 + (totalTaxRate / 100));
     
     doc.text(`${item.price.toFixed(2)}`, 60, y, { align: 'right' });
-    doc.text(`${basePriceTotal.toFixed(2)}`, 75, y, { align: 'right' });
+    doc.text(`${itemTotalInclusive.toFixed(2)}`, 75, y, { align: 'right' });
     
     y += (splitName.length * 4.5);
 
@@ -152,13 +152,24 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   
   const totalQty = allItems.reduce((sum, i) => sum + i.quantity, 0);
   const gstEach = (tax / 2).toFixed(2);
-  const calculatedGrandTotal = subTotal + Number(tax) - Number(discount);
+
+  // Convert old exclusive subtotal to inclusive if detected
+  const isExclusive = Math.abs(subTotal + tax - total) < 2.0;
+  let displaySubTotal = subTotal;
+  if (isExclusive) {
+    displaySubTotal = subTotal + tax;
+    if (Math.abs(displaySubTotal - total) < 1.0 && discount > 0) {
+      displaySubTotal += discount;
+    }
+  }
+
+  const calculatedGrandTotal = displaySubTotal - Number(discount);
   const finalWhole = Math.round(calculatedGrandTotal);
   const roundOff = (finalWhole - calculatedGrandTotal).toFixed(2);
 
   doc.text(`Total Qty: ${totalQty}`, 5, y);
   doc.text(`Sub Total`, 40, y);
-  doc.text(`${subTotal.toFixed(2)}`, 75, y, { align: 'right' });
+  doc.text(`${displaySubTotal.toFixed(2)}`, 75, y, { align: 'right' });
   y += 4;
 
   if (discount > 0) {

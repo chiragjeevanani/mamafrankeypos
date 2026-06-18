@@ -71,8 +71,19 @@ export default function GenerateBill() {
     const total = Number(selectedOrder.totalAmount || 0);
     const taxes = selectedOrder.taxes?.length ? selectedOrder.taxes : calculateTaxes(total);
     const tax = taxes.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const discount = selectedOrder.discount?.amount || 0;
+
+    let subtotal = selectedOrder.subtotal || total;
+    const isExclusive = subtotal > 0 && Math.abs(subtotal + tax - total) < 2.0;
+    if (isExclusive) {
+      subtotal += tax;
+      if (Math.abs(subtotal - total) < 1.0 && discount > 0) {
+        subtotal += discount;
+      }
+    }
+
     return {
-      subtotal: Number(selectedOrder.subtotal || Math.max(0, total - tax)),
+      subtotal,
       tax,
       total,
       taxes

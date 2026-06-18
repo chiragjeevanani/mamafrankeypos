@@ -93,7 +93,7 @@ export default function CompletedOrders() {
       { name: displayName },
       {
         total,
-        subTotal: Number(order.subtotal || Math.max(0, total - tax)),
+        subTotal: Number(order.subtotal || total),
         tax,
         discount: order.discount?.amount || 0,
         billerName: order.waiter?.name || user?.name,
@@ -315,28 +315,44 @@ export default function CompletedOrders() {
               </div>
 
               {/* Pricing Summary */}
-              <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
-                <div className="flex justify-between text-slate-500 font-bold uppercase">
-                  <span>Subtotal</span>
-                  <span>{formatMoney(selectedOrderDetails.subtotal)}</span>
-                </div>
-                {selectedOrderDetails.discount?.amount > 0 && (
-                  <div className="flex justify-between text-rose-500 font-bold uppercase">
-                    <span>Discount ({selectedOrderDetails.discount.value}{selectedOrderDetails.discount.type === 'PERCENTAGE' ? '%' : ' Rs'})</span>
-                    <span>-{formatMoney(selectedOrderDetails.discount.amount)}</span>
+              {(() => {
+                const sub = selectedOrderDetails.subtotal || 0;
+                const tot = selectedOrderDetails.totalAmount || 0;
+                const disc = selectedOrderDetails.discount?.amount || 0;
+                const taxAmt = (selectedOrderDetails.taxes || []).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+                const isExclusive = sub > 0 && Math.abs(sub + taxAmt - tot) < 2.0;
+                let displaySub = sub;
+                if (isExclusive) {
+                  displaySub = sub + taxAmt;
+                  if (Math.abs(displaySub - tot) < 1.0 && disc > 0) {
+                    displaySub += disc;
+                  }
+                }
+                return (
+                  <div className="border-t border-slate-100 pt-4 space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-500 font-bold uppercase">
+                      <span>Subtotal</span>
+                      <span>{formatMoney(displaySub)}</span>
+                    </div>
+                    {selectedOrderDetails.discount?.amount > 0 && (
+                      <div className="flex justify-between text-rose-500 font-bold uppercase">
+                        <span>Discount ({selectedOrderDetails.discount.value}{selectedOrderDetails.discount.type === 'PERCENTAGE' ? '%' : ' Rs'})</span>
+                        <span>-{formatMoney(selectedOrderDetails.discount.amount)}</span>
+                      </div>
+                    )}
+                    {(selectedOrderDetails.taxes || []).map((tax, idx) => (
+                      <div key={idx} className="flex justify-between text-slate-500 font-bold uppercase">
+                        <span>{tax.name} ({tax.rate || tax.percentage}%)</span>
+                        <span>{formatMoney(tax.amount)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between text-sm font-black text-slate-900 uppercase pt-2 border-t border-dashed border-slate-200">
+                      <span>Grand Total</span>
+                      <span className="text-blue-600">{formatMoney(selectedOrderDetails.totalAmount)}</span>
+                    </div>
                   </div>
-                )}
-                {(selectedOrderDetails.taxes || []).map((tax, idx) => (
-                  <div key={idx} className="flex justify-between text-slate-500 font-bold uppercase">
-                    <span>{tax.name} ({tax.rate || tax.percentage}%)</span>
-                    <span>{formatMoney(tax.amount)}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between text-sm font-black text-slate-900 uppercase pt-2 border-t border-dashed border-slate-200">
-                  <span>Grand Total</span>
-                  <span className="text-blue-600">{formatMoney(selectedOrderDetails.totalAmount)}</span>
-                </div>
-              </div>
+                );
+              })()}
 
             </div>
 

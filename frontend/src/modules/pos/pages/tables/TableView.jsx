@@ -190,7 +190,7 @@ export default function TableView() {
       { name: table.name }, 
       { 
         total, 
-        subTotal: subTotal - tax, 
+        subTotal: subTotal, 
         tax, 
         discount: orderDiscount, 
         orderType, 

@@ -404,7 +404,7 @@ export default function PosOrderPage() {
 
     return {
       total: fTotalWhole,
-      subTotal: sTotal - taxVal, // Base price before tax
+      subTotal: sTotal, // Inclusive items total
       totalItemCount: count,
       tax: taxVal,
       appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal - taxVal })),

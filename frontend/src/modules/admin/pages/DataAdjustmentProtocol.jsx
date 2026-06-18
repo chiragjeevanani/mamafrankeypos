@@ -311,14 +311,24 @@ export default function DataAdjustmentProtocol() {
       }
     }
 
-    const subTotal = bill.subtotal;
+    const discountAmt = bill.discount?.amount || 0;
     const taxSum = appliedTaxes.reduce((sum, t) => sum + (t.amount || 0), 0);
+    const total = bill.totalAmount;
+
+    let subTotal = bill.subtotal;
+    const isExclusive = subTotal > 0 && Math.abs(subTotal + taxSum - total) < 2.0;
+    if (isExclusive) {
+      subTotal += taxSum;
+      if (Math.abs(subTotal - total) < 1.0 && discountAmt > 0) {
+        subTotal += discountAmt;
+      }
+    }
 
     return {
       subTotal,
       tax: taxSum,
-      discount: bill.discount?.amount || 0,
-      total: bill.totalAmount,
+      discount: discountAmt,
+      total: total,
       orderType: bill.orderType === 'DINE-IN' ? 'DINE IN' : (bill.orderType || 'DINE IN'),
       appliedTaxes,
       storeInfo: storeInfo,

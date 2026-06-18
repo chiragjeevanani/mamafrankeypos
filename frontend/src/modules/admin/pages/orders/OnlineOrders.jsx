@@ -179,20 +179,42 @@ export default function OnlineOrders() {
                   {maskQuantity(viewingOrder.kots.reduce((acc, k) => acc + k.items.length, 0))} Items
                 </span>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-bold uppercase">Subtotal</span>
-                  <span className="text-slate-900 font-black">₹{maskCurrency(viewingOrder.subtotal).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-bold uppercase">Taxes</span>
-                  <span className="text-slate-900 font-black">₹{maskCurrency(viewingOrder.totalAmount - viewingOrder.subtotal).toFixed(2)}</span>
-                </div>
-                <div className="pt-2 border-t border-slate-50 flex justify-between text-sm">
-                  <span className="text-slate-900 font-black uppercase">Total</span>
-                  <span className="text-blue-600 font-black">₹{calculateMaskedOrderTotal(viewingOrder).toFixed(2)}</span>
-                </div>
-              </div>
+              {(() => {
+                const sub = viewingOrder.subtotal || 0;
+                const tot = viewingOrder.totalAmount || 0;
+                const disc = viewingOrder.discount?.amount || 0;
+                const taxAmt = (viewingOrder.taxes || []).reduce((sum, t) => sum + Number(t.amount || 0), 0);
+                const isExclusive = sub > 0 && Math.abs(sub + taxAmt - tot) < 2.0;
+                let displaySub = sub;
+                if (isExclusive) {
+                  displaySub = sub + taxAmt;
+                  if (Math.abs(displaySub - tot) < 1.0 && disc > 0) {
+                    displaySub += disc;
+                  }
+                }
+                return (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500 font-bold uppercase">Subtotal</span>
+                      <span className="text-slate-900 font-black">₹{maskCurrency(displaySub).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500 font-bold uppercase">Taxes</span>
+                      <span className="text-slate-900 font-black">₹{maskCurrency(taxAmt).toFixed(2)}</span>
+                    </div>
+                    {viewingOrder.discount?.amount > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-rose-500 font-bold uppercase">Discount</span>
+                        <span className="text-rose-600 font-black">-₹{maskCurrency(viewingOrder.discount.amount).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-slate-50 flex justify-between text-sm">
+                      <span className="text-slate-900 font-black uppercase">Total</span>
+                      <span className="text-blue-600 font-black">₹{calculateMaskedOrderTotal(viewingOrder).toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

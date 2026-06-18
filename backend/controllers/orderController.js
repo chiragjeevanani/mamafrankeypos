@@ -472,13 +472,12 @@ const billOrder = asyncHandler(async (req, res) => {
     const settings = await StoreSettings.findOne().session(session);
     const activeTaxes = settings?.taxes?.filter(t => t.active) || [];
     
-    let subtotal = order.totalAmount;
+    let subtotal = order.subtotal || (order.totalAmount + (order.discount?.amount || 0));
     let taxes = [];
 
     if (activeTaxes.length > 0) {
       const totalTaxRate = activeTaxes.reduce((sum, t) => sum + t.percentage, 0);
       const baseAmount = order.totalAmount / (1 + (totalTaxRate / 100));
-      subtotal = Number(baseAmount.toFixed(2));
       taxes = activeTaxes.map(t => ({
         name: t.name,
         rate: t.percentage,
@@ -794,9 +793,18 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
 
   // 2. Payment Mode (Strictly CASH & CASHLESS)
   if (paymentMode && paymentMode !== '--All Payment Modes--' && paymentMode !== '--All Modes--') {
-    query.paymentMethod = paymentMode;
+    if (paymentMode === 'CASH') {
+      query.paymentMethod = { $regex: /^cash(?!less)/i };
+    } else if (paymentMode === 'CASHLESS') {
+      query.paymentMethod = { $regex: /^cashless/i };
+    } else {
+      query.paymentMethod = paymentMode;
+    }
   } else {
-    query.paymentMethod = { $in: ['CASH', 'CASHLESS'] };
+    query.$or = [
+      { paymentMethod: { $regex: /^cash(?!less)/i } },
+      { paymentMethod: { $regex: /^cashless/i } }
+    ];
   }
 
   // 3. Order Type (Bill Type)

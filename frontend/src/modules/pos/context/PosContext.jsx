@@ -429,12 +429,18 @@ export function PosProvider({ children }) {
       const table = tables.find(t => t.id === tableId);
       const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+      // Sanitize item IDs for the backend to satisfy MongoDB ObjectId format validation
+      const sanitizedItems = items.map(item => ({
+        ...item,
+        id: item.baseId || item.id
+      }));
+
       const orderData = {
         orderId: existingOrder?.id || existingOrder?._id,
         tableId: table?._id,
         orderType: details.isCarOrder ? 'CAR-SERVICE' : (details.isPickupOrder ? 'PICKUP' : 'DINE-IN'),
         carNumber: details.isCarOrder ? tableId : null,
-        items: items,
+        items: sanitizedItems,
         total: total,
         staffId: staff?._id || staff?.id,
         counterId: currentCounter?._id,
@@ -854,10 +860,16 @@ export function PosProvider({ children }) {
       if (!items || items.length === 0) {
         return null;
       }
+      // Sanitize item IDs for the backend to satisfy MongoDB ObjectId format validation
+      const sanitizedItems = items.map(item => ({
+        ...item,
+        id: item.baseId || item.id
+      }));
+
       const orderData = {
         carNumber,
         orderType: 'CAR-SERVICE',
-        items,
+        items: sanitizedItems,
         total,
         staffId: waiter?._id || waiter?.id,
         counterId: currentCounter?._id

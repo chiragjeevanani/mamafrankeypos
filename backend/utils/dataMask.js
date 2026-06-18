@@ -191,7 +191,6 @@ const maskOrder = (order, rules) => {
     // Remove KOTs that ended up with no remaining items
     o.kots = o.kots.filter(kot => (kot.items || []).length > 0);
   }
-
   // ── Step 3: Recalculate subtotal / taxes / totalAmount ──────────────────────
   let newSubtotal = 0;
   o.kots.forEach(kot => {
@@ -203,7 +202,14 @@ const maskOrder = (order, rules) => {
   });
 
   const originalSubtotal = o.subtotal || 0;
-  const scale = originalSubtotal > 0 ? newSubtotal / originalSubtotal : 1;
+  const originalTotal = o.totalAmount || 0;
+  const originalTaxSum = (o.taxes || []).reduce((s, t) => s + (t.amount || 0), 0);
+
+  // Detect if the original database record stored an exclusive subtotal (old format)
+  const isOriginalExclusive = originalSubtotal > 0 && Math.abs(originalSubtotal + originalTaxSum - originalTotal) < 2.0;
+  const normalizedOriginalSubtotal = isOriginalExclusive ? (originalSubtotal + originalTaxSum) : originalSubtotal;
+
+  const scale = normalizedOriginalSubtotal > 0 ? newSubtotal / normalizedOriginalSubtotal : 1;
 
   o.subtotal = Number(newSubtotal.toFixed(2));
 
@@ -214,10 +220,11 @@ const maskOrder = (order, rules) => {
       const totalTaxRate = activeTaxes.reduce((sum, t) => sum + (t.percentage || 0), 0);
       const discountAmt = o.discount?.amount || 0;
       const taxableAmount = Math.max(0, newSubtotal - discountAmt);
+      const baseAmount = taxableAmount / (1 + (totalTaxRate / 100));
       o.taxes = activeTaxes.map(t => ({
         name: t.name,
         rate: t.percentage,
-        amount: Number((taxableAmount * (t.percentage / 100)).toFixed(2))
+        amount: Number((baseAmount * (t.percentage / 100)).toFixed(2))
       }));
     } else {
       o.taxes = [];
@@ -234,9 +241,9 @@ const maskOrder = (order, rules) => {
     o.discount.amount = Number(((o.discount.amount || 0) * scale).toFixed(2));
   }
 
-  const newTaxSum = (o.taxes || []).reduce((s, t) => s + (t.amount || 0), 0);
+  // Taxes are inclusive, so they are not added on top of newSubtotal
   const newDiscountAmt = o.discount?.amount || 0;
-  o.totalAmount = Number((newSubtotal + newTaxSum - newDiscountAmt).toFixed(2));
+  o.totalAmount = Number((newSubtotal - newDiscountAmt).toFixed(2));
 
   return o;
 };

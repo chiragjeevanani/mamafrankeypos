@@ -12,13 +12,17 @@ const {
   getStoreSettings,
   updateStoreSettings,
   purgeReportsData,
+  commitAdjustments
 } = require('../controllers/settingsController');
-const { protect, admin, checkPermission } = require('../middleware/authMiddleware');
+const { protect, checkPermission } = require('../middleware/authMiddleware');
 
 // Store
 router.route('/store')
   .get(getStoreSettings)
   .put(protect, checkPermission('canManageSettings'), updateStoreSettings);
+
+router.route('/store/commit-adjustments')
+  .post(protect, checkPermission('canManageSettings'), commitAdjustments);
 
 router.route('/reports/purge')
   .post(protect, checkPermission('canManageSettings'), purgeReportsData);

@@ -185,6 +185,31 @@ export default function DataAdjustmentProtocol() {
     fetchProtocols();
   }, []);
 
+  useEffect(() => {
+    const handleCommit = () => {
+      const token = localStorage.getItem('admin_access') || localStorage.getItem('pos_access');
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      
+      fetch(`${baseURL}/settings/store/commit-adjustments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+          'X-Module': 'admin'
+        },
+        keepalive: true
+      }).catch(err => console.error("Auto-commit failed:", err));
+    };
+
+    window.addEventListener('beforeunload', handleCommit);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleCommit);
+      // Auto-commit on component unmount (internal navigation)
+      handleCommit();
+    };
+  }, []);
+
   const fetchProtocols = async () => {
     try {
       const { data } = await api.get('/settings/store');

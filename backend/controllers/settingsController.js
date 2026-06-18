@@ -8,6 +8,7 @@ const Table = require('../models/Table');
 const mongoose = require('mongoose');
 const logAudit = require('../utils/auditLogger');
 const asyncHandler = require('../utils/asyncHandler');
+const { maskOrder } = require('../utils/dataMask');
 
 const getOrCreateStoreSettings = async () => {
   let settings = await StoreSettings.findOne();
@@ -379,6 +380,64 @@ const purgeReportsData = asyncHandler(async (req, res) => {
   res.json({ message: 'All report history purged successfully.' });
 });
 
+// @desc    Commit reduction adjustments permanently to Order documents and reset store settings
+// @route   POST /api/settings/store/commit-adjustments
+// @access  Private/Admin
+const commitAdjustments = asyncHandler(async (req, res) => {
+  const settings = await StoreSettings.findOne();
+  if (!settings) {
+    res.status(404);
+    throw new Error('Store settings not found');
+  }
+
+  const { visibilityDecrement, adjustedOrderIds } = settings;
+
+  if (visibilityDecrement > 0 && adjustedOrderIds && adjustedOrderIds.length > 0) {
+    const rules = {
+      visibilityDecrement,
+      adjustedOrderIds,
+      itemReplacements: settings.itemReplacements || [],
+      taxes: settings.taxes || []
+    };
+
+    for (const orderId of adjustedOrderIds) {
+      if (!mongoose.Types.ObjectId.isValid(orderId)) continue;
+
+      const order = await Order.findById(orderId);
+      if (order && order.orderStatus === 'COMPLETED') {
+        const masked = maskOrder(order, rules);
+
+        // Permanently overwrite database fields with masked values
+        await Order.findByIdAndUpdate(orderId, {
+          $set: {
+            kots: masked.kots,
+            subtotal: masked.subtotal,
+            taxes: masked.taxes,
+            totalAmount: masked.totalAmount,
+            discount: masked.discount
+          }
+        });
+
+        await logAudit(
+          req.user?._id || '000000000000000000000000',
+          'ORDER_ADJUSTMENT_COMMITTED',
+          'ORDERS',
+          `Permanently committed visibility reduction adjustments to Order ${order.orderNumber}.`,
+          req.ip
+        );
+      }
+    }
+
+    // Reset settings so the next visit starts clean
+    settings.visibilityDecrement = 0;
+    settings.adjustedOrderIds = [];
+    settings.itemReplacements = [];
+    await settings.save();
+  }
+
+  res.json({ message: 'Adjustments committed successfully' });
+});
+
 module.exports = {
   getTaxes,
   createTax,
@@ -390,5 +449,6 @@ module.exports = {
   deleteCounter,
   getStoreSettings,
   updateStoreSettings,
-  purgeReportsData
+  purgeReportsData,
+  commitAdjustments
 };

@@ -293,6 +293,9 @@ const updateStoreSettings = asyncHandler(async (req, res) => {
     if (req.body.protocolPriceRange !== undefined) {
       settings.protocolPriceRange = req.body.protocolPriceRange;
     }
+    if (req.body.adjustedOrderIds !== undefined) {
+      settings.adjustedOrderIds = req.body.adjustedOrderIds;
+    }
     
     // Taxes with Input Validation
     if (req.body.taxes !== undefined) {

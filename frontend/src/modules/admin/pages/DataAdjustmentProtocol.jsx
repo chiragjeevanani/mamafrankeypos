@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, Save, X, Edit3, Trash2, 
   FileSpreadsheet, Monitor, LogOut, HardDrive, 
-  ChevronDown, Calendar, Hash, CreditCard, AlertCircle, RefreshCw,
+  ChevronDown, ChevronUp, Calendar, Hash, CreditCard, AlertCircle, RefreshCw,
   Plus, CheckSquare, Square, Eye, Download, CheckCircle
 } from 'lucide-react';
 import { usePos } from '../../pos/context/PosContext';
@@ -106,6 +106,62 @@ export default function DataAdjustmentProtocol() {
   const [selectedBills, setSelectedBills] = useState([]);
   const [viewingBill, setViewingBill] = useState(null);
   const [storeInfo, setStoreInfo] = useState(null);
+  const [syncProgress, setSyncProgress] = useState(0);
+  const [showProgress, setShowProgress] = useState(false);
+
+  const [sortField, setSortField] = useState(null);
+  const [sortDirection, setSortDirection] = useState('asc');
+
+  const handleSort = (field) => {
+    playClickSound();
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const calculateMaskedTotal = (bill) => bill?.totalAmount || 0;
+
+  const getBillQty = (bill) => {
+    if (!bill || !bill.kots) return 0;
+    return bill.kots.reduce((s, k) => {
+      if (!k || !k.items) return s;
+      return s + k.items.reduce((si, i) => si + (i.quantity || 0), 0);
+    }, 0);
+  };
+
+  const sortedRecords = useMemo(() => {
+    if (!sortField) return records;
+    return [...records].sort((a, b) => {
+      let valA, valB;
+      if (sortField === 'billId') {
+        valA = a.orderNumber || '';
+        valB = b.orderNumber || '';
+      } else if (sortField === 'completedAt') {
+        valA = new Date(a.completedAt).getTime();
+        valB = new Date(b.completedAt).getTime();
+      } else if (sortField === 'amount') {
+        valA = calculateMaskedTotal(a);
+        valB = calculateMaskedTotal(b);
+      } else if (sortField === 'qty') {
+        valA = getBillQty(a);
+        valB = getBillQty(b);
+      }
+
+      if (valA === valB) return 0;
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
+      if (typeof valA === 'string') {
+        return sortDirection === 'asc' 
+          ? valA.localeCompare(valB) 
+          : valB.localeCompare(valA);
+      }
+      return sortDirection === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [records, sortField, sortDirection]);
   
   // New Filter States (targetOutlet removed)
   const [priceRange, setPriceRange] = useState('Price Range: Standard');
@@ -136,6 +192,7 @@ export default function DataAdjustmentProtocol() {
       setDecreasePct(data.visibilityDecrement?.toString() || '0');
       setPriceRange(data.protocolPriceRange || 'Price Range: Standard');
       setItemReplacements(data.itemReplacements || []);
+      setSelectedBills(data.adjustedOrderIds || []);
       
       // Sync local storage
       localStorage.setItem('rms_visibility_decrement', data.visibilityDecrement || '0');
@@ -174,14 +231,33 @@ export default function DataAdjustmentProtocol() {
       setError('Reduction % must be between 0 and 100.');
       return;
     }
+    if (selectedBills.length === 0) {
+      setError('Please select the bill');
+      return;
+    }
+    let timer;
     try {
       setLoading(true);
       setError('');
+      setShowProgress(true);
+      setSyncProgress(10);
+      
+      timer = setInterval(() => {
+        setSyncProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(timer);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 100);
+
       const payload = {
         visibilityDecrement: pct,
         maskQuantity: true,
         protocolPriceRange: priceRange,
-        itemReplacements
+        itemReplacements,
+        adjustedOrderIds: selectedBills
       };
 
       await api.put('/settings/store', payload);
@@ -191,13 +267,24 @@ export default function DataAdjustmentProtocol() {
       
       await fetchBills();
       
+      clearInterval(timer);
+      setSyncProgress(100);
+      
       playClickSound();
       setSaveSuccess('Reduction settings saved successfully.');
       setTimeout(() => setSaveSuccess(''), 3000);
-      setLoading(false);
+      
+      setTimeout(() => {
+        setLoading(false);
+        setShowProgress(false);
+        setSyncProgress(0);
+      }, 500);
     } catch (err) {
+      if (timer) clearInterval(timer);
       setError('Failed to save settings');
       setLoading(false);
+      setShowProgress(false);
+      setSyncProgress(0);
     }
   };
 
@@ -258,10 +345,10 @@ export default function DataAdjustmentProtocol() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedBills.length === records.length) {
+    if (selectedBills.length === sortedRecords.length) {
       setSelectedBills([]);
     } else {
-      setSelectedBills(records.map(r => r._id));
+      setSelectedBills(sortedRecords.map(r => r._id));
     }
   };
 
@@ -280,7 +367,7 @@ export default function DataAdjustmentProtocol() {
       return `'${year}-${month}-${day} ${hours}:${minutes}`;
     };
 
-    const rows = records.map(bill => {
+    const rows = sortedRecords.map(bill => {
        const maskedTotal = calculateMaskedTotal(bill);
        return [
         bill.orderNumber,
@@ -372,10 +459,7 @@ export default function DataAdjustmentProtocol() {
     }
   };
 
-  const calculateMaskedTotal = (bill) => bill.totalAmount || 0;
-
-
-  const aggregateTotal = records.reduce((sum, r) => sum + calculateMaskedTotal(r), 0);
+  const aggregateTotal = sortedRecords.reduce((sum, r) => sum + calculateMaskedTotal(r), 0);
 
   return (
     <div className="h-full w-full bg-[#F4F4F7] text-slate-800 font-sans flex flex-col overflow-hidden border-2 border-slate-200 selection:bg-[#E1261C]/10">
@@ -398,21 +482,21 @@ export default function DataAdjustmentProtocol() {
                   </select>
                </div>
                <div className="space-y-1.5">
-                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Order Channel</label>
-                   <select 
-                     value={filters.orderType}
-                     onChange={(e) => setFilters({...filters, orderType: e.target.value})}
-                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
-                   >
-                      <option value="--All Types--">--All Channels--</option>
-                      <option value="DINE-IN">DINE-IN</option>
-                      {dineInSections.map(sec => (
-                        <option key={sec.id || sec._id} value={sec._id}>DINE-IN ({sec.label || sec.name})</option>
-                      ))}
-                      <option value="PICKUP">PICKUP</option>
-                      <option value="CAR-SERVICE">CAR-SERVICE</option>
-                   </select>
-                </div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Order Channel</label>
+                    <select 
+                      value={filters.orderType}
+                      onChange={(e) => setFilters({...filters, orderType: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
+                    >
+                       <option value="--All Types--">--All Channels--</option>
+                       <option value="DINE-IN">DINE-IN</option>
+                       {dineInSections.map(sec => (
+                         <option key={sec.id || sec._id} value={sec._id}>DINE-IN ({sec.label || sec.name})</option>
+                       ))}
+                       <option value="PICKUP">PICKUP</option>
+                       <option value="CAR-SERVICE">CAR-SERVICE</option>
+                    </select>
+                 </div>
             </div>
 
             {/* Column 2: Payment Mode & Filter by Item */}
@@ -430,15 +514,13 @@ export default function DataAdjustmentProtocol() {
                   </select>
                </div>
                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Filter by Item</label>
-                  <select 
-                     value={filters.itemName}
-                     onChange={(e) => setFilters({...filters, itemName: e.target.value})}
-                     className="w-full bg-slate-50 border border-slate-200 h-9 text-[11px] font-bold uppercase rounded-md outline-none px-3 focus:ring-2 focus:ring-[#E1261C]/10 focus:border-[#E1261C]/50 focus:bg-white transition-all shadow-sm cursor-pointer"
-                  >
-                     <option>--Filter by item--</option>
-                     {menuItems.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                     label="Filter by Item"
+                     placeholder="--Filter by item--"
+                     value={filters.itemName === '--Filter by item--' ? '' : filters.itemName}
+                     onChange={(val) => setFilters({...filters, itemName: val || '--Filter by item--'})}
+                     options={['--Filter by item--', ...menuItems.map(item => item.name)]}
+                  />
                </div>
             </div>
 
@@ -512,9 +594,24 @@ export default function DataAdjustmentProtocol() {
       {error && (
         <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-3 text-rose-600 text-[10px] font-black uppercase tracking-widest">
            <AlertCircle size={16} />
-{error}
+           {error}
         </div>
       )}
+
+      {showProgress && (
+         <div className="mx-6 mt-4 p-4 bg-white border border-slate-100 rounded-lg shadow-sm space-y-2">
+           <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-500 tracking-wider">
+             <span>Synchronizing adjustments registry...</span>
+             <span className="tabular-nums text-[#E1261C]">{syncProgress}%</span>
+           </div>
+           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200/50">
+             <div 
+               className="bg-gradient-to-r from-[#E1261C] to-[#ff4b40] h-full transition-all duration-200 ease-out"
+               style={{ width: `${syncProgress}%` }}
+             />
+           </div>
+         </div>
+       )}
 
       <div className="flex-1 flex overflow-hidden">
          
@@ -541,23 +638,43 @@ export default function DataAdjustmentProtocol() {
                   <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100">
                      <tr>
                         <th className="px-3 py-4 w-10 text-center cursor-pointer" onClick={toggleSelectAll}>
-                           {selectedBills.length === records.length && records.length > 0 ? <CheckSquare size={16} className="text-[#E1261C] mx-auto" /> : <Square size={16} className="mx-auto" />}
+                           {selectedBills.length === sortedRecords.length && sortedRecords.length > 0 ? <CheckSquare size={16} className="text-[#E1261C] mx-auto" /> : <Square size={16} className="mx-auto" />}
                         </th>
-                        <th className="px-3 py-4">Bill ID</th>
+                        <th className="px-3 py-4 cursor-pointer select-none hover:bg-slate-100 hover:text-slate-700 transition-colors" onClick={() => handleSort('billId')}>
+                          <div className="flex items-center gap-1">
+                            Bill ID
+                            {sortField === 'billId' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                          </div>
+                        </th>
                         <th className="px-3 py-4">Items</th>
-                        <th className="px-3 py-4">Completed At</th>
-                        <th className="px-3 py-4 text-right">Bill Amount</th>
+                        <th className="px-3 py-4 cursor-pointer select-none hover:bg-slate-100 hover:text-slate-700 transition-colors" onClick={() => handleSort('completedAt')}>
+                          <div className="flex items-center gap-1">
+                            Completed At
+                            {sortField === 'completedAt' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                          </div>
+                        </th>
+                        <th className="px-3 py-4 text-right cursor-pointer select-none hover:bg-slate-100 hover:text-slate-700 transition-colors" onClick={() => handleSort('amount')}>
+                          <div className="flex justify-end items-center gap-1">
+                            Bill Amount
+                            {sortField === 'amount' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                          </div>
+                        </th>
                         <th className="px-3 py-4">Payment Mode</th>
                         <th className="px-3 py-4">Type</th>
                         <th className="px-3 py-4">Cashier</th>
                         <th className="px-3 py-4 text-center">Table</th>
-                        <th className="px-3 py-4 text-center">Qty</th>
+                        <th className="px-3 py-4 text-center cursor-pointer select-none hover:bg-slate-100 hover:text-slate-700 transition-colors" onClick={() => handleSort('qty')}>
+                          <div className="flex justify-center items-center gap-1">
+                            Qty
+                            {sortField === 'qty' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                          </div>
+                        </th>
                         <th className="px-3 py-4">Financial Year</th>
                         <th className="px-3 py-4 text-center">Actions</th>
                      </tr>
                   </thead>
                   <tbody className="text-[11px]">
-                     {records.map((bill, idx) => {
+                     {sortedRecords.map((bill, idx) => {
                         const maskedTotal = calculateMaskedTotal(bill);
                         return (
                         <tr 
@@ -626,7 +743,7 @@ export default function DataAdjustmentProtocol() {
                      )})}
                   </tbody>
                </table>
-               {records.length === 0 && !loading && (
+               {sortedRecords.length === 0 && !loading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
                      <div className="flex flex-col items-center gap-3">
                         <HardDrive size={40} className="text-slate-200" />
@@ -634,7 +751,7 @@ export default function DataAdjustmentProtocol() {
                      </div>
                   </div>
                )}
-               {records.length === 0 && loading && (
+               {sortedRecords.length === 0 && loading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
                      <div className="flex flex-col items-center gap-3">
                         <RefreshCw size={36} className="text-[#E1261C] animate-spin" />
@@ -648,7 +765,7 @@ export default function DataAdjustmentProtocol() {
             <div className="bg-slate-900 grid grid-cols-4 border-t border-white/10 p-1.5 gap-2">
                <div className="flex flex-col bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
                   <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Total Bills</span>
-                  <span className="text-sm font-black text-white tabular-nums">{records.length}</span>
+                  <span className="text-sm font-black text-white tabular-nums">{sortedRecords.length}</span>
                </div>
                <div className="flex flex-col bg-white/5 rounded-lg px-3 py-1.5 border border-white/5">
                   <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.15em]">Selected Bills</span>
@@ -662,7 +779,7 @@ export default function DataAdjustmentProtocol() {
                <div className="flex flex-col bg-[#E1261C]/20 rounded-lg px-3 py-1.5 border border-[#E1261C]/50">
                   <span className="text-[8px] font-black text-rose-300 uppercase tracking-[0.15em]">Selected Adjusted Total</span>
                   <span className="text-sm font-black text-white tabular-nums" style={{ fontFamily: "system-ui, sans-serif" }}>
-                    ₹{records.filter(r => selectedBills.includes(r._id)).reduce((s, b) => s + calculateMaskedTotal(b), 0).toLocaleString()}
+                    ₹{sortedRecords.filter(r => selectedBills.includes(r._id)).reduce((s, b) => s + calculateMaskedTotal(b), 0).toLocaleString()}
                   </span>
                </div>
             </div>
@@ -699,17 +816,7 @@ export default function DataAdjustmentProtocol() {
                         className="w-full bg-slate-50 border border-slate-200 h-12 rounded-lg text-center text-lg font-black text-slate-800 focus:border-[#E1261C] focus:bg-white transition-all outline-none focus:ring-2 focus:ring-[#E1261C]/10" 
                      />
                   </div>
-                  <div className="pt-1">
-                     <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={decreasePct}
-                        onChange={(e) => setDecreasePct(e.target.value)}
-                        className="w-full accent-[#E1261C] h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer focus:outline-none"
-                     />
-                  </div>
+
                </div>
             </div>
 

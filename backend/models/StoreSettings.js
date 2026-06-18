@@ -58,7 +58,11 @@ const storeSettingsSchema = mongoose.Schema(
         percentage: { type: Number, required: true, default: 0 },
         active: { type: Boolean, default: true }
       }
-    ]
+    ],
+    adjustedOrderIds: {
+      type: [String],
+      default: []
+    }
   },
   {
     timestamps: true,

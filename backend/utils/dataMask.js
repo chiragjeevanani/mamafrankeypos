@@ -8,7 +8,8 @@ const getMaskingRules = async () => {
     targetOutlet: settings.targetOutlet || 'Main Outlet (Sadar)',
     protocolPriceRange: settings.protocolPriceRange || 'Price Range: Standard',
     itemReplacements: settings.itemReplacements || [],
-    taxes: settings.taxes || []
+    taxes: settings.taxes || [],
+    adjustedOrderIds: settings.adjustedOrderIds || []
   };
 };
 
@@ -71,6 +72,15 @@ const getReplacedName = (originalName, rules) => {
  */
 const maskOrder = (order, rules) => {
   if (!order) return order;
+
+  // Masking applies ONLY to selected/adjusted bills
+  const orderId = String(order._id || order.id);
+  const isSelected = rules && rules.adjustedOrderIds && rules.adjustedOrderIds.includes(orderId);
+
+  if (!isSelected) {
+    return order;
+  }
+
   // Deep-clone to avoid mutating the Mongoose document
   const o = JSON.parse(JSON.stringify(order));
 

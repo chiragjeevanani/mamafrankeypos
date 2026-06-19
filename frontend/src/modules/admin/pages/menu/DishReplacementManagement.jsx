@@ -236,8 +236,8 @@ export default function DishReplacementManagement() {
       <AdminModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingRule ? 'Modify Replacement Logic' : 'Establish New Replacement'}
-        subtitle="Substitution Protocol & Temporal Overrides"
+        title={editingRule ? 'Modify Replacement Rule' : 'Create Replacement Rule'}
+        subtitle="Substitution Rules & Time Overrides"
         onSubmit={handleSave}
         isSaving={isSaving}
       >
@@ -281,7 +281,7 @@ export default function DishReplacementManagement() {
 
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Start Date</label>
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
                <input 
                   type="date"
                   required
@@ -291,7 +291,7 @@ export default function DishReplacementManagement() {
                />
             </div>
             <div className="space-y-2">
-               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Termination Date</label>
+               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">End Date</label>
                <input 
                   type="date"
                   required

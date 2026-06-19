@@ -109,7 +109,7 @@ export default function ComboMeals() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('PROTOCOL: Proceed with record termination?')) {
+    if (window.confirm('Are you sure you want to delete this combo?')) {
       try {
         setError('');
         await deleteCombo(id);
@@ -150,7 +150,7 @@ export default function ComboMeals() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
             type="text" 
-            placeholder="FILTER CATALOGED COMBOS..."
+            placeholder="Filter combos..."
             className="w-full bg-slate-50 border-none rounded-sm py-2.5 pl-10 pr-4 text-[10px] font-bold uppercase tracking-widest outline-none"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -158,7 +158,7 @@ export default function ComboMeals() {
         </div>
         <button className="h-10 px-4 border border-slate-100 text-slate-500 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-sm hover:bg-slate-50 transition-all outline-none">
           <Filter size={14} />
-          Protocol
+          Filter
         </button>
       </div>
 
@@ -200,8 +200,8 @@ export default function ComboMeals() {
       <AdminModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCombo ? 'Update Combo Protocol' : 'Initialize Combo'}
-        subtitle="Bundle Logic & Multi-Asset Assemblies"
+        title={editingCombo ? 'Update Combo' : 'Create Combo'}
+        subtitle="Manage items and prices in this combo meal"
         onSubmit={handleSave}
         isSaving={isSaving}
       >
@@ -213,7 +213,7 @@ export default function ComboMeals() {
             </div>
           )}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Combo Designation</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Combo Name</label>
             <input 
               type="text" 
               required
@@ -225,7 +225,7 @@ export default function ComboMeals() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fiscal Value (INR)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price (INR)</label>
               <input 
                 type="number" 
                 required
@@ -249,14 +249,14 @@ export default function ComboMeals() {
 
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Operational Status</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
               <select 
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
                 value={formData.active}
                 onChange={(e) => setFormData({...formData, active: e.target.value === 'true'})}
               >
-                <option value="true">Operational</option>
-                <option value="false">Decommissioned</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
               </select>
             </div>
           </div>

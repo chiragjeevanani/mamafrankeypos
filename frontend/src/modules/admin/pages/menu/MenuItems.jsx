@@ -113,7 +113,7 @@ export default function MenuItems() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('PROTOCOL: Proceed with record termination?')) {
+    if (window.confirm('Are you sure you want to delete this item?')) {
       try {
         setError('');
         await deleteMenuItem(id);
@@ -132,7 +132,7 @@ export default function MenuItems() {
       setIsSaving(true);
       setError('');
       await bulkUploadMenu(file);
-      alert('PROTOCOL SUCCESS: Bulk import completed successfully.');
+      alert('Success: Menu items imported successfully.');
     } catch (err) {
       console.error('Bulk upload error:', err);
       setError(err.response?.data?.message || 'Bulk import failed.');
@@ -406,7 +406,7 @@ export default function MenuItems() {
       <AdminModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Update Item Protocol' : 'Initialize New Item'}
+        title={editingItem ? 'Update Item' : 'Add New Item'}
         subtitle="Catalog Inventory & Pricing Management"
         onSubmit={handleSave}
         isSaving={isSaving}
@@ -419,7 +419,7 @@ export default function MenuItems() {
             </div>
           )}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Designation</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Name</label>
             <input 
               type="text" 
               required
@@ -443,7 +443,7 @@ export default function MenuItems() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fiscal Value (INR)</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price (INR)</label>
               <input 
                 type="number" 
                 required
@@ -471,7 +471,7 @@ export default function MenuItems() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registry Code</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Item SKU / Code</label>
               <input 
                 type="text" 
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"

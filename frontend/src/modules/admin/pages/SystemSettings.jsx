@@ -692,7 +692,7 @@ export default function SystemSettings() {
                               <Globe size={24} />
                            </div>
                            <div>
-                              <h3 className="text-sm font-black uppercase tracking-tight">Regional Protocol</h3>
+                              <h3 className="text-sm font-black uppercase tracking-tight">Location & Timezone</h3>
                               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global system behavior and formatting</p>
                            </div>
                         </div>
@@ -719,7 +719,7 @@ export default function SystemSettings() {
                                </select>
                            </div>
                            <div className="space-y-2">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Temporal Zone</label>
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Timezone</label>
                                <select 
                                   className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
                                   value={config.timezone}
@@ -928,7 +928,7 @@ export default function SystemSettings() {
                         <div>
                           <h3 className="text-sm font-black uppercase tracking-tight">🪑 Table Configuration</h3>
                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                            Manage dining areas and individual table registry
+                            Manage dining areas and individual tables
                           </p>
                         </div>
                       </div>
@@ -1072,7 +1072,7 @@ export default function SystemSettings() {
                       <div className="pt-8 border-t border-slate-50 space-y-6">
                         <div className="flex items-center justify-between">
                            <div>
-                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table Registry {selectedSection ? `- ${selectedSection.label}` : '- Select Section'}</h4>
+                              <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-[#E1261C] pl-3">Table List {selectedSection ? `- ${selectedSection.label}` : '- Select Section'}</h4>
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 ml-3">Configure individual table identifiers and statuses</p>
                            </div>
                            {!isSelectedSectionPickup && selectedSection?.type !== 'CAR-SERVICE' && (
@@ -1340,10 +1340,10 @@ export default function SystemSettings() {
 
                       {/* --- 2. Tax Registry Registry --- */}
                       <div className="space-y-4">
-                         <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-slate-900 pl-3">Active Tax Registry</h4>
+                         <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 border-l-2 border-slate-900 pl-3">Active Taxes</h4>
                          <div className="bg-white border border-slate-100 rounded-sm overflow-hidden">
                             <div className="grid grid-cols-[1fr_120px_100px_120px] bg-slate-50 border-b border-slate-100 px-6 py-3">
-                              {['Tax Identity', 'Percentage', 'Protocol Status', 'Command Console'].map((h, i) => (
+                              {['Tax Name', 'Percentage', 'Status', 'Actions'].map((h, i) => (
                                 <span key={i} className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</span>
                               ))}
                             </div>
@@ -1445,7 +1445,7 @@ export default function SystemSettings() {
                       <div className="pt-4 border-t border-slate-50 flex items-center gap-3">
                          <Zap size={14} className="text-amber-500 shrink-0" />
                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-loose">
-                            Warning: Modifications to active tax registry will synchronize with all secondary terminal billing calculations immediately.
+                            Warning: Changes to active taxes will affect all active POS billing terminals immediately.
                          </p>
                       </div>
                     </motion.div>
@@ -1521,7 +1521,7 @@ export default function SystemSettings() {
             <div className="flex items-center gap-3 p-4 bg-blue-50/50 border border-blue-100 rounded-sm">
                <CheckCircle2 size={16} className="text-blue-500 shrink-0" />
                <p className="text-[9px] font-bold text-blue-700 uppercase tracking-widest leading-loose">
-                  All system configurations are currently operating under the latest protocol version (v2.4.0). Commit changes to synchronize with secondary terminals.
+                  Settings are currently active. Save changes to sync across all POS billing terminals.
                </p>
             </div>
             

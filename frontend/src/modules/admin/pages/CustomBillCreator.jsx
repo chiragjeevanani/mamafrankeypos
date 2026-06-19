@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Printer, Plus, Trash2, Calendar, Clock, 
-  User, FileText, RefreshCw, AlertCircle, ShoppingBag, Utensils
+  User, FileText, RefreshCw, AlertCircle, ShoppingBag, Utensils, Search
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
@@ -16,8 +16,34 @@ export default function CustomBillCreator() {
   // Selected items in the custom bill
   const [selectedItems, setSelectedItems] = useState([]);
   
-  // Selected menu item from dropdown to add
+  // Selected menu item to add
   const [itemToAdd, setItemToAdd] = useState('');
+  
+  // Searchable dropdown state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Click outside dropdown handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtered menu items based on search input
+  const filteredMenuItems = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return menuItems;
+    return menuItems.filter(item => 
+      item.name.toLowerCase().includes(q) || 
+      item.price.toString().includes(q)
+    );
+  }, [menuItems, searchQuery]);
 
   // Form inputs state
   const [formData, setFormData] = useState({
@@ -118,6 +144,7 @@ export default function CustomBillCreator() {
     }
     
     setItemToAdd('');
+    setSearchQuery('');
   };
 
   const handleRemoveItem = (index) => {
@@ -143,6 +170,8 @@ export default function CustomBillCreator() {
     playClickSound();
     setSelectedItems([]);
     setItemToAdd('');
+    setSearchQuery('');
+    setIsOpen(false);
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     setFormData(prev => ({
       ...prev,
@@ -546,24 +575,52 @@ export default function CustomBillCreator() {
             </h3>
             
             <div className="flex gap-2">
-              <div className="flex-1">
-                <select 
-                  value={itemToAdd}
-                  onChange={(e) => setItemToAdd(e.target.value)}
-                  className="w-full bg-stone-50 border border-stone-200 rounded-lg py-2 px-2.5 text-xs font-semibold focus:outline-none focus:border-stone-400 focus:bg-white transition-all"
-                >
-                  <option value="">-- Choose Menu Item --</option>
-                  {menuItems.map(item => (
-                    <option key={item._id} value={item._id}>
-                      {item.name} (₹{item.price.toFixed(0)})
-                    </option>
-                  ))}
-                </select>
+              <div ref={dropdownRef} className="flex-1 relative">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input 
+                    type="text"
+                    placeholder="Search & choose menu item..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setItemToAdd(''); // Clear selection if typing
+                      setIsOpen(true);
+                    }}
+                    onFocus={() => setIsOpen(true)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg py-2 pl-9 pr-3 text-xs font-semibold focus:outline-none focus:border-stone-400 focus:bg-white transition-all"
+                  />
+                </div>
+                {isOpen && (
+                  <div className="absolute left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-stone-200 rounded-lg shadow-lg z-50 py-1 font-sans text-xs">
+                    {filteredMenuItems.length === 0 ? (
+                      <div className="px-3 py-2 text-stone-400 italic">No menu items found</div>
+                    ) : (
+                      filteredMenuItems.map(item => (
+                        <button
+                          key={item._id}
+                          type="button"
+                          onClick={() => {
+                            setItemToAdd(item._id);
+                            setSearchQuery(`${item.name} (₹${item.price.toFixed(0)})`);
+                            setIsOpen(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2 hover:bg-stone-50 transition-colors flex justify-between items-center text-stone-700 hover:text-stone-900 border-b border-stone-50 last:border-0"
+                        >
+                          <span className="font-bold uppercase tracking-tight">{item.name}</span>
+                          <span className="text-[10px] text-[#E1261C] font-black bg-stone-50 px-1.5 py-0.5 rounded border border-stone-100">
+                            ₹{item.price.toFixed(0)}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
               <button 
                 onClick={handleAddItem}
                 disabled={!itemToAdd}
-                className="px-4 bg-[#E1261C] hover:bg-[#4E342E] text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 active:scale-95"
+                className="px-4 bg-[#E1261C] hover:bg-[#4E342E] text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 active:scale-95 shrink-0"
               >
                 <Plus size={14} /> Add
               </button>

@@ -104,9 +104,9 @@ export default function AuditLogs() {
         <div>
            <div className="flex items-center gap-2 mb-1">
               <Shield size={16} className="text-slate-900" />
-              <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Audit & Protocol Logs</h1>
+              <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">Activity Logs</h1>
            </div>
-           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Immutable registry of all system interactions and terminal events</p>
+           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Permanent history of all system events and user actions</p>
         </div>
         <div className="flex items-center gap-3">
            <button 
@@ -114,7 +114,7 @@ export default function AuditLogs() {
              className="h-9 px-4 bg-white border border-slate-200 text-slate-900 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all"
            >
               <Download size={14} />
-              Export Protocol
+              Export Logs
            </button>
         </div>
       </div>
@@ -199,7 +199,7 @@ export default function AuditLogs() {
                <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
                      <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Timestamp</th>
-                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Actor Protocol</th>
+                     <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">User / Role</th>
                      <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Event Interaction</th>
                      <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Module Unit</th>
                      <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Status</th>

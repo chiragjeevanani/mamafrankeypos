@@ -60,7 +60,7 @@ export default function CancelledOrders() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded border border-rose-100 shadow-sm">
               <ShieldAlert size={14} />
-              <span className="text-[9px] font-black uppercase tracking-widest">Audit Tracking Active</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Tracking Active</span>
             </div>
             <button
               onClick={fetchOrders}
@@ -139,9 +139,9 @@ export default function CancelledOrders() {
         <div className="mt-8 p-6 bg-amber-50 rounded-lg border border-amber-100 flex items-start gap-4 shadow-sm">
           <AlertTriangle size={20} className="text-amber-600 shrink-0" />
           <div>
-            <h4 className="text-xs font-black text-amber-900 uppercase tracking-tight mb-1">Operational Protocol Advisory</h4>
+            <h4 className="text-xs font-black text-amber-900 uppercase tracking-tight mb-1">Important Notice</h4>
             <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-relaxed">
-              Cancelled orders are retained in the order ledger and should be reviewed against manager approvals and audit logs.
+              Cancelled orders are saved in order history and should be reviewed against manager approvals and logs.
             </p>
           </div>
         </div>

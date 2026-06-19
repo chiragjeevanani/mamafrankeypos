@@ -62,7 +62,7 @@ export default function Categories() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('PROTOCOL: Proceed with record termination?')) {
+    if (window.confirm('Are you sure you want to delete this category?')) {
       try {
         setError('');
         await deleteCategory(id);
@@ -162,8 +162,8 @@ export default function Categories() {
       <AdminModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? 'Update Category' : 'Initialize Category'}
-        subtitle="Catalog Structure & Hierarchy Protocol"
+        title={editingCategory ? 'Update Category' : 'Create Category'}
+        subtitle="Menu structure and category hierarchy"
         onSubmit={handleSave}
         isSaving={isSaving}
       >
@@ -175,7 +175,7 @@ export default function Categories() {
             </div>
           )}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Designation</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category Name</label>
             <input 
               type="text" 
               required
@@ -187,14 +187,14 @@ export default function Categories() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Protocol</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
               <select 
                 className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
                 value={formData.status}
                 onChange={(e) => setFormData({...formData, status: e.target.value})}
               >
-                <option value="Active">Operational</option>
-                <option value="Inactive">Decommissioned</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
               </select>
             </div>
           </div>

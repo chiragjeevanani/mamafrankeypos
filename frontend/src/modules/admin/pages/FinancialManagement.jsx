@@ -70,12 +70,12 @@ export default function FinancialManagement() {
       setExpenses([data, ...expenses]);
       setIsModalOpen(false);
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to save expense ledger entry');
+      setFormError(err.response?.data?.message || 'Failed to save expense entry');
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('LEGAL PROTOCOL: Proceed with expense ledger record deletion? This cannot be undone.')) {
+    if (window.confirm('Are you sure you want to delete this expense? This action cannot be undone.')) {
       try {
         await api.delete(`/expenses/${id}`);
         setExpenses(expenses.filter(e => e._id !== id));
@@ -186,7 +186,7 @@ export default function FinancialManagement() {
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Title / Description</th>
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Expense Category</th>
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-right">Amount (INR)</th>
-                     <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-center">Protocol Status</th>
+                     <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-center">Status</th>
                      <th className="px-6 py-3 text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap text-right">Actions</th>
                   </tr>
                </thead>
@@ -250,8 +250,8 @@ export default function FinancialManagement() {
                         <Plus size={16} />
                      </div>
                      <div>
-                        <h3 className="text-[13px] font-black uppercase tracking-tight text-slate-900">Registry Manual Ledger Entry</h3>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Fiscal Protocol v2.4.0</p>
+                        <h3 className="text-[13px] font-black uppercase tracking-tight text-slate-900">Log New Expense</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">System Version v2.4.0</p>
                      </div>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors"><X size={18} /></button>
@@ -266,7 +266,7 @@ export default function FinancialManagement() {
                   )}
                   <div className="grid grid-cols-2 gap-6">
                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Date</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expense Date</label>
                         <input 
                            type="date" 
                            required
@@ -305,7 +305,7 @@ export default function FinancialManagement() {
                      </div>
 
                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fiscal Value (INR)</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount (INR)</label>
                         <input 
                            type="number" 
                            required
@@ -328,11 +328,8 @@ export default function FinancialManagement() {
                      </div>
                   </div>
 
-                  <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-sm flex items-center gap-3">
-                     <AlertCircle size={16} className="text-blue-500" />
-                     <p className="text-[9px] font-bold text-blue-700 uppercase tracking-widest leading-relaxed">
-                        Data Integrity: Manual ledger entries are subject to reconciliation vs banking protocols at end of fiscal day.
-                     </p>
+                  <div className="p-4 bg-amber-50 rounded border border-amber-100/50 text-[10px] font-bold text-amber-700 uppercase tracking-widest leading-relaxed">
+                     Note: Manual expense entries will be reviewed during end-of-day bank reconciliation.
                   </div>
 
                   <div className="pt-6 flex items-center gap-3">
@@ -340,13 +337,13 @@ export default function FinancialManagement() {
                         type="button"
                         onClick={() => setIsModalOpen(false)}
                         className="flex-1 py-3 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-sm"
-                     >Discard Entry</button>
+                     >Cancel</button>
                      <button 
                         type="submit"
                         className="flex-1 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
                      >
                         <Save size={14} />
-                        Commit to Ledger
+                        Save Expense
                      </button>
                   </div>
                </form>

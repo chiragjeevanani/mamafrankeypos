@@ -60,7 +60,7 @@ export default function OutletManagement() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm('SECURITY PROTOCOL: Decommission this network node? This action is irreversible and will revoke all local access credentials.')) {
+    if (window.confirm('Are you sure you want to delete this outlet? This will permanently remove it and revoke its access.')) {
       setOutlets(outlets.filter(o => o.id !== id));
     }
   };
@@ -204,9 +204,9 @@ export default function OutletManagement() {
                      </div>
                       <div>
                          <h3 className="text-[13px] font-black uppercase tracking-tight text-slate-900">
-                           {editingOutlet ? 'Update Network Node' : 'Register New Network Node'}
+                           {editingOutlet ? 'Update Store/Outlet' : 'Register New Store/Outlet'}
                          </h3>
-                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Enterprise Protocol v2.4.0</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">System Version v2.4.0</p>
                       </div>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors"><X size={18} /></button>
@@ -268,7 +268,7 @@ export default function OutletManagement() {
                   <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-sm flex items-start gap-3">
                      <ShieldAlert size={14} className="text-amber-600 mt-0.5 shrink-0" />
                      <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest leading-relaxed">
-                        Security Notice: New outlet registration triggers global credential resets for assigned personnel and initializes billing ledger mapping.
+                        Note: Registering a new outlet will set up credentials for the assigned staff and initialize their billing configuration.
                      </p>
                   </div>
 
@@ -277,13 +277,13 @@ export default function OutletManagement() {
                          type="button"
                          onClick={() => setIsModalOpen(false)}
                          className="flex-1 py-3 bg-white border border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-sm"
-                      >Abort Registration</button>
+                      >Cancel</button>
                       <button 
                          type="submit"
                          className="flex-1 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
                       >
                          <Save size={14} />
-                         {editingOutlet ? 'Update Node' : 'Establish Node'}
+                         {editingOutlet ? 'Update Outlet' : 'Save Outlet'}
                       </button>
                    </div>
                </form>

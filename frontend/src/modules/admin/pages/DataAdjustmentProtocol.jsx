@@ -285,18 +285,23 @@ export default function DataAdjustmentProtocol() {
         adjustedOrderIds: selectedBills
       };
 
+      // 1. Save settings to the staging area
       await api.put('/settings/store', payload);
       
-      localStorage.setItem('rms_visibility_decrement', decreasePct);
-      localStorage.setItem('rms_item_replacements', JSON.stringify(itemReplacements));
+      // 2. Commit the adjustments permanently
+      await api.post('/settings/store/commit-adjustments');
+
+      // 3. Fetch protocols to sync local state (resets selectedBills & decreasePct to database values)
+      await fetchProtocols();
       
+      // 4. Fetch updated bills list
       await fetchBills();
       
       clearInterval(timer);
       setSyncProgress(100);
       
       playClickSound();
-      setSaveSuccess('Reduction settings saved successfully.');
+      setSaveSuccess('Reduction settings applied and committed permanently.');
       setTimeout(() => setSaveSuccess(''), 3000);
       
       setTimeout(() => {
@@ -306,7 +311,7 @@ export default function DataAdjustmentProtocol() {
       }, 500);
     } catch (err) {
       if (timer) clearInterval(timer);
-      setError('Failed to save settings');
+      setError('Failed to apply and commit settings');
       setLoading(false);
       setShowProgress(false);
       setSyncProgress(0);

@@ -28,6 +28,21 @@ const storeSettingsSchema = mongoose.Schema(
     gstNumber: {
       type: String,
     },
+    legalName: {
+      type: String,
+    },
+    city: {
+      type: String,
+    },
+    state: {
+      type: String,
+    },
+    pincode: {
+      type: String,
+    },
+    fssai: {
+      type: String,
+    },
     // Adjustment Protocols
     visibilityDecrement: {
       type: Number,

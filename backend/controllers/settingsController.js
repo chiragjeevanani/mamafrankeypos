@@ -278,6 +278,12 @@ const updateStoreSettings = asyncHandler(async (req, res) => {
     settings.timezone = req.body.timezone || settings.timezone;
     settings.gstNumber = req.body.gstNumber || settings.gstNumber;
     
+    settings.legalName = req.body.legalName !== undefined ? req.body.legalName : settings.legalName;
+    settings.city = req.body.city !== undefined ? req.body.city : settings.city;
+    settings.state = req.body.state !== undefined ? req.body.state : settings.state;
+    settings.pincode = req.body.pincode !== undefined ? req.body.pincode : settings.pincode;
+    settings.fssai = req.body.fssai !== undefined ? req.body.fssai : settings.fssai;
+    
     // Adjustment Protocols
     if (req.body.visibilityDecrement !== undefined) {
       settings.visibilityDecrement = req.body.visibilityDecrement;

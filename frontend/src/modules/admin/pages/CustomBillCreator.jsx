@@ -89,12 +89,12 @@ export default function CustomBillCreator() {
         setFormData(prev => ({
           ...prev,
           billNo: `M-${randomNum}`,
-          storeName: settings.name || prev.storeName,
+          storeName: settings.storeName || settings.name || prev.storeName,
           storeLegal: settings.legalName || prev.storeLegal,
           storeAddress: settings.address || prev.storeAddress,
           storeCity: settings.city ? `${settings.city}, ${settings.state || ''} - ${settings.pincode || ''}` : prev.storeCity,
           storePhone: settings.phone || prev.storePhone,
-          storeGst: settings.gstin || prev.storeGst,
+          storeGst: settings.gstNumber || settings.gstin || prev.storeGst,
           storeFssai: settings.fssai || prev.storeFssai
         }));
       } catch (err) {
@@ -186,12 +186,12 @@ export default function CustomBillCreator() {
       discount: 0,
       couponCode: '',
       
-      storeName: storeSettings?.name || 'MAMA FRANKY HOUSE',
+      storeName: storeSettings?.storeName || storeSettings?.name || 'MAMA FRANKY HOUSE',
       storeLegal: storeSettings?.legalName || '',
       storeAddress: storeSettings?.address || 'A - 17, Shopping Arcade, Sadar Bazar',
       storeCity: storeSettings?.city ? `${storeSettings.city}, ${storeSettings.state || ''} - ${storeSettings.pincode || ''}` : 'Agra Cantt, U. P. - 282001',
       storePhone: storeSettings?.phone || '88991-99999',
-      storeGst: storeSettings?.gstin || '09AAFFT9378RIZW',
+      storeGst: storeSettings?.gstNumber || storeSettings?.gstin || '09AAFFT9378RIZW',
       storeFssai: storeSettings?.fssai || ''
     }));
   };

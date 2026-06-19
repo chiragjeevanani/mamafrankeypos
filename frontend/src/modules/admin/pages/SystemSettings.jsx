@@ -395,7 +395,12 @@ export default function SystemSettings() {
     timezone: 'Asia/Kolkata',
     address: '',
     phone: '',
-    gstNumber: ''
+    gstNumber: '',
+    legalName: '',
+    city: '',
+    state: '',
+    pincode: '',
+    fssai: ''
   });
 
   const [tablesSaved, setTablesSaved] = useState(false);
@@ -708,6 +713,24 @@ export default function SystemSettings() {
                                />
                            </div>
                            <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Legal Entity Name (e.g. M/S TIME TO EAT)</label>
+                               <input 
+                                  type="text"
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.legalName || ''}
+                                  onChange={(e) => setConfig({...config, legalName: e.target.value})}
+                               />
+                           </div>
+                           <div className="space-y-2">
+                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FSSAI License Number</label>
+                               <input 
+                                  type="text"
+                                  className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                  value={config.fssai || ''}
+                                  onChange={(e) => setConfig({...config, fssai: e.target.value})}
+                               />
+                           </div>
+                           <div className="space-y-2">
                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Currency</label>
                                <select 
                                   className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
@@ -737,7 +760,38 @@ export default function SystemSettings() {
                                   onChange={(e) => setConfig({...config, address: e.target.value})}
                                   rows={3}
                                />
-                           </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">City / Region</label>
+                                <input 
+                                   type="text"
+                                   className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                   value={config.city || ''}
+                                   onChange={(e) => setConfig({...config, city: e.target.value})}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">State</label>
+                                        <input 
+                                           type="text"
+                                           className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold uppercase outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                           value={config.state || ''}
+                                           onChange={(e) => setConfig({...config, state: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pin Code</label>
+                                        <input 
+                                           type="text"
+                                           className="w-full bg-slate-50 border border-slate-100 p-3 text-[11px] font-bold outline-none focus:ring-1 focus:ring-slate-900/10 rounded-sm"
+                                           value={config.pincode || ''}
+                                           onChange={(e) => setConfig({...config, pincode: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                            <div className="space-y-2">
                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Phone</label>
                                <input 

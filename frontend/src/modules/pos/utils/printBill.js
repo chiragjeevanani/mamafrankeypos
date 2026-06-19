@@ -34,7 +34,7 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   doc.setFont('courier', 'bold');
   doc.setFontSize(11);
   // Dynamic Store Name
-  const storeName = storeInfo?.name || 'MAMA FRANKY HOUSE';
+  const storeName = storeInfo?.storeName || storeInfo?.name || 'MAMA FRANKY HOUSE';
   doc.text(storeName.toUpperCase(), 40, 13, { align: 'center' });
   
   doc.setFont('courier', 'normal');
@@ -55,7 +55,7 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
     doc.text('Ph. No.. : +91 88991-99999', 40, 29, { align: 'center' });
   }
 
-  const gstin = storeInfo?.gstin || '09AAFFT9378RIZW';
+  const gstin = storeInfo?.gstNumber || storeInfo?.gstin || '09AAFFT9378RIZW';
   doc.text(`GSTIN : ${gstin}`, 40, 33, { align: 'center' });
   
   if (storeInfo?.fssai) {

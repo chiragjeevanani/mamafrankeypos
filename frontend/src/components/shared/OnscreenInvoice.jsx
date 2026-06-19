@@ -78,12 +78,12 @@ export default function OnscreenInvoice({ order, storeSettings: propStoreSetting
   const finalWhole = Math.round(order.totalAmount || calculatedGrandTotal);
   const roundOff = (finalWhole - (order.totalAmount || calculatedGrandTotal)).toFixed(2);
 
-  const storeName = settings?.name || 'MAMA FRANKY HOUSE';
+  const storeName = settings?.storeName || settings?.name || 'MAMA FRANKY HOUSE';
   const storeLegal = settings?.legalName || '';
   const storeAddress = settings?.address || 'A - 17, Shopping Arcade, Sadar Bazar';
   const storeCity = settings?.city ? `${settings.city}, ${settings.state || ''} - ${settings.pincode || ''}` : 'Agra Cantt, U.P. - 282001';
   const storePhone = settings?.phone || '88991-99999';
-  const storeGst = settings?.gstin || '09AAFFT9378RIZW';
+  const storeGst = settings?.gstNumber || settings?.gstin || '09AAFFT9378RIZW';
   const storeFssai = settings?.fssai || '';
 
   return (

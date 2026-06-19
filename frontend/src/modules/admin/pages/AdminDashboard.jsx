@@ -47,6 +47,87 @@ export default function AdminDashboard() {
     fetchRecentOrders();
   }, []);
 
+  const handleExportReport = () => {
+    playClickSound();
+    if (!dashboardData) return;
+
+    const sections = [];
+
+    // Section 1: Summary Metrics
+    sections.push([
+      "OPERATIONS REPORT - SUMMARY",
+      new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    ]);
+    sections.push(["Metric", "Value"]);
+    sections.push(["Today's Revenue", `₹${maskCurrency(dashboardData.sales.today.total).toLocaleString()}`]);
+    sections.push(["MTD Sales", `₹${maskCurrency(dashboardData.sales.month.total).toLocaleString()}`]);
+    sections.push(["Weekly Performance", `₹${maskCurrency(dashboardData.sales.week.total).toLocaleString()}`]);
+    sections.push(["Total Customers", dashboardData.customers.toString()]);
+    sections.push(["MTD Expenses", `₹${dashboardData.expenses.toLocaleString()}`]);
+    sections.push(["Today's Orders", `${maskQuantity(dashboardData.sales.today.count)} Units`]);
+    sections.push(["Top Selling Item", dashboardData.topItems[0]?._id || "N/A"]);
+    sections.push([]); // Blank row separator
+
+    // Section 2: Top Selling Items
+    sections.push(["TOP SELLING ITEMS (CURRENT MONTH)"]);
+    sections.push(["Item Name", "Quantity Sold", "Revenue"]);
+    if (dashboardData.topItems && dashboardData.topItems.length > 0) {
+      dashboardData.topItems.forEach(item => {
+        sections.push([item._id, item.count, `₹${item.revenue.toLocaleString()}`]);
+      });
+    } else {
+      sections.push(["No top items found", "", ""]);
+    }
+    sections.push([]); // Blank row separator
+
+    // Section 3: Hourly Sales Performance
+    sections.push(["HOURLY SALES (TODAY)"]);
+    sections.push(["Hour", "Revenue"]);
+    if (dashboardData.hourlySales && dashboardData.hourlySales.length > 0) {
+      dashboardData.hourlySales.forEach(item => {
+        sections.push([`${item._id}:00`, `₹${maskCurrency(item.total).toLocaleString()}`]);
+      });
+    } else {
+      sections.push(["No hourly sales data", ""]);
+    }
+    sections.push([]); // Blank row separator
+
+    // Section 4: Recent Orders
+    sections.push(["RECENT ORDERS (LAST 5)"]);
+    sections.push(["Order Number", "Destination", "Time", "Payment Method", "Total Amount"]);
+    if (recentOrders && recentOrders.length > 0) {
+      recentOrders.forEach(order => {
+        const destination = order.orderType === 'DINE-IN' ? order.table?.name : order.carNumber || 'Pickup';
+        const time = new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const amount = `₹${calculateMaskedOrderTotal(order).toFixed(0)}`;
+        sections.push([`#${order.orderNumber}`, destination, time, order.paymentMethod || "N/A", amount]);
+      });
+    } else {
+      sections.push(["No recent orders", "", "", "", ""]);
+    }
+
+    // Convert array of arrays to CSV string
+    const csvContent = sections
+      .map(row => 
+        row.map(cell => {
+          const cellStr = cell === null || cell === undefined ? "" : String(cell);
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replaceAll('"', '""')}"`;
+          }
+          return cellStr;
+        }).join(",")
+      )
+      .join("\n");
+
+    // Create download link with UTF-8 BOM to properly support currency symbols
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `operations_report_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   if (loading) {
     return <div className="p-8 flex items-center justify-center min-h-screen"><div className="animate-spin text-[#E1261C]"><BarChart3 size={32} /></div></div>;
   }
@@ -114,16 +195,10 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => { playClickSound(); alert('Export Report: This option is scheduled for a future release.'); }}
+            onClick={handleExportReport}
             className="px-3 py-2 bg-white border border-stone-200 rounded-lg text-[11px] font-bold text-stone-500 uppercase tracking-wider hover:bg-stone-50 transition-all shadow-sm"
           >
             Export Report
-          </button>
-          <button 
-            onClick={() => { playClickSound(); alert('Configure Operations: This option is scheduled for a future release.'); }}
-            className="px-3 py-2 bg-[#E1261C] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider shadow-md shadow-stone-900/15 hover:bg-[#4E342E] transition-all active:scale-[0.98]"
-          >
-            Configure
           </button>
         </div>
       </div>

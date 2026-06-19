@@ -81,6 +81,61 @@ export default function AllOrders() {
     }
   };
 
+  const handleExportCsv = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append('page', 1);
+      params.append('limit', 10000);
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+      if (filterType !== 'ALL') {
+        params.append('type', filterType);
+      }
+      if (filterStatus !== 'ALL') {
+        params.append('status', filterStatus);
+      }
+      
+      const { data } = await api.get(`/orders?${params.toString()}`);
+      const exportList = data && data.data ? data.data : (Array.isArray(data) ? data : []);
+      
+      if (exportList.length === 0) {
+        await showAlert("No orders to export.", "Export CSV", true);
+        return;
+      }
+
+      const headers = ["Bill ID", "Date", "Items", "Subtotal", "Discount", "Taxes", "Total Amount", "Payment Mode", "Type", "Status"];
+      const escapeCSV = (val) => `"${String(val || '').replaceAll('"', '""')}"`;
+      
+      const rows = exportList.map(order => [
+        order.orderNumber || order._id || 'N/A',
+        new Date(order.completedAt || order.createdAt).toLocaleString(),
+        order.kots?.flatMap(k => k.items.map(i => i.name)).join(', ') || 'N/A',
+        order.subtotal,
+        order.discount?.amount || 0,
+        (order.taxes || []).reduce((sum, t) => sum + t.amount, 0),
+        order.totalAmount,
+        order.paymentMethod || 'N/A',
+        order.orderType,
+        order.orderStatus
+      ]);
+
+      const csvContent = "\uFEFF" + [
+        headers.map(escapeCSV).join(","),
+        ...rows.map(r => r.map(escapeCSV).join(","))
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `order_history_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    } catch (error) {
+      console.error("Failed to export orders CSV:", error);
+      await showAlert("Failed to export orders. Please try again.", "Export CSV", true);
+    }
+  };
+
   React.useEffect(() => {
     const delayDebounce = setTimeout(() => {
       fetchOrders();
@@ -207,6 +262,12 @@ export default function AllOrders() {
             <option value="COMPLETED">Completed</option>
             <option value="CANCELLED">Cancelled</option>
           </select>
+          <button
+            onClick={handleExportCsv}
+            className="h-10 px-4 bg-[#E1261C] hover:bg-[#c91f16] text-white rounded-sm text-[10px] font-black uppercase tracking-widest transition-all shadow-md flex items-center gap-2"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
 

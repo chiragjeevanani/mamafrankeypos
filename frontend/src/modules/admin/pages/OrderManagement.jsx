@@ -65,6 +65,37 @@ export default function OrderManagement() {
     return matchesStatus && matchesSearch;
   });
 
+  const handleExportCsv = () => {
+    if (filteredOrders.length === 0) {
+      showAlert("No active orders to export.", "Export CSV", true);
+      return;
+    }
+
+    const headers = ["Order No", "Type", "Source", "Table/Car", "Items", "Total Amount", "Status"];
+    const escapeCSV = (val) => `"${String(val || '').replaceAll('"', '""')}"`;
+
+    const rows = filteredOrders.map(order => [
+      order.orderNumber || order._id || 'N/A',
+      order.orderType,
+      order.source || 'POS',
+      order.table?.name || order.carNumber || 'N/A',
+      order.kots?.flatMap(k => k.items.map(i => i.name)).join(', ') || 'N/A',
+      order.totalAmount || 0,
+      order.orderStatus
+    ]);
+
+    const csvContent = "\uFEFF" + [
+      headers.map(escapeCSV).join(","),
+      ...rows.map(r => r.map(escapeCSV).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `live_monitor_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+  };
+
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500 overflow-y-auto no-scrollbar max-h-full">
        <div className="flex items-center justify-between">
@@ -75,22 +106,28 @@ export default function OrderManagement() {
            </div>
            <p className="text-xs text-stone-400 font-semibold">Real-time view of all dine-in, takeaway and QR orders</p>
         </div>
-        <div className="flex items-center gap-2">
-           <div className="flex bg-white p-1 border border-stone-200 rounded-lg shadow-sm">
-              <button 
-                onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'all' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
-              >All</button>
-              <button 
-                onClick={() => setFilterStatus('Staff App')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'Staff App' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
-              >Staff</button>
-              <button 
-                onClick={() => setFilterStatus('QR Ordering')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'QR Ordering' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
-              >QR</button>
-           </div>
-        </div>
+         <div className="flex items-center gap-2">
+            <div className="flex bg-white p-1 border border-stone-200 rounded-lg shadow-sm">
+               <button 
+                 onClick={() => setFilterStatus('all')}
+                 className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'all' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
+               >All</button>
+               <button 
+                 onClick={() => setFilterStatus('Staff App')}
+                 className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'Staff App' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
+               >Staff</button>
+               <button 
+                 onClick={() => setFilterStatus('QR Ordering')}
+                 className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest rounded-md transition-all ${filterStatus === 'QR Ordering' ? 'bg-[#E1261C] text-white shadow-sm' : 'text-stone-400 hover:text-stone-700'}`}
+               >QR</button>
+            </div>
+            <button
+              onClick={handleExportCsv}
+              className="h-9 px-4 bg-[#E1261C] hover:bg-[#c91f16] text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-sm flex items-center gap-2"
+            >
+              Export CSV
+            </button>
+         </div>
       </div>
 
       {/* Order Grid */}

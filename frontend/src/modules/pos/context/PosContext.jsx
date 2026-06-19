@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from "../../../utils/api";
 import { normalizeTableLifecycle } from "../utils/tableLifecycle";
 
@@ -90,7 +90,7 @@ export function PosProvider({ children }) {
     localStorage.removeItem('pos_user_info');
   };
 
-  const fetchMenu = async () => {
+  const fetchMenu = useCallback(async () => {
     if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
     try {
       const [catRes, itemRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
@@ -122,7 +122,7 @@ export function PosProvider({ children }) {
     } catch (error) {
       console.error("Error fetching menu from API:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchMenu();
@@ -156,7 +156,7 @@ export function PosProvider({ children }) {
     ) || null;
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const { data } = await api.get('/orders?active=true');
 
@@ -194,9 +194,9 @@ export function PosProvider({ children }) {
     } catch (error) {
       console.error("Error fetching running orders:", error);
     }
-  };
+  }, []);
 
-  const fetchTables = async () => {
+  const fetchTables = useCallback(async () => {
     if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
     try {
       const [secRes, tabRes] = await Promise.all([
@@ -228,7 +228,7 @@ export function PosProvider({ children }) {
     } catch (error) {
       console.error("Error fetching tables:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -1035,7 +1035,7 @@ export function PosProvider({ children }) {
 
   const [storeSettings, setStoreSettings] = useState(null);
 
-  const fetchStoreSettings = async () => {
+  const fetchStoreSettings = useCallback(async () => {
     try {
       const { data } = await api.get('/settings/store');
       setStoreSettings(data);
@@ -1046,7 +1046,7 @@ export function PosProvider({ children }) {
     } catch (error) {
       console.error("Error fetching store settings:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchStoreSettings();

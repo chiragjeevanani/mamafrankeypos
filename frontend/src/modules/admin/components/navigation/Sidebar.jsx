@@ -53,6 +53,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             { label: 'Cancelled Orders', path: '/admin/orders/cancelled' },
           ]
         },
+        { label: 'Custom Bill Creator', path: '/admin/custom-bill', icon: Printer },
       ]
     },
     {

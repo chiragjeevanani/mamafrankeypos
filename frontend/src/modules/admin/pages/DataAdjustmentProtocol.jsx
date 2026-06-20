@@ -362,7 +362,7 @@ export default function DataAdjustmentProtocol() {
       orderType: bill.orderType === 'DINE-IN' ? 'DINE IN' : (bill.orderType || 'DINE IN'),
       appliedTaxes,
       storeInfo: storeInfo,
-      billerName: bill.waiter?.name || 'Cashier',
+      billerName: bill.biller?.name || bill.billerName || 'Cashier',
       orderNumber: bill.orderNumber
     };
   };

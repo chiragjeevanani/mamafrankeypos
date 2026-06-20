@@ -96,7 +96,7 @@ export default function CompletedOrders() {
         subTotal: Number(order.subtotal || total),
         tax,
         discount: order.discount?.amount || 0,
-        billerName: order.waiter?.name || user?.name,
+        billerName: order.biller?.name || order.billerName || user?.name || 'Cashier',
         storeInfo: storeSettings,
         orderNumber: order.orderNumber,
         appliedTaxes: taxes

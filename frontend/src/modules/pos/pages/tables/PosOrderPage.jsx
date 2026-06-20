@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Search, Plus, Minus, Trash2, Receipt, ArrowLeft,
@@ -44,6 +44,7 @@ export default function PosOrderPage() {
   // Initialize cart from existing order if any
   const activeOrder = isPickupMode ? pickupOrders[tableId] : (isCarServiceMode ? carOrders[tableId] : orders[tableId]);
   const [cart, setCart] = useState([]);
+  const [isSubmittingKOT, setIsSubmittingKOT] = useState(false);
 
   // States for interactive checkboxes/radios
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -273,7 +274,7 @@ export default function PosOrderPage() {
     });
   }, [selectedCategory, combos, filteredItems, menuItems, replacements, searchQuery, shortCode]);
 
-  const addToCart = (item) => {
+  const addToCart = useCallback((item) => {
     playClickSound();
 
     const assignedVariantGroups = item.variantGroups || [];
@@ -290,7 +291,7 @@ export default function PosOrderPage() {
       }
       return [...prev, { ...item, quantity: 1 }];
     });
-  };
+  }, []);
 
   const confirmVariantSelection = () => {
     if (!variantModalItem) return;
@@ -426,7 +427,7 @@ export default function PosOrderPage() {
     setManualReturnAmount(Number(changeToReturn.toFixed(2)));
   }, [changeToReturn]);
 
-  const handleShortCodeSubmit = (e) => {
+  const handleShortCodeSubmit = useCallback((e) => {
     if (e.key === 'Enter') {
       const code = shortCode.toUpperCase();
       const item = menuItems.find(i =>
@@ -438,7 +439,7 @@ export default function PosOrderPage() {
         setShortCode(''); // Clear input
       }
     }
-  };
+  }, [shortCode, menuItems, addToCart]);
 
   const canPlaceKot = cart.length > 0 && cartTotal > 0;
   const canHoldDraft = cart.length > 0 || !!activeOrder || Object.values(buildCustomerPayload()).some(Boolean);
@@ -457,18 +458,16 @@ export default function PosOrderPage() {
        setOrderNotice({ type: 'error', text: 'Select a waiter before placing this order.' });
        return;
     }
+    setIsSubmittingKOT(true);
     try {
       const savedOrder = await placeKOT(tableId, cart, selectedWaiter, {
         isCarOrder: orderType === 'car-service',
         isPickupOrder: orderType === 'pickup',
-        customer: buildCustomerPayload()
+        customer: buildCustomerPayload(),
+        markPrinted: isPrint
       });
       if (isPrint) {
-      printKOTReceipt(savedOrder || { items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
-      await markKOTPrinted(savedOrder || tableId, {
-        isCarOrder: orderType === 'car-service',
-        isPickupOrder: orderType === 'pickup'
-      });
+        printKOTReceipt(savedOrder || { items: cart }, { name: tableInfo.name, orderType, billerName: user?.name, waiterName: selectedWaiter?.name });
       }
 
       setCart([]);
@@ -478,6 +477,7 @@ export default function PosOrderPage() {
       }, 1500);
     } catch (error) {
       setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to place KOT.' });
+      setIsSubmittingKOT(false);
     }
   };
 
@@ -556,13 +556,14 @@ export default function PosOrderPage() {
       return;
     }
 
+    setIsSubmittingKOT(true);
     try {
       if (isPickupMode && cart.length > 0) {
         const savedOrder = await placeKOT(tableId, cart, selectedWaiter, {
           isPickupOrder: true,
-          customer: buildCustomerPayload()
+          customer: buildCustomerPayload(),
+          markPrinted: true
         });
-        await markKOTPrinted(savedOrder || tableId, { isPickupOrder: true });
         await saveOrder(savedOrder || tableId, {
           isPickupOrder: true,
           customer: buildCustomerPayload(),
@@ -584,6 +585,7 @@ export default function PosOrderPage() {
       }
     } catch (error) {
       setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to process pickup order.' });
+      setIsSubmittingKOT(false);
       return;
     }
 
@@ -602,99 +604,109 @@ export default function PosOrderPage() {
           navigate(`/pos/order/${nextPuId}`, { state: { fromPickup: true } });
        }, 500);
     }
+    setIsSubmittingKOT(false);
   };
+
+  const categoriesSidebarMemo = useMemo(() => {
+    return (
+      <div className="w-[12%] bg-[#6D6D6D] flex flex-col shrink-0">
+        <button className="bg-[#E1261C] text-white p-3 flex items-center justify-between font-bold text-xs uppercase tracking-wider">
+          <span>{displayCategories.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
+          <ChevronDown size={14} />
+        </button>
+
+        <div className="flex-1 overflow-y-auto">
+          {displayCategories.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => {
+                 playClickSound();
+                 setSelectedCategory(cat.id);
+              }}
+              className={`w-full p-4 text-left font-bold text-[11px] uppercase tracking-wider border-b border-white/10 transition-all ${
+                selectedCategory === cat.id
+                  ? 'bg-white text-gray-800 border-r-4 border-r-[#E1261C]'
+                  : 'text-white hover:bg-white/5'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }, [displayCategories, selectedCategory]);
+
+  const menuItemsAreaMemo = useMemo(() => {
+    return (
+      <div className="flex-1 flex flex-col bg-[#E0E0E0] border-r border-gray-300">
+        {/* Top Search Bars */}
+        <div className="p-2 flex gap-2 shrink-0">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search Item"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-white border-2 border-gray-400 rounded-md text-sm font-bold placeholder:text-gray-300 focus:outline-none"
+            />
+          </div>
+          <div className="w-[40%]">
+            <input
+              type="text"
+              placeholder="Short Code"
+              value={shortCode}
+              onChange={(e) => setShortCode(e.target.value)}
+              onKeyDown={handleShortCodeSubmit}
+              className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-md text-sm font-bold placeholder:text-gray-300 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Items Grid */}
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {displayItems.map(item => {
+              const isSoldOut = item.status === 'Out of Stock';
+              return (
+                <button
+                  key={item.id}
+                  disabled={isSoldOut}
+                  onClick={() => addToCart(item)}
+                  className={`bg-white p-3 rounded-sm shadow-sm border border-gray-300 text-left transition-all flex items-center relative group min-h-[70px] ${
+                    isSoldOut ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:shadow-md'
+                  }`}
+                >
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
+                    style={{ backgroundColor: displayCategories.find(c => c.id === item.catId)?.color || (isSoldOut ? '#9ca3af' : '#4CAF50') }}
+                  />
+                  <div className="flex flex-col ml-2 overflow-hidden w-full">
+                    <span className="text-[11px] font-bold text-gray-700 leading-tight truncate">{item.name}</span>
+                    {item.isSubstituted && (
+                      <span className="text-[8px] font-bold text-emerald-600 truncate mt-0.5">Replaces {item.originalName}</span>
+                    )}
+                    <span className="text-[10px] font-black text-orange-600 mt-1">₹{item.price}</span>
+                    {isSoldOut && (
+                      <span className="absolute right-1 bottom-1 text-[8px] font-black text-red-600 uppercase bg-red-50 px-1 rounded">Sold Out</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }, [displayItems, searchQuery, shortCode, handleShortCodeSubmit, addToCart, displayCategories]);
 
   return (
     <div className="h-full bg-[#F4F4F7] flex flex-col font-sans text-gray-800 overflow-hidden">
 
       <div className="flex-1 flex overflow-hidden">
-        {/* 1. Categories Sidebar (Left - 12%) */}
-        <div className="w-[12%] bg-[#6D6D6D] flex flex-col shrink-0">
-          <button className="bg-[#E1261C] text-white p-3 flex items-center justify-between font-bold text-xs uppercase tracking-wider">
-            <span>{displayCategories.find(c => c.id === selectedCategory)?.name || 'Menu'}</span>
-            <ChevronDown size={14} />
-          </button>
- 
-          <div className="flex-1 overflow-y-auto">
-            {displayCategories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => {
-                   playClickSound();
-                   setSelectedCategory(cat.id);
-                }}
-                className={`w-full p-4 text-left font-bold text-[11px] uppercase tracking-wider border-b border-white/10 transition-all ${
-                  selectedCategory === cat.id
-                    ? 'bg-white text-gray-800 border-r-4 border-r-[#E1261C]'
-                    : 'text-white hover:bg-white/5'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 2. Menu Items Area (Middle - 48%) */}
-        <div className="flex-1 flex flex-col bg-[#E0E0E0] border-r border-gray-300">
-          {/* Top Search Bars */}
-          <div className="p-2 flex gap-2 shrink-0">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search Item"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-white border-2 border-gray-400 rounded-md text-sm font-bold placeholder:text-gray-300 focus:outline-none"
-              />
-            </div>
-            <div className="w-[40%]">
-              <input
-                type="text"
-                placeholder="Short Code"
-                value={shortCode}
-                onChange={(e) => setShortCode(e.target.value)}
-                onKeyDown={handleShortCodeSubmit}
-                className="w-full px-3 py-2 bg-white border-2 border-gray-400 rounded-md text-sm font-bold placeholder:text-gray-300 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Items Grid */}
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {displayItems.map(item => {
-                const isSoldOut = item.status === 'Out of Stock';
-                return (
-                  <button
-                    key={item.id}
-                    disabled={isSoldOut}
-                    onClick={() => addToCart(item)}
-                    className={`bg-white p-3 rounded-sm shadow-sm border border-gray-300 text-left transition-all flex items-center relative group min-h-[70px] ${
-                      isSoldOut ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:shadow-md'
-                    }`}
-                  >
-                    <div
-                      className="absolute left-0 top-0 bottom-0 w-1 bg-green-500"
-                      style={{ backgroundColor: displayCategories.find(c => c.id === item.catId)?.color || (isSoldOut ? '#9ca3af' : '#4CAF50') }}
-                    />
-                    <div className="flex flex-col ml-2 overflow-hidden w-full">
-                      <span className="text-[11px] font-bold text-gray-700 leading-tight truncate">{item.name}</span>
-                      {item.isSubstituted && (
-                        <span className="text-[8px] font-bold text-emerald-600 truncate mt-0.5">Replaces {item.originalName}</span>
-                      )}
-                      <span className="text-[10px] font-black text-orange-600 mt-1">₹{item.price}</span>
-                      {isSoldOut && (
-                        <span className="absolute right-1 bottom-1 text-[8px] font-black text-red-600 uppercase bg-red-50 px-1 rounded">Sold Out</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        {categoriesSidebarMemo}
+        {menuItemsAreaMemo}
 
         {/* 3. Order Summary & Controls (Right - 40%) */}
         <div className="w-[40%] flex flex-col bg-white shrink-0">
@@ -983,10 +995,34 @@ export default function PosOrderPage() {
             {/* Always Visible Action Buttons (Row 4) */}
             {!isPickupMode && (
               <div className="grid grid-cols-4 gap-2 p-2 border-t border-white/5">
-                <ActionButton onClick={() => handleKOT(true)} label="KOT" color="bg-white" textColor="text-gray-800" disabled={!canPlaceKot} />
-                <ActionButton onClick={handleReprint} label="REPRINT" color="bg-[#555555]" textColor="text-white" disabled={!canReprint} />
-                <ActionButton onClick={() => setIsDiscountModalOpen(true)} label="DISCOUNT" color="bg-[#FFD600]" textColor="text-gray-900" />
-                <ActionButton onClick={handleSave} label="HOLD" color="bg-[#00BCD4]" textColor="text-white" disabled={!canHoldDraft} />
+                <ActionButton 
+                  onClick={() => handleKOT(true)} 
+                  label={isSubmittingKOT ? "Placing..." : "KOT"} 
+                  color="bg-white" 
+                  textColor="text-gray-800" 
+                  disabled={!canPlaceKot || isSubmittingKOT} 
+                />
+                <ActionButton 
+                  onClick={handleReprint} 
+                  label="REPRINT" 
+                  color="bg-[#555555]" 
+                  textColor="text-white" 
+                  disabled={!canReprint || isSubmittingKOT} 
+                />
+                <ActionButton 
+                  onClick={() => setIsDiscountModalOpen(true)} 
+                  label="DISCOUNT" 
+                  color="bg-[#FFD600]" 
+                  textColor="text-gray-900" 
+                  disabled={isSubmittingKOT}
+                />
+                <ActionButton 
+                  onClick={handleSave} 
+                  label="HOLD" 
+                  color="bg-[#00BCD4]" 
+                  textColor="text-white" 
+                  disabled={!canHoldDraft || isSubmittingKOT} 
+                />
               </div>
             )}
             {/* Download Bill + KOT - only shown in pickup mode */}
@@ -994,9 +1030,9 @@ export default function PosOrderPage() {
               <div className="grid grid-cols-1 gap-1 p-2 border-t border-white/5">
                 <ActionButton
                   onClick={handleDownloadBillAndKOT}
-                  label="Download Bill + KOT"
+                  label={isSubmittingKOT ? "Placing..." : "Download Bill + KOT"}
                   color="bg-[#00BCD4]"
-                  disabled={!canDownloadPickup}
+                  disabled={!canDownloadPickup || isSubmittingKOT}
                 />
               </div>
             )}

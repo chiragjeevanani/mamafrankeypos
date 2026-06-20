@@ -83,6 +83,8 @@ export function PosProvider({ children }) {
     localStorage.setItem('pos_user_info', JSON.stringify(userData));
     // fetchMenu is already called on mount via useEffect — only re-fetch menu data on explicit login
     fetchMenu();
+    fetchTables();
+    fetchOrders();
     // NOTE: fetchStoreSettings is already running in its own useEffect on mount. No duplicate needed.
   };
 
@@ -118,16 +120,17 @@ export function PosProvider({ children }) {
         status: s.status
       })));
 
-      setCounters(counterRes.data);
+      const billingCounters = counterRes.data.filter(c => !c.name.startsWith('DAILY_'));
+      setCounters(billingCounters);
 
-      if (counterRes.data.length > 0) {
+      if (billingCounters.length > 0) {
         const preferredId = localStorage.getItem('pos_active_counter_id');
-        const matched = counterRes.data.find(c => c._id === preferredId);
+        const matched = billingCounters.find(c => c._id === preferredId);
         if (matched) {
           setCurrentCounter(matched);
         } else {
-          setCurrentCounter(counterRes.data[0]);
-          localStorage.setItem('pos_active_counter_id', counterRes.data[0]._id);
+          setCurrentCounter(billingCounters[0]);
+          localStorage.setItem('pos_active_counter_id', billingCounters[0]._id);
         }
       }
     } catch (error) {
@@ -462,7 +465,8 @@ export function PosProvider({ children }) {
         total: total,
         staffId: staff?._id || staff?.id,
         counterId: currentCounter?._id,
-        customer: details.customer
+        customer: details.customer,
+        markPrinted: !!details.markPrinted
       };
       const { data } = await api.post('/orders', orderData);
 
@@ -1140,7 +1144,7 @@ export function PosProvider({ children }) {
       combos, addCombo, updateCombo, deleteCombo,
       staff,
       user, login, logout, counters, currentCounter, switchCounter, storeSettings, fetchStoreSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
-      orders, refreshMenu: fetchMenu, refreshOrders: fetchOrders
+      orders, refreshMenu: fetchMenu, refreshOrders: fetchOrders, refreshTables: fetchTables
     }}>
       {children}
     </PosContext.Provider>

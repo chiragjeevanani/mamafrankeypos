@@ -92,7 +92,8 @@ const processOrder = asyncHandler(async (req, res) => {
     staffId, 
     counterId,
     orderId, // Optional: if provided, add KOT to this order
-    customer
+    customer,
+    markPrinted
   } = req.body;
 
   if (tableId && !mongoose.Types.ObjectId.isValid(tableId)) {
@@ -156,7 +157,7 @@ const processOrder = asyncHandler(async (req, res) => {
       })),
       staff: staffId,
       time: new Date(),
-      status: 'pending',
+      status: markPrinted ? 'printed' : 'pending',
       total: kotTotal
     };
 
@@ -180,6 +181,10 @@ const processOrder = asyncHandler(async (req, res) => {
         updatePayload,
         sessionOptsNew
       );
+
+      if (markPrinted && order.table) {
+        await Table.findByIdAndUpdate(order.table, { status: 'running-kot' }, sessionOpts);
+      }
     } else {
       // Check-and-set table status atomically first if it's a Dine-in table order
       if (tableId) {
@@ -204,6 +209,10 @@ const processOrder = asyncHandler(async (req, res) => {
               },
               sessionOptsNew
             );
+
+            if (markPrinted && order.table) {
+              await Table.findByIdAndUpdate(order.table, { status: 'running-kot' }, sessionOpts);
+            }
             
             return await Order.findById(order._id).populate('table waiter biller').session(session);
           } else {

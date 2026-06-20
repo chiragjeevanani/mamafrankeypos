@@ -66,7 +66,8 @@ export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, saveOrder, settleOrder, holdOrder, clearTable, carOrders, pickupOrders,
-    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff, storeSettings
+    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff, storeSettings,
+    refreshTables, refreshOrders
   } = usePos();
 
   // --- Car Service state ---
@@ -318,7 +319,15 @@ export default function TableView() {
         </div>
         
         <div className="flex items-center gap-1.5">
-          <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+          <button 
+            onClick={() => {
+              playClickSound();
+              refreshTables();
+              refreshOrders();
+            }}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Refresh Tables & Orders"
+          >
             <RefreshCw size={18} className="text-gray-500" />
           </button>
           <div className="h-4 w-px bg-gray-200 mx-1" />

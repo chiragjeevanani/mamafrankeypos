@@ -132,7 +132,9 @@ const deleteTax = asyncHandler(async (req, res) => {
 // @route   GET /api/settings/counters
 // @access  Public
 const getCounters = asyncHandler(async (req, res) => {
-  const counters = await Counter.find({});
+  const counters = await Counter.find({
+    name: { $nin: ['DAILY_KOT_COUNTER', 'DAILY_TOKEN_COUNTER'] }
+  });
   res.json(counters);
 });
 

@@ -40,6 +40,11 @@ const getSalesReportValidation = [
     .optional({ nullable: true, checkFalsy: true })
     .isMongoId()
     .withMessage('Invalid Table ID format'),
+  query('reportType')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .isIn(['summary', 'bills', 'items', 'categories', 'cashiers', 'waiters', 'cancellations', 'discounts', 'tax', 'hourly'])
+    .withMessage('Invalid Report Type value'),
   validateRequest
 ];
 

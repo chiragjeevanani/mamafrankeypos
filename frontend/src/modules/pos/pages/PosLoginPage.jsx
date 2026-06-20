@@ -32,7 +32,7 @@ export default function PosLoginPage() {
     setError('');
   };
 
-  const { login } = usePos();
+  const { login, counters, currentCounter, switchCounter } = usePos();
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
@@ -136,6 +136,26 @@ export default function PosLoginPage() {
             </div>
 
             <div className="space-y-6 lg:space-y-8">
+              {/* Counter Selection */}
+              {counters.length > 1 && (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[10px] font-black text-charcoal-500 uppercase tracking-widest">Select Billing Counter</span>
+                  </div>
+                  <select 
+                    value={currentCounter?._id || ''} 
+                    onChange={(e) => switchCounter(e.target.value)}
+                    className="w-full bg-black/40 text-white rounded-2xl border border-white/5 p-4 text-xs font-bold uppercase tracking-wider outline-none focus:border-brand-500 transition-colors cursor-pointer"
+                  >
+                    {counters.map(c => (
+                      <option key={c._id} value={c._id} className="bg-[#141416] text-white">
+                        {c.name} ({c.prefix})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* PIN Display */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-1">

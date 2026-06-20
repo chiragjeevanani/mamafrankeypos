@@ -75,6 +75,8 @@ export function PosProvider({ children }) {
   const [replacements, setReplacements] = useState([]);
   const [combos, setCombos] = useState([]);
   const [staff, setStaff] = useState([]);
+  const [counters, setCounters] = useState([]);
+  const [currentCounter, setCurrentCounter] = useState(null);
 
   const login = (userData) => {
     setUser(userData);
@@ -116,13 +118,30 @@ export function PosProvider({ children }) {
         status: s.status
       })));
 
+      setCounters(counterRes.data);
+
       if (counterRes.data.length > 0) {
-        setCurrentCounter(counterRes.data[0]);
+        const preferredId = localStorage.getItem('pos_active_counter_id');
+        const matched = counterRes.data.find(c => c._id === preferredId);
+        if (matched) {
+          setCurrentCounter(matched);
+        } else {
+          setCurrentCounter(counterRes.data[0]);
+          localStorage.setItem('pos_active_counter_id', counterRes.data[0]._id);
+        }
       }
     } catch (error) {
       console.error("Error fetching menu from API:", error);
     }
   }, []);
+
+  const switchCounter = useCallback((counterId) => {
+    const matched = counters.find(c => c._id === counterId || c.id === counterId);
+    if (matched) {
+      setCurrentCounter(matched);
+      localStorage.setItem('pos_active_counter_id', matched._id);
+    }
+  }, [counters]);
 
   useEffect(() => {
     fetchMenu();
@@ -133,7 +152,6 @@ export function PosProvider({ children }) {
   const [pickupOrders, setPickupOrders] = useState({});
   const [tables, setTables] = useState([]);
   const [sections, setSections] = useState([]);
-  const [currentCounter, setCurrentCounter] = useState(null);
 
   const getScopedOrderMaps = (details = {}) => {
     if (details.isPickupOrder) return pickupOrders;
@@ -1121,7 +1139,7 @@ export function PosProvider({ children }) {
       replacements, addReplacement, updateReplacement, deleteReplacement,
       combos, addCombo, updateCombo, deleteCombo,
       staff,
-      user, login, logout, currentCounter, storeSettings, fetchStoreSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
+      user, login, logout, counters, currentCounter, switchCounter, storeSettings, fetchStoreSettings, appliedTaxes, addTax, updateTax, deleteTax, calculateTaxes,
       orders, refreshMenu: fetchMenu, refreshOrders: fetchOrders
     }}>
       {children}

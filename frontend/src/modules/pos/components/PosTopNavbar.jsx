@@ -10,7 +10,7 @@ import logo from '../../../assets/time-to-eat.png';
 
 export default function PosTopNavbar() {
   const navigate = useNavigate();
-  const { logout, storeSettings } = usePos();
+  const { logout, storeSettings, currentCounter } = usePos();
   const [searchBillNo, setSearchBillNo] = useState('');
 
   // Dropdown states
@@ -138,6 +138,18 @@ export default function PosTopNavbar() {
           label="Sign Out"
           icon={<Power size={18} />} 
         />
+
+        {currentCounter && (
+          <div className="hidden md:flex items-center gap-3 bg-white/5 px-3 py-2 rounded-lg border border-white/8 ml-1">
+            <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <LayoutGrid size={14} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] text-slate-400 font-bold uppercase leading-none">Active Counter</span>
+              <span className="text-sm font-black text-white uppercase tracking-wider">{currentCounter.name} ({currentCounter.prefix})</span>
+            </div>
+          </div>
+        )}
 
         <a 
           href={`tel:${supportPhone.replace(/\s+/g, '')}`}

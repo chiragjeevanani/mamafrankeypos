@@ -205,7 +205,7 @@ const processOrder = asyncHandler(async (req, res) => {
               sessionOptsNew
             );
             
-            return await Order.findById(order._id).populate('table waiter').session(session);
+            return await Order.findById(order._id).populate('table waiter biller').session(session);
           } else {
             res.status(409);
             throw new Error('Table is currently occupied. Please refresh and try again.');
@@ -258,7 +258,7 @@ const processOrder = asyncHandler(async (req, res) => {
       }
     }
 
-    return await Order.findById(order._id).populate('table waiter').session(session);
+    return await Order.findById(order._id).populate('table waiter biller').session(session);
   });
 
   res.status(201).json(populatedOrder);
@@ -274,7 +274,7 @@ const getOrderById = asyncHandler(async (req, res) => {
   }
 
   const order = await Order.findById(req.params.id)
-    .populate('table waiter counter')
+    .populate('table waiter counter biller')
     .populate('kots.items.menuItem');
 
   if (order) {
@@ -370,7 +370,7 @@ const updateOrder = asyncHandler(async (req, res) => {
   applyOrderMetadata(order, req.body);
   await order.save();
 
-  const populatedOrder = await Order.findById(order._id).populate('table waiter counter');
+  const populatedOrder = await Order.findById(order._id).populate('table waiter counter biller');
   res.json(populatedOrder);
 });
 
@@ -384,12 +384,12 @@ const getActiveOrder = asyncHandler(async (req, res) => {
   // Try finding by table ID if it is a valid ObjectId
   if (mongoose.Types.ObjectId.isValid(identifier)) {
     order = await Order.findOne({ table: identifier, orderStatus: 'RUNNING' })
-      .populate('table waiter')
+      .populate('table waiter biller')
       .populate('kots.items.menuItem');
   } else {
     // Try finding by car number
     order = await Order.findOne({ carNumber: identifier, orderStatus: 'RUNNING' })
-      .populate('table waiter')
+      .populate('table waiter biller')
       .populate('kots.items.menuItem');
   }
 
@@ -427,7 +427,7 @@ const markKOTPrinted = asyncHandler(async (req, res) => {
         await Table.findByIdAndUpdate(order.table, { status: 'running-kot' });
       }
       
-      const populatedOrder = await Order.findById(order._id).populate('table waiter');
+      const populatedOrder = await Order.findById(order._id).populate('table waiter biller');
       res.json(populatedOrder);
     } else {
       res.status(404);
@@ -498,7 +498,7 @@ const billOrder = asyncHandler(async (req, res) => {
         }
       },
       sessionOptsNew
-    ).populate('table waiter');
+    ).populate('table waiter biller');
 
     if (!updated) {
       res.status(409);
@@ -552,7 +552,7 @@ const settleOrder = asyncHandler(async (req, res) => {
         }
       },
       sessionOptsNew
-    ).populate('table waiter');
+    ).populate('table waiter biller');
 
     if (!order) {
       res.status(404);
@@ -637,7 +637,7 @@ const cancelKOTItem = asyncHandler(async (req, res) => {
       arrayFilters: [{ "k._id": kotId }, { "i._id": itemId }],
       new: true
     }
-  ).populate('table waiter');
+  ).populate('table waiter biller');
 
   res.json(updatedOrder);
 });
@@ -690,7 +690,7 @@ const getOrders = asyncHandler(async (req, res) => {
     const total = await Order.countDocuments(query);
     const data = await Order.find(query)
       .sort({ createdAt: -1 })
-      .populate('table waiter counter')
+      .populate('table waiter counter biller')
       .skip(skip)
       .limit(limit);
       
@@ -706,7 +706,7 @@ const getOrders = asyncHandler(async (req, res) => {
   } else {
     const orders = await Order.find(query)
       .sort({ createdAt: -1 })
-      .populate('table waiter counter');
+      .populate('table waiter counter biller');
       
     const responseData = isAdminRequest ? orders.map(o => maskOrder(o, rules)) : orders;
     res.json(responseData);
@@ -849,7 +849,7 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
 
   const orders = await Order.find(query)
     .sort({ completedAt: -1 })
-    .populate('table waiter counter');
+    .populate('table waiter counter biller');
     
   // Always apply masking — this route is admin-only (protect + admin middleware)
   // regardless of x-module header to prevent unmasked data leaking via API tools
@@ -961,7 +961,7 @@ const applyDiscount = asyncHandler(async (req, res) => {
       }
     },
     { new: true }
-  ).populate('table waiter');
+  ).populate('table waiter biller');
 
   await logAudit(
     req.user?._id || '000000000000000000000000',

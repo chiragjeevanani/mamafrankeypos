@@ -5,10 +5,9 @@ import { jsPDF } from 'jspdf';
  */
 export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   const { kots, waiter, customer, cart } = orderData;
-  const allItems = [
-    ...(kots || []).flatMap(kot => kot.items),
-    ...(cart || [])
-  ];
+  const allItems = (kots && kots.length > 0)
+    ? kots.flatMap(kot => kot.items || [])
+    : (cart || []);
   
   if (allItems.length === 0) return;
 

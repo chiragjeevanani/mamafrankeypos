@@ -983,7 +983,7 @@ export default function DataAdjustmentProtocol() {
                 <div className="text-center mb-4">
                   <span className="text-[8px] font-black tracking-widest text-slate-400 uppercase">RETAIL INVOICE</span>
                   <h3 className="text-sm font-extrabold uppercase tracking-tight text-slate-900 mt-1">
-                    {storeInfo?.name || 'MAMA FRANKY HOUSE'}
+                    {storeInfo?.storeName || storeInfo?.name || 'MAMA FRANKY HOUSE'}
                   </h3>
                   {storeInfo?.legalName && (
                     <div className="text-[9px] text-slate-500">({storeInfo.legalName})</div>
@@ -997,97 +997,117 @@ export default function DataAdjustmentProtocol() {
                   {storeInfo?.phone && (
                     <div className="text-[9px] text-slate-500">Ph. No: +91 {storeInfo.phone}</div>
                   )}
-                  <div className="text-[9px] text-slate-500">GSTIN: {storeInfo?.gstin || '09AAFFT9378RIZW'}</div>
+                  <div className="text-[9px] text-slate-500 font-bold">GSTIN: {storeInfo?.gstNumber || storeInfo?.gstin || '09AAFFT9378RIZW'}</div>
+                  {storeInfo?.fssai && (
+                    <div className="text-[9px] text-slate-500 font-bold">FSSAI NO: {storeInfo.fssai}</div>
+                  )}
                 </div>
 
-                <div className="border-t border-dashed border-slate-300 my-3" />
+                {/* Double Divider */}
+                <div className="border-t-2 border-double border-slate-900 my-2" />
 
                 {/* Metadata */}
-                <div className="space-y-1 text-slate-600 mb-3">
+                <div className="space-y-0.5 text-slate-600 mb-2">
                   <div className="flex justify-between">
                     <span>Date: {new Date(viewingBill.completedAt).toLocaleDateString('en-GB')}</span>
-                    <span className="font-bold">{viewingBill.orderType}</span>
+                    <span className="font-bold uppercase">{viewingBill.orderType}</span>
                   </div>
+                  <div>{new Date(viewingBill.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+                  <div>Cashier: {viewingBill.biller?.name || viewingBill.billerName || 'SYSTEM'}</div>
+                  {viewingBill.waiter?.name && <div>Waiter : {viewingBill.waiter.name}</div>}
                   <div className="flex justify-between">
-                    <span>Time: {new Date(viewingBill.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
-                    <span>Bill No: {viewingBill.orderNumber}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cashier: {viewingBill.waiter?.name || 'SYSTEM'}</span>
-                    <span>Table: {viewingBill.orderType === 'PICKUP' ? 'PICKUP' : (viewingBill.table?.name || viewingBill.carNumber || 'CAR')}</span>
+                    <span className="font-bold">Bill No.: {viewingBill.orderNumber}</span>
+                    <span className="font-bold">Token No.: {viewingBill.tokenNo || '-'}</span>
                   </div>
                 </div>
 
-                <div className="border-t border-dashed border-slate-300 my-2" />
-
                 {/* Item List Header */}
-                <div className="grid grid-cols-12 font-bold text-slate-700 py-1 border-b border-dashed border-slate-200">
-                  <span className="col-span-6">Item</span>
-                  <span className="col-span-2 text-right">Qty</span>
-                  <span className="col-span-2 text-right">Price</span>
-                  <span className="col-span-2 text-right">Amt</span>
+                <div className="flex font-bold text-slate-900 border-t border-b border-slate-800 py-1 uppercase">
+                  <span className="flex-1">No.Item</span>
+                  <span className="w-10 text-right">Qty.</span>
+                  <span className="w-14 text-right">Price</span>
+                  <span className="w-16 text-right">Amount</span>
                 </div>
 
                 {/* Item List Rows */}
-                <div className="space-y-2 py-2">
+                <div className="space-y-1 py-1">
                   {(viewingBill.kots || []).flatMap(kot => kot.items || [])
                     .filter(item => item.status !== 'cancelled')
                     .map((item, idx) => (
-                      <div key={idx} className="grid grid-cols-12 text-slate-600">
-                        <div className="col-span-6 flex flex-col">
-                          <span className="font-bold">{item.name}</span>
-                          {item.variantLabel && <span className="text-[9px] text-slate-400">({item.variantLabel})</span>}
+                      <div key={idx} className="space-y-0.5">
+                        <div className="flex items-start text-slate-800">
+                          <span className="flex-1 font-bold uppercase leading-tight">
+                            {idx + 1} {item.name}
+                          </span>
+                          <span className="w-10 text-right">{item.quantity}</span>
+                          <span className="w-14 text-right">{item.price.toFixed(2)}</span>
+                          <span className="w-16 text-right">{(item.price * item.quantity).toFixed(2)}</span>
                         </div>
-                        <span className="col-span-2 text-right">{item.quantity}</span>
-                        <span className="col-span-2 text-right">{item.price.toFixed(2)}</span>
-                        <span className="col-span-2 text-right">{(item.price * item.quantity).toFixed(2)}</span>
+                        {item.variantLabel && (
+                          <div className="pl-4 text-[9px] text-slate-500 italic">({item.variantLabel})</div>
+                        )}
                       </div>
                     ))}
                 </div>
 
-                <div className="border-t border-dashed border-slate-300 my-2" />
+                {/* Solid Divider */}
+                <div className="border-t border-slate-800 my-2" />
 
                 {/* Totals */}
-                <div className="space-y-1.5 text-slate-700 font-bold">
+                <div className="space-y-1 text-slate-800">
                   {(() => {
                     const details = getMaskedBillingDetails(viewingBill);
                     if (!details) return null;
                     const grandTotal = Math.round(details.total);
                     const roundOff = (grandTotal - details.total).toFixed(2);
+                    const totalQty = (viewingBill.kots || [])
+                      .flatMap(kot => kot.items || [])
+                      .filter(item => item.status !== 'cancelled')
+                      .reduce((sum, i) => sum + i.quantity, 0);
+
                     return (
                       <>
-                        <div className="flex justify-between">
-                          <span>Sub Total</span>
-                          <span>₹{details.subTotal.toFixed(2)}</span>
+                        <div className="flex justify-between font-bold">
+                          <span>Total Qty: {totalQty}</span>
+                          <div className="w-1/2 flex justify-between">
+                            <span>Sub Total</span>
+                            <span>{details.subTotal.toFixed(2)}</span>
+                          </div>
                         </div>
                         {details.discount > 0 && (
-                          <div className="flex justify-between text-rose-600">
-                            <span>Discount</span>
-                            <span>-₹{details.discount.toFixed(2)}</span>
+                          <div className="flex justify-end font-bold">
+                            <div className="w-1/2 flex justify-between text-rose-600">
+                              <span>Discount</span>
+                              <span>-{details.discount.toFixed(2)}</span>
+                            </div>
                           </div>
                         )}
                         {details.appliedTaxes.map((tax, i) => (
-                          <div key={i} className="flex justify-between font-normal text-slate-600">
-                            <span>{tax.name} {tax.rate}%</span>
-                            <span>₹{tax.amount.toFixed(2)}</span>
+                          <div key={i} className="flex justify-end font-normal text-slate-600">
+                            <div className="w-1/2 flex justify-between">
+                              <span className="uppercase">{tax.name} {tax.rate}%:</span>
+                              <span>{tax.amount.toFixed(2)}</span>
+                            </div>
                           </div>
                         ))}
-                        <div className="border-t border-slate-200 pt-1.5 flex justify-between font-normal text-[10px] text-slate-500">
-                          <span>Round off</span>
-                          <span>₹{roundOff}</span>
+                        <div className="flex justify-end">
+                          <div className="w-1/2 flex justify-between border-t border-slate-300 pt-1 text-[10px] text-slate-500 font-normal">
+                            <span>Round off</span>
+                            <span>{roundOff}</span>
+                          </div>
                         </div>
-                        <div className="border-t-2 border-double border-slate-300 pt-2 flex justify-between text-slate-900 text-sm font-extrabold">
+                        <div className="border-t-2 border-double border-slate-800 pt-2 flex justify-between items-center text-slate-900 font-extrabold text-sm">
                           <span>GRAND TOTAL</span>
-                          <span>₹{grandTotal}.00</span>
+                          <span>Rs. {grandTotal}.00</span>
                         </div>
                       </>
                     );
                   })()}
                 </div>
 
-                <div className="border-t border-dashed border-slate-300 my-3" />
+                <div className="border-t border-slate-800 my-2" />
                 
-                <div className="text-center text-[9px] text-slate-400 uppercase tracking-widest mt-1">
+                <div className="text-center text-[9px] text-slate-500 uppercase tracking-widest mt-1">
                   Thank You, Kindly Visit Again...!!
                 </div>
               </div>

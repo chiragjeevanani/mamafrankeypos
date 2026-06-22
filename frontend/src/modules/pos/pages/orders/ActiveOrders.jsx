@@ -1,8 +1,14 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Clock, Receipt, RefreshCw, Search, Timer, Utensils } from 'lucide-react';
+import { 
+  Clock, Receipt, RefreshCw, Search, Timer, Utensils,
+  AlertCircle, Banknote, Calculator, ChevronRight, CreditCard,
+  Printer, Send, Smartphone, XCircle
+} from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usePos } from '../../context/PosContext';
 import { playClickSound } from '../../utils/sounds';
+import { printBillReceipt } from '../../utils/printBill';
+import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -21,13 +27,22 @@ const getOrderAge = (order) => {
 
 export default function ActiveOrders() {
   // Read orders directly from context — already kept fresh by the 15s heartbeat
-  const { orders, carOrders, pickupOrders, refreshOrders } = usePos();
+  const { 
+    orders, carOrders, pickupOrders, refreshOrders,
+    user, storeSettings, calculateTaxes, saveOrder, settleOrder 
+  } = usePos();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamVal = searchParams.get('search') || '';
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState(searchParamVal);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+
+  // Checkout overlay state
+  const [checkoutOrder, setCheckoutOrder] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [processing, setProcessing] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   useEffect(() => {
     setSearchQuery(searchParams.get('search') || '');
@@ -87,9 +102,91 @@ export default function ActiveOrders() {
   const handleActionClick = (order, readyForCheckout) => {
     playClickSound();
     if (readyForCheckout) {
-      navigate(`/pos/billing/generate?search=${order.orderNumber}`);
+      setCheckoutOrder(order);
+      setCheckoutError('');
     } else {
       handleShowDetails(order);
+    }
+  };
+
+  const billSummary = useMemo(() => {
+    if (!checkoutOrder) return { subtotal: 0, tax: 0, total: 0, taxes: [] };
+    const total = Number(checkoutOrder.totalAmount || 0);
+    const taxes = checkoutOrder.taxes?.length ? checkoutOrder.taxes : calculateTaxes(total);
+    const tax = taxes.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const discount = checkoutOrder.discount?.amount || 0;
+
+    let subtotal = checkoutOrder.subtotal || total;
+    const isExclusive = subtotal > 0 && Math.abs(subtotal + tax - total) < 2.0;
+    if (isExclusive) {
+      subtotal += tax;
+      if (Math.abs(subtotal - total) < 1.0 && discount > 0) {
+        subtotal += discount;
+      }
+    }
+
+    return {
+      subtotal,
+      tax,
+      total,
+      taxes
+    };
+  }, [calculateTaxes, checkoutOrder]);
+
+  const handlePrint = async () => {
+    if (!checkoutOrder) return;
+    try {
+      setProcessing(true);
+      setCheckoutError('');
+      let orderToPrint = checkoutOrder;
+
+      // If the order is not yet billed/printed, save/bill it first
+      if (checkoutOrder.orderStatus !== 'BILLED') {
+        const isCarOrder = checkoutOrder.orderType === 'CAR-SERVICE';
+        const isPickupOrder = checkoutOrder.orderType === 'PICKUP';
+        const billed = await saveOrder(checkoutOrder._id, { isCarOrder, isPickupOrder });
+        orderToPrint = billed;
+        setCheckoutOrder(billed);
+      }
+
+      printBillReceipt(
+        orderToPrint,
+        { name: orderToPrint.table?.name || orderToPrint.carNumber || orderToPrint.orderType || 'Order' },
+        {
+          total: orderToPrint.totalAmount || orderToPrint.total,
+          subTotal: orderToPrint.subtotal || orderToPrint.total,
+          tax: orderToPrint.taxes?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0,
+          discount: orderToPrint.discount?.amount || 0,
+          billerName: user?.name,
+          storeInfo: storeSettings,
+          orderNumber: orderToPrint.orderNumber,
+          appliedTaxes: orderToPrint.taxes || []
+        }
+      );
+    } catch (err) {
+      setCheckoutError(err.response?.data?.message || 'Unable to generate bill for printing');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    if (!checkoutOrder) return;
+    try {
+      setProcessing(true);
+      setCheckoutError('');
+      await settleOrder(checkoutOrder._id, paymentMethod, {
+        taxes: billSummary.taxes,
+        total: billSummary.total,
+        isCarOrder: checkoutOrder.orderType === 'CAR-SERVICE',
+        isPickupOrder: checkoutOrder.orderType === 'PICKUP'
+      });
+      setCheckoutOrder(null);
+      await refreshOrders();
+    } catch (err) {
+      setCheckoutError(err.response?.data?.message || 'Unable to settle selected bill');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -99,7 +196,7 @@ export default function ActiveOrders() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
           <div>
             <h1 className="text-xl font-extrabold uppercase tracking-tight text-slate-900">Active Order Management</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Live KOT monitoring and billed-order tracking</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Live KOT monitoring and billed-order checkout</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="h-10 px-4 bg-blue-50 text-blue-600 rounded flex items-center gap-2 border border-blue-100 shadow-sm">
@@ -189,7 +286,7 @@ export default function ActiveOrders() {
 
                     <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <Timer size={12} className={readyForCheckout ? 'text-emerald-500' : 'text-blue-500'} />
+                        <Clock size={12} className={readyForCheckout ? 'text-emerald-500' : 'text-blue-500'} />
                         <span className="text-[10px] font-black text-slate-900 uppercase">{getOrderAge(order)} elapsed</span>
                       </div>
                       <span className="text-xs font-black text-slate-950">{formatMoney(order.totalAmount)}</span>
@@ -216,6 +313,102 @@ export default function ActiveOrders() {
           </div>
         )}
       </div>
+
+      {/* Checkout Settle Modal Overlay */}
+      {checkoutOrder && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 font-sans animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-[#1C1E22] text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider">Order Checkout & Settlement</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Order ID: {checkoutOrder.orderNumber}</p>
+              </div>
+              <button 
+                onClick={() => setCheckoutOrder(null)}
+                className="text-slate-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 p-6 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-50">
+              
+              {/* Left: Invoice Preview */}
+              <div className="overflow-y-auto max-h-[60vh] no-scrollbar">
+                <OnscreenInvoice order={checkoutOrder} storeSettings={storeSettings} />
+              </div>
+
+              {/* Right: Payment Actions */}
+              <div className="flex flex-col justify-between space-y-6">
+                
+                {/* Payment Method Selector */}
+                <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center">Select Payment Method</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { method: 'Cash', icon: Banknote },
+                      { method: 'Cashless', icon: CreditCard },
+                      { method: 'UPI', icon: Smartphone }
+                    ].map((item) => (
+                      <button
+                        key={item.method}
+                        onClick={() => setPaymentMethod(item.method)}
+                        className={`flex flex-col items-center gap-2 p-3 border rounded-md transition-all group ${
+                          paymentMethod === item.method ? 'bg-blue-50 border-blue-600 text-blue-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-blue-600 hover:bg-white'
+                        }`}
+                      >
+                        <item.icon size={16} />
+                        <span className="text-[8px] font-black uppercase tracking-widest">{item.method}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {checkoutError && (
+                  <div className="rounded border border-rose-100 bg-rose-50 px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-rose-600">
+                    {checkoutError}
+                  </div>
+                )}
+
+                {/* Settle Info */}
+                <div className="p-4 bg-amber-50 rounded border border-amber-100 flex items-start gap-3 shadow-sm">
+                  <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest leading-relaxed">
+                    Settling the bill marks the order completed and clears the table. Please make sure the guest payment is confirmed before final settlement.
+                  </p>
+                </div>
+
+                {/* Actions Footer */}
+                <div className="flex gap-4 pt-4 border-t border-slate-100">
+                  <button
+                    onClick={handlePrint}
+                    disabled={processing}
+                    className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-900 rounded-lg text-[9px] font-black uppercase tracking-[0.2em] shadow-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-all outline-none disabled:opacity-50"
+                  >
+                    <Printer size={14} />
+                    {checkoutOrder.orderStatus !== 'BILLED' ? 'Save & Print' : 'Print Receipt'}
+                  </button>
+                  <button
+                    onClick={handleFinalize}
+                    disabled={processing}
+                    className="flex-1 py-3.5 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-[0.2em] shadow-md shadow-blue-600/10 flex items-center justify-center gap-2 hover:bg-blue-700 transition-all outline-none disabled:opacity-50"
+                  >
+                    <Send size={14} />
+                    {processing ? 'Settling...' : 'Finalize & Close'}
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

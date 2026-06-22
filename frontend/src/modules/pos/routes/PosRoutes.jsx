@@ -5,12 +5,7 @@ import ProtectedRoute from '../../../components/common/ProtectedRoute';
 
 // Orders sub-pages
 import ActiveOrders from '../pages/orders/ActiveOrders';
-import CompletedOrders from '../pages/orders/CompletedOrders';
-import CancelledOrders from '../pages/orders/CancelledOrders';
-import GenerateBill from '../pages/billing/GenerateBill';
-import PaymentHistory from '../pages/billing/PaymentHistory';
-
-// Operations sub-pages
+import OrderHistory from '../pages/orders/OrderHistory';
 
 // Operations sub-pages
 import OperationsDashboard from '../pages/operations/OperationsDashboard';
@@ -34,13 +29,7 @@ export default function PosRoutes() {
         {/* Orders Routes */}
         <Route path="orders/active" element={<ActiveOrders />} />
         <Route path="operations" element={<OperationsDashboard />} />
-        <Route path="orders/completed" element={<CompletedOrders />} />
-        <Route path="orders/cancelled" element={<CancelledOrders />} />
-
-        {/* Billing Routes */}
-        <Route path="billing" element={<Navigate to="/pos/billing/generate" replace />} />
-        <Route path="billing/generate" element={<GenerateBill />} />
-        <Route path="billing/history" element={<PaymentHistory />} />
+        <Route path="orders/history" element={<OrderHistory />} />
 
         {/* Tables Routes */}
         <Route path="tables" element={<TableView />} />

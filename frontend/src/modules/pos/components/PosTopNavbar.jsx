@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Search, Wallet, LayoutGrid, Power, Phone, 
-  FileText, Receipt, Banknote, History, Clock, CheckCircle2, XCircle
+  Search, LayoutGrid, Power, Phone, 
+  FileText, History, Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePos } from '../context/PosContext';
@@ -13,8 +13,7 @@ export default function PosTopNavbar() {
   const { logout, storeSettings, currentCounter } = usePos();
   const [searchBillNo, setSearchBillNo] = useState('');
 
-  // Dropdown states
-  const [isFinanceOpen, setIsFinanceOpen] = useState(false);
+  // Dropdown state
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
 
   const handleSearchSubmit = (e) => {
@@ -56,43 +55,10 @@ export default function PosTopNavbar() {
       </div>
 
       <div className="flex items-center gap-1.5 text-[11px]">
-        {/* Finance / Cash Dropdown */}
+        {/* Orders & History Dropdown */}
         <div className="relative">
           <button 
-            onClick={() => { playClickSound(); setIsFinanceOpen(!isFinanceOpen); setIsOrdersOpen(false); }}
-            className={`p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group ${isFinanceOpen ? 'bg-white/8' : ''}`}
-            title="Finance & Register"
-          >
-            <Wallet size={18} className={`text-slate-300 group-hover:text-emerald-400 transition-colors ${isFinanceOpen ? 'text-emerald-400' : ''}`} />
-          </button>
-          
-          {isFinanceOpen && (
-            <>
-              <div className="fixed inset-0 z-[60]" onClick={() => setIsFinanceOpen(false)} />
-              <div className="absolute right-0 mt-2 w-48 bg-[#1C1E22] border border-white/8 rounded-lg shadow-xl overflow-hidden z-[70] py-1 font-sans text-left">
-                <button
-                  onClick={() => { playClickSound(); setIsFinanceOpen(false); navigate('/pos/billing/generate'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <Receipt size={14} className="text-slate-400" />
-                  Generate Bill
-                </button>
-                <button
-                  onClick={() => { playClickSound(); setIsFinanceOpen(false); navigate('/pos/billing/history'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <History size={14} className="text-slate-400" />
-                  Payment History
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Orders Dropdown */}
-        <div className="relative">
-          <button 
-            onClick={() => { playClickSound(); setIsOrdersOpen(!isOrdersOpen); setIsFinanceOpen(false); }}
+            onClick={() => { playClickSound(); setIsOrdersOpen(!isOrdersOpen); }}
             className={`p-2.5 hover:bg-white/8 rounded-lg transition-colors cursor-pointer group ${isOrdersOpen ? 'bg-white/8' : ''}`}
             title="Orders Hub"
           >
@@ -111,18 +77,11 @@ export default function PosTopNavbar() {
                   Active Orders
                 </button>
                 <button
-                  onClick={() => { playClickSound(); setIsOrdersOpen(false); navigate('/pos/orders/completed'); }}
+                  onClick={() => { playClickSound(); setIsOrdersOpen(false); navigate('/pos/orders/history'); }}
                   className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
                 >
-                  <CheckCircle2 size={14} className="text-slate-400" />
-                  Completed Orders
-                </button>
-                <button
-                  onClick={() => { playClickSound(); setIsOrdersOpen(false); navigate('/pos/orders/cancelled'); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-300 hover:bg-white/6 hover:text-white transition-all uppercase tracking-wider flex items-center gap-2"
-                >
-                  <XCircle size={14} className="text-slate-400" />
-                  Cancelled Orders
+                  <History size={14} className="text-slate-400" />
+                  Sales History
                 </button>
               </div>
             </>

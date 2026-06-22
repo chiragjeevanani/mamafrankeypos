@@ -992,22 +992,14 @@ export default function PosOrderPage() {
               )}
             </div>
 
-            {/* Always Visible Action Buttons (Row 4) */}
             {!isPickupMode && (
-              <div className="grid grid-cols-4 gap-2 p-2 border-t border-white/5">
+              <div className="grid grid-cols-3 gap-2 p-2 border-t border-white/5">
                 <ActionButton 
                   onClick={() => handleKOT(true)} 
                   label={isSubmittingKOT ? "Placing..." : "KOT"} 
                   color="bg-white" 
                   textColor="text-gray-800" 
                   disabled={!canPlaceKot || isSubmittingKOT} 
-                />
-                <ActionButton 
-                  onClick={handleReprint} 
-                  label="REPRINT" 
-                  color="bg-[#555555]" 
-                  textColor="text-white" 
-                  disabled={!canReprint || isSubmittingKOT} 
                 />
                 <ActionButton 
                   onClick={() => setIsDiscountModalOpen(true)} 

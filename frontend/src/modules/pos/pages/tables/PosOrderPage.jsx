@@ -1378,13 +1378,7 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
             <Plus size={12} className="rotate-45" strokeWidth={4} />
           </button>
         ) : (
-          <button
-            onClick={onCancel}
-            className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"
-            title="Cancel Item"
-          >
-            <Plus size={12} className="rotate-45" strokeWidth={4} />
-          </button>
+          <div className="w-5 h-5" />
         )}
       </div>
 

@@ -595,7 +595,7 @@ const settleOrder = asyncHandler(async (req, res) => {
 // @access  Private
 const cancelKOTItem = asyncHandler(async (req, res) => {
   const { id, kotId, itemId } = req.params;
-  const { reason } = req.body;
+  const { reason } = req.body || {};
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     res.status(400);

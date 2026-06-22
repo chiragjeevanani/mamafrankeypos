@@ -17,7 +17,7 @@ const {
   applyDiscount,
   applyItemDiscount
 } = require('../controllers/orderController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, verifyManagerPinForVoid } = require('../middleware/authMiddleware');
 
 // Validation error handler middleware
 const validateRequest = (req, res, next) => {
@@ -106,6 +106,6 @@ router.route('/:id/settle')
 
 router.post('/:id/discount', protect, applyDiscount);
 router.patch('/:id/kot/:kotId/item/:itemId/discount', protect, applyItemDiscount);
-router.post('/:id/cancel', protect, admin, cancelOrder);
+router.post('/:id/cancel', protect, verifyManagerPinForVoid, cancelOrder);
 
 module.exports = router;

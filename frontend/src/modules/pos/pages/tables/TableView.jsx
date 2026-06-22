@@ -65,7 +65,7 @@ const getSectionTablePrefix = (section) => {
 export default function TableView() {
   const navigate = useNavigate();
   const { 
-    orders, saveOrder, settleOrder, holdOrder, clearTable, carOrders, pickupOrders,
+    orders, saveOrder, settleOrder, holdOrder, carOrders, pickupOrders,
     sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff, storeSettings,
     refreshTables, refreshOrders
   } = usePos();
@@ -291,17 +291,7 @@ export default function TableView() {
     }
   };
 
-  const handleClearTable = async (e, tableId, options = {}) => {
-    e.stopPropagation();
-    if (window.confirm(`Clear ${tableId} and mark as empty?`)) {
-      try {
-        await clearTable(tableId, options);
-        setTableNotice({ type: 'success', text: `${tableId} cleared successfully.` });
-      } catch (error) {
-        setTableNotice({ type: 'error', text: error.response?.data?.message || 'Unable to clear this order.' });
-      }
-    }
-  };
+
 
   const getElapsedTime = (startTime) => {
     if (!startTime) return '0 Min';

@@ -5,6 +5,7 @@ const {
   adminLogin,
   posLogin,
   getUserProfile,
+  verifyManagerPin,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -44,6 +45,7 @@ const posLoginValidation = [
 
 router.post('/admin/login', adminLoginValidation, adminLogin);
 router.post('/pos/login', posLoginValidation, posLogin);
+router.post('/pos/verify-manager', posLoginValidation, verifyManagerPin);
 router.get('/profile', protect, getUserProfile);
 
 module.exports = router;

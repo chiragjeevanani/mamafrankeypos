@@ -780,7 +780,8 @@ export function PosProvider({ children }) {
       }
 
       const { data } = await api.post(`/orders/${orderId}/cancel`, {
-        reason: details.reason || 'Cleared from POS terminal'
+        reason: details.reason || 'Cleared from POS terminal',
+        managerPin: details.managerPin
       });
 
       // Optimistic update: remove the cancelled order from the correct state map
@@ -820,7 +821,10 @@ export function PosProvider({ children }) {
       }
 
       const orderId = order.id || order._id;
-      const { data } = await api.patch(`/orders/${orderId}/kot/${kotId}/items/${itemId}/cancel`);
+      const { data } = await api.patch(
+        `/orders/${orderId}/kot/${kotId}/items/${itemId}/cancel`,
+        { reason: details.reason || 'Cancelled by manager' }
+      );
 
       // Optimistic update: mark the cancelled item in the order's KOTs
       const updateOrderInMap = (prev) => {

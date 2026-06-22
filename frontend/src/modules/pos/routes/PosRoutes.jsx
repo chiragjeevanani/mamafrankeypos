@@ -5,7 +5,6 @@ import ProtectedRoute from '../../../components/common/ProtectedRoute';
 
 // Orders sub-pages
 import ActiveOrders from '../pages/orders/ActiveOrders';
-import OrderHistory from '../pages/orders/OrderHistory';
 
 // Operations sub-pages
 import OperationsDashboard from '../pages/operations/OperationsDashboard';
@@ -29,7 +28,6 @@ export default function PosRoutes() {
         {/* Orders Routes */}
         <Route path="orders/active" element={<ActiveOrders />} />
         <Route path="operations" element={<OperationsDashboard />} />
-        <Route path="orders/history" element={<OrderHistory />} />
 
         {/* Tables Routes */}
         <Route path="tables" element={<TableView />} />

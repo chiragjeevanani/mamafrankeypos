@@ -178,8 +178,69 @@ const getUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Verify POS Manager PIN (Admin or Manager)
+// @route   POST /api/auth/pos/verify-manager
+// @access  Public
+const verifyManagerPin = asyncHandler(async (req, res) => {
+  const { pin } = req.body;
+
+  if (!pin) {
+    res.status(400);
+    throw new Error('PIN is required');
+  }
+
+  const hashedPin = crypto.createHash('sha256').update(pin).digest('hex');
+  
+  // 1. Fast O(1) indexed query lookup
+  let authorizedStaff = await Staff.findOne({
+    pinHash: hashedPin,
+    status: 'Active',
+    isDeleted: { $ne: true }
+  });
+
+  // 2. Slow O(n) fallback for legacy records that don't have pinHash yet
+  if (!authorizedStaff) {
+    const legacyStaff = await Staff.find({
+      pinHash: { $exists: false },
+      status: 'Active',
+      isDeleted: { $ne: true }
+    });
+    for (const s of legacyStaff) {
+      if (s.pin && await s.matchPin(pin)) {
+        authorizedStaff = s;
+        // Automatically migrate to fast pinHash
+        s.pinHash = hashedPin;
+        await s.save();
+        break;
+      }
+    }
+  }
+
+  if (authorizedStaff) {
+    const Role = require('../models/Role');
+    const roleObj = await Role.findOne({ name: { $regex: new RegExp(`^${authorizedStaff.role}$`, 'i') } });
+    
+    const isAuthorized = roleObj?.permissions?.canCancelOrder || 
+                         authorizedStaff.role.toLowerCase() === 'admin' || 
+                         authorizedStaff.role.toLowerCase() === 'manager';
+    
+    if (isAuthorized) {
+      res.json({
+        success: true,
+        managerName: authorizedStaff.name,
+        role: authorizedStaff.role
+      });
+      return;
+    }
+  }
+
+  res.status(401);
+  throw new Error('Invalid Manager PIN or Unauthorized Role');
+});
+
 module.exports = {
   adminLogin,
   posLogin,
   getUserProfile,
+  verifyManagerPin,
 };

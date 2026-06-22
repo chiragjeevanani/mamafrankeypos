@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 /**
  * Generates a proper finalized Bill PDF.
  */
-export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
+export const printBillReceipt = (orderData, tableInfo, billingDetails, isReprint = false) => {
   const { kots, waiter, customer, cart } = orderData;
   const allItems = (kots && kots.length > 0)
     ? kots.flatMap(kot => kot.items || [])
@@ -24,6 +24,12 @@ export const printBillReceipt = (orderData, tableInfo, billingDetails) => {
   const billNo = orderData.orderNumber || billingDetails?.orderNumber || `T-${Math.floor(1000 + Math.random() * 9000)}`;
   const tokenNo = orderData.tokenNo || billingDetails?.tokenNo || '-';
   const { subTotal, tax, discount, total, orderType, appliedTaxes, storeInfo } = billingDetails;
+
+  if (isReprint) {
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(12);
+    doc.text('*** REPRINTED ***', 40, 4, { align: 'center' });
+  }
 
   // Header Section - Restaurant Info
   doc.setFont('courier', 'normal');

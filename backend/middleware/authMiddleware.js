@@ -71,4 +71,68 @@ const checkPermission = (permissionName) => async (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin, checkPermission };
+const verifyManagerPinForVoid = async (req, res, next) => {
+  if (req.user && req.user.role === 'Admin') {
+    return next();
+  }
+
+  const { managerPin } = req.body || {};
+  if (!managerPin) {
+    res.status(403);
+    return res.json({ message: 'Not authorized as an admin (Manager PIN required)' });
+  }
+
+  try {
+    const crypto = require('crypto');
+    const hashedPin = crypto.createHash('sha256').update(managerPin).digest('hex');
+    
+    const Staff = require('../models/Staff');
+    const Role = require('../models/Role');
+    
+    // Fast O(1) indexed query lookup
+    let authorizedStaff = await Staff.findOne({
+      pinHash: hashedPin,
+      status: 'Active',
+      isDeleted: { $ne: true }
+    });
+
+    // Slow O(n) fallback for legacy records
+    if (!authorizedStaff) {
+      const legacyStaff = await Staff.find({
+        pinHash: { $exists: false },
+        status: 'Active',
+        isDeleted: { $ne: true }
+      });
+      for (const s of legacyStaff) {
+        if (s.pin && await s.matchPin(managerPin)) {
+          authorizedStaff = s;
+          s.pinHash = hashedPin;
+          await s.save();
+          break;
+        }
+      }
+    }
+
+    if (!authorizedStaff) {
+      res.status(401);
+      return res.json({ message: 'Invalid Manager PIN' });
+    }
+
+    const roleObj = await Role.findOne({ name: { $regex: new RegExp(`^${authorizedStaff.role}$`, 'i') } });
+    const isAuthorized = roleObj?.permissions?.canCancelOrder || 
+                         authorizedStaff.role.toLowerCase() === 'admin' || 
+                         authorizedStaff.role.toLowerCase() === 'manager';
+
+    if (!isAuthorized) {
+      res.status(403);
+      return res.json({ message: 'Unauthorized role for this action' });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500);
+    return res.json({ message: 'Error verifying Manager PIN' });
+  }
+};
+
+module.exports = { protect, admin, checkPermission, verifyManagerPinForVoid };

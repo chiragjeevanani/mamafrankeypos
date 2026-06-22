@@ -3,7 +3,7 @@ import { jsPDF } from 'jspdf';
 /**
  * Directly downloads the KOT as a PDF file using jsPDF.
  */
-export const printKOTReceipt = (orderData, tableInfo) => {
+export const printKOTReceipt = (orderData, tableInfo, isReprint = false) => {
   // Extract items from orderData (direct items or latest KOT items)
   const items = orderData.items || (orderData.kots?.[orderData.kots.length - 1]?.items) || [];
   
@@ -25,6 +25,12 @@ export const printKOTReceipt = (orderData, tableInfo) => {
     unit: 'mm',
     format: [80, 150] // receipt width x height
   });
+
+  if (isReprint) {
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(14);
+    doc.text('*** REPRINTED ***', 40, 7, { align: 'center' });
+  }
 
   // Header Section - Centered
   doc.setFont('courier', 'bold');

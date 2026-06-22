@@ -94,16 +94,36 @@ export function PosProvider({ children }) {
     localStorage.removeItem('pos_user_info');
   };
 
+  const fetchCounters = useCallback(async () => {
+    try {
+      const { data } = await api.get('/settings/counters');
+      const billingCounters = data.filter(c => !c.name.startsWith('DAILY_'));
+      setCounters(billingCounters);
+
+      if (billingCounters.length > 0) {
+        const preferredId = localStorage.getItem('pos_active_counter_id');
+        const matched = billingCounters.find(c => c._id === preferredId);
+        if (matched) {
+          setCurrentCounter(matched);
+        } else {
+          setCurrentCounter(billingCounters[0]);
+          localStorage.setItem('pos_active_counter_id', billingCounters[0]._id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching counters from API:", error);
+    }
+  }, []);
+
   const fetchMenu = useCallback(async () => {
     if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
     try {
-      const [catRes, itemRes, replaceRes, comboRes, staffRes, counterRes] = await Promise.all([
+      const [catRes, itemRes, replaceRes, comboRes, staffRes] = await Promise.all([
         api.get('/menu/categories'),
         api.get('/menu/items'),
         api.get('/menu/replacements'),
         api.get('/menu/combos'),
-        api.get('/staff'),
-        api.get('/settings/counters')
+        api.get('/staff')
       ]);
 
       const formattedCategories = catRes.data.map((cat, index) => normalizeCategory(cat, index));
@@ -119,20 +139,6 @@ export function PosProvider({ children }) {
         role: s.role,
         status: s.status
       })));
-
-      const billingCounters = counterRes.data.filter(c => !c.name.startsWith('DAILY_'));
-      setCounters(billingCounters);
-
-      if (billingCounters.length > 0) {
-        const preferredId = localStorage.getItem('pos_active_counter_id');
-        const matched = billingCounters.find(c => c._id === preferredId);
-        if (matched) {
-          setCurrentCounter(matched);
-        } else {
-          setCurrentCounter(billingCounters[0]);
-          localStorage.setItem('pos_active_counter_id', billingCounters[0]._id);
-        }
-      }
     } catch (error) {
       console.error("Error fetching menu from API:", error);
     }
@@ -147,6 +153,7 @@ export function PosProvider({ children }) {
   }, [counters]);
 
   useEffect(() => {
+    fetchCounters();
     fetchMenu();
   }, []);
 

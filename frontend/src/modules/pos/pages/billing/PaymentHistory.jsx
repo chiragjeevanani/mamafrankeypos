@@ -4,6 +4,7 @@ import {
   Search, Smartphone
 } from 'lucide-react';
 import api from '../../../../utils/api';
+import { exportToCSV } from '../../../../utils/csvExport';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -72,12 +73,7 @@ export default function PaymentHistory() {
         payment.totalAmount || 0
       ])
     ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `payment_history_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV(rows, `payment_history_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   return (

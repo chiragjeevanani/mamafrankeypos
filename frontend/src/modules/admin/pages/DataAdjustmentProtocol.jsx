@@ -10,6 +10,7 @@ import { getReplacedName } from '../utils/dataMask';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
 import { printBillReceipt } from '../../pos/utils/printBill';
+import { exportToCSV } from '../../../utils/csvExport';
 
 function SearchableSelect({ label, value, onChange, options, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -419,27 +420,7 @@ export default function DataAdjustmentProtocol() {
       ];
     });
 
-    const escapeCSV = (val) => {
-      if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
-    };
-
-    const csvContent = "\uFEFF" + [
-      headers.map(escapeCSV).join(","), 
-      ...rows.map(r => r.map(escapeCSV).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `adjustment_protocol_snapshot_${new Date().toLocaleDateString()}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportToCSV([headers, ...rows], `adjustment_protocol_snapshot_${new Date().toLocaleDateString()}.csv`);
     playClickSound();
   };
 

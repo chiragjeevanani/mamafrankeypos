@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePos } from '../../pos/context/PosContext';
 import api from '../../../utils/api';
+import { exportToCSV } from '../../../utils/csvExport';
 import { maskCurrency, getReplacedName, maskQuantity } from '../utils/dataMask';
 
 
@@ -339,13 +340,7 @@ export default function SystemSettings() {
         })
       ];
       
-      const csvContent = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `daily_sales_report_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      exportToCSV(rows, `daily_sales_report_${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (err) {
       console.error('Failed to export sales CSV:', err);
       await showAlert('Unable to fetch daily sales records.', 'Export Failed', true);
@@ -371,13 +366,7 @@ export default function SystemSettings() {
         ])
       ];
       
-      const csvContent = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `staff_attendance_logs_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      exportToCSV(rows, `staff_attendance_logs_${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (err) {
       console.error('Failed to export attendance CSV:', err);
       await showAlert('Unable to fetch staff attendance logs.', 'Export Failed', true);

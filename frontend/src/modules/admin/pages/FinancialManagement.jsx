@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { maskCurrency, calculateMaskedOrderTotal } from '../utils/dataMask';
 import api from '../../../utils/api';
+import { exportToCSV } from '../../../utils/csvExport';
 
 export default function FinancialManagement() {
   const [expenses, setExpenses] = useState([]);
@@ -100,12 +101,7 @@ export default function FinancialManagement() {
         exp.notes || ''
       ])
     ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `expense_ledger_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV(rows, `expense_ledger_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   const totalExpenseValue = expenses.reduce((acc, curr) => acc + curr.amount, 0);

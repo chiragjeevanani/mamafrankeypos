@@ -4,6 +4,7 @@ import {
   ShoppingBag, TrendingUp, Users, Zap
 } from 'lucide-react';
 import api from '../../../utils/api';
+import { exportToCSV } from '../../../utils/csvExport';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
@@ -53,12 +54,7 @@ export default function AnalyticsDashboard() {
       ['Completion Efficiency', `${derived.efficiency}%`],
       ['Customers', stats?.customers || 0]
     ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `analytics_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV(rows, `analytics_snapshot_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   return (

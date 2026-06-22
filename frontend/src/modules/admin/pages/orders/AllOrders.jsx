@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { maskQuantity, maskCurrency, calculateMaskedOrderTotal, getReplacedName } from '../../utils/dataMask';
 import AdminModal from '../../components/ui/AdminModal';
 import api from '../../../../utils/api';
+import { exportToCSV } from '../../../../utils/csvExport';
 import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
 
 export default function AllOrders() {
@@ -105,7 +106,6 @@ export default function AllOrders() {
       }
 
       const headers = ["Bill ID", "Date", "Items", "Subtotal", "Discount", "Taxes", "Total Amount", "Payment Mode", "Type", "Status"];
-      const escapeCSV = (val) => `"${String(val || '').replaceAll('"', '""')}"`;
       
       const rows = exportList.map(order => [
         order.orderNumber || order._id || 'N/A',
@@ -120,16 +120,7 @@ export default function AllOrders() {
         order.orderStatus
       ]);
 
-      const csvContent = "\uFEFF" + [
-        headers.map(escapeCSV).join(","),
-        ...rows.map(r => r.map(escapeCSV).join(","))
-      ].join("\n");
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `order_history_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
+      exportToCSV([headers, ...rows], `order_history_${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (error) {
       console.error("Failed to export orders CSV:", error);
       await showAlert("Failed to export orders. Please try again.", "Export CSV", true);

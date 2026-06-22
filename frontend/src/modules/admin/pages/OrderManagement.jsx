@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePos } from '../../pos/context/PosContext';
 import api from '../../../utils/api';
+import { exportToCSV } from '../../../utils/csvExport';
 
 export default function OrderManagement() {
   const { orders, carOrders, pickupOrders } = usePos();
@@ -72,7 +73,6 @@ export default function OrderManagement() {
     }
 
     const headers = ["Order No", "Type", "Source", "Table/Car", "Items", "Total Amount", "Status"];
-    const escapeCSV = (val) => `"${String(val || '').replaceAll('"', '""')}"`;
 
     const rows = filteredOrders.map(order => [
       order.orderNumber || order._id || 'N/A',
@@ -84,16 +84,7 @@ export default function OrderManagement() {
       order.orderStatus
     ]);
 
-    const csvContent = "\uFEFF" + [
-      headers.map(escapeCSV).join(","),
-      ...rows.map(r => r.map(escapeCSV).join(","))
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `live_monitor_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
+    exportToCSV([headers, ...rows], `live_monitor_snapshot_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   return (

@@ -8,6 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
+import { exportToCSV } from '../../../utils/csvExport';
 
 export default function AuditLogs() {
   const today = new Date().toISOString().split('T')[0];
@@ -74,25 +75,11 @@ export default function AuditLogs() {
       log.staff?.role || 'KERNEL',
       log.action,
       log.module,
-      `"${(log.details || '').replace(/"/g, '""')}"`, // Escape quotes
+      log.details || '',
       log.ipAddress || '::1'
     ]);
 
-    // Combine headers and rows
-    const csvContent = [headers, ...csvRows]
-      .map(row => row.join(","))
-      .join("\n");
-
-    // Create and trigger download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `MamaFrankey_AuditLog_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToCSV([headers, ...csvRows], `MamaFrankey_AuditLog_${new Date().toISOString().split('T')[0]}.csv`);
     
     playClickSound();
   };

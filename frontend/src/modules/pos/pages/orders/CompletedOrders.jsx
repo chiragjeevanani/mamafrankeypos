@@ -2,6 +2,7 @@ import { useEffect, useRef, useMemo, useState } from 'react';
 import { Calendar, CheckCircle2, Download, Eye, Receipt, RefreshCw, Search, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../../../utils/api';
+import { exportToCSV } from '../../../../utils/csvExport';
 import { usePos } from '../../context/PosContext';
 import { printBillReceipt } from '../../utils/printBill';
 import { playClickSound } from '../../utils/sounds';
@@ -73,12 +74,7 @@ export default function CompletedOrders() {
         order.totalAmount || 0
       ])
     ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `completed_orders_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV(rows, `completed_orders_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   const handlePrint = (order) => {

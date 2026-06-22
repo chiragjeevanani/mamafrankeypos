@@ -11,6 +11,7 @@ import {
   BarChart, Bar, PieChart, Cell, Pie, Legend
 } from 'recharts';
 import api from '../../../../utils/api';
+import { exportToCSV } from '../../../../utils/csvExport';
 import { maskCurrency, getReplacedName, maskQuantity } from '../../utils/dataMask';
 
 export default function SalesReports() {
@@ -276,23 +277,11 @@ export default function SalesReports() {
           ...maskedCancellations.map(c => [c._id || 'UNSPECIFIED', c.count, c.potentialRevenue])
         ];
 
-        const csvContent = summaryRows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `sales_report_${filters.startDate}_to_${filters.endDate}.csv`;
-        link.click();
-        URL.revokeObjectURL(link.href);
+        exportToCSV(summaryRows, `sales_report_${filters.startDate}_to_${filters.endDate}.csv`);
         return;
     }
 
-    const csvContent = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV([headers, ...rows], filename);
   };
 
   const renderBillsTable = () => {

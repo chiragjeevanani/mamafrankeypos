@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Download, Eye, RefreshCw, Search, XCircle } from 'lucide-react';
 import api from '../../../../utils/api';
+import { exportToCSV } from '../../../../utils/csvExport';
 import AdminModal from '../../components/ui/AdminModal';
 import { maskQuantity, maskCurrency, calculateMaskedOrderTotal, getReplacedName } from '../../utils/dataMask';
 import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
@@ -60,12 +61,7 @@ export default function CancelledOrders() {
         calculateMaskedOrderTotal(order).toFixed(2)
       ])
     ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n');
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `cancelled_orders_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV(rows, `cancelled_orders_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   return (

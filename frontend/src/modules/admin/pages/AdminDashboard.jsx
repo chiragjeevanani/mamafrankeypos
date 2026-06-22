@@ -11,6 +11,7 @@ import { ADMIN_STATS_HISTORY } from '../data/adminData';
 import { maskCurrency, maskQuantity, calculateMaskedOrderTotal } from '../utils/dataMask';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
+import { exportToCSV } from '../../../utils/csvExport';
 
 
 export default function AdminDashboard() {
@@ -106,26 +107,7 @@ export default function AdminDashboard() {
       sections.push(["No recent orders", "", "", "", ""]);
     }
 
-    // Convert array of arrays to CSV string
-    const csvContent = sections
-      .map(row => 
-        row.map(cell => {
-          const cellStr = cell === null || cell === undefined ? "" : String(cell);
-          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
-            return `"${cellStr.replaceAll('"', '""')}"`;
-          }
-          return cellStr;
-        }).join(",")
-      )
-      .join("\n");
-
-    // Create download link with UTF-8 BOM to properly support currency symbols
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `operations_report_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    exportToCSV(sections, `operations_report_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   if (loading) {

@@ -13,6 +13,7 @@ import { printKOTReceipt } from '../../utils/printKOT';
 import { printBillReceipt } from '../../utils/printBill';
 import { downloadBillAndKOT } from '../../utils/printCombined';
 import { playClickSound } from '../../utils/sounds';
+import ManagerPinModal from '../../components/ManagerPinModal';
 
 export default function PosOrderPage() {
   const { tableId } = useParams();
@@ -58,6 +59,8 @@ export default function PosOrderPage() {
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [splitPayments, setSplitPayments] = useState([]);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
   const [selectedWaiter, setSelectedWaiter] = useState(() => {
     if (location.state?.waiter) return location.state.waiter;
     return null;
@@ -481,14 +484,9 @@ export default function PosOrderPage() {
     }
   };
 
-  const handleReprint = () => {
-    playClickSound();
-    setOrderNotice(null);
+  const executeReprintBill = (pin) => {
     const orderData = activeOrder;
-    if (!orderData?.billPrinted) {
-      setOrderNotice({ type: 'error', text: 'Bill reprint is available only after the bill has been generated.' });
-      return;
-    }
+    if (!orderData) return;
 
     // Calculate totals for existing KOTs (excluding current cart)
     const sTotal = orderData.kots.reduce((sum, kot) => sum + (kot.total || 0), 0);
@@ -507,8 +505,90 @@ export default function PosOrderPage() {
         orderType,
         billerName: user?.name,
         appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal })), storeInfo: storeSettings
-      }
+      },
+      true // isReprint = true
     );
+  };
+
+  const executeReprintKOT = (kot, pin) => {
+    const displayName = isCarServiceMode ? activeOrder.carNumber : (isPickupMode ? 'Pickup' : tableInfo.name);
+    
+    const orderData = {
+      items: kot.items || [],
+      kots: [kot]
+    };
+    
+    printKOTReceipt(
+      orderData,
+      {
+        name: displayName,
+        orderType: isCarServiceMode ? 'car-service' : (isPickupMode ? 'pickup' : 'Dine In'),
+        billerName: activeOrder.biller?.name || activeOrder.billerName || user?.name || 'Cashier',
+        waiterName: activeOrder.waiter?.name || kot.waiter?.name || ''
+      },
+      true // isReprint = true
+    );
+  };
+
+  const handleManagerAuthSuccess = async (info, pin) => {
+    if (!pendingAction) return;
+
+    if (pendingAction.type === 'cancelItem') {
+      const { kotId, itemId, itemName } = pendingAction;
+      const reason = window.prompt(`Enter reason for voiding item "${itemName}":`, 'Cancelled by Manager');
+      if (reason === null) {
+        setPendingAction(null);
+        return;
+      }
+      try {
+        setOrderNotice(null);
+        await cancelKOTItem(tableId, kotId, itemId, {
+          isCarOrder: isCarServiceMode,
+          isPickupOrder: isPickupMode,
+          reason: reason.trim() || 'Cancelled by Manager',
+          managerPin: pin
+        });
+        setOrderNotice({ type: 'success', text: `Voided item "${itemName}" successfully.` });
+      } catch (error) {
+        setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to cancel this item.' });
+      }
+    } else if (pendingAction.type === 'reprintBill') {
+      executeReprintBill(pin);
+    } else if (pendingAction.type === 'reprintKOT') {
+      executeReprintKOT(pendingAction.kot, pin);
+    } else if (pendingAction.type === 'voidOrder') {
+      const reason = window.prompt(`Are you sure you want to cancel the order for ${tableInfo.name}?\nEnter reason:`, 'Voided by Manager');
+      if (reason === null) {
+        setPendingAction(null);
+        return;
+      }
+      try {
+        setOrderNotice(null);
+        await clearTable(tableId, {
+          isCarOrder: isCarServiceMode,
+          isPickupOrder: isPickupMode,
+          reason: reason.trim() || 'Voided by Manager',
+          managerPin: pin
+        });
+        clearDraft();
+        navigate('/pos/tables');
+      } catch (error) {
+        setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to void this order.' });
+      }
+    }
+
+    setPendingAction(null);
+  };
+
+  const handleReprint = () => {
+    playClickSound();
+    setOrderNotice(null);
+    if (!activeOrder?.billPrinted) {
+      setOrderNotice({ type: 'error', text: 'Bill reprint is available only after the bill has been generated.' });
+      return;
+    }
+    setPendingAction({ type: 'reprintBill' });
+    setIsPinModalOpen(true);
   };
 
   const handleSave = () => {
@@ -527,20 +607,11 @@ export default function PosOrderPage() {
       });
   };
 
-  const handleClearTable = async () => {
+  const handleClearTable = () => {
     playClickSound();
-    if (window.confirm(`Are you sure you want to cancel the order for ${tableInfo.name}?`)) {
-      try {
-        await clearTable(tableId, {
-          isCarOrder: isCarServiceMode,
-          isPickupOrder: isPickupMode
-        });
-        clearDraft();
-        navigate('/pos/tables');
-      } catch (error) {
-        setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to clear this order.' });
-      }
-    }
+    setOrderNotice(null);
+    setPendingAction({ type: 'voidOrder' });
+    setIsPinModalOpen(true);
   };
 
   const handleDownloadBillAndKOT = async () => {
@@ -882,25 +953,36 @@ export default function PosOrderPage() {
 
           {/* Cart Items List */}
           <div className="flex-1 overflow-y-auto bg-white">
-            {/* 1. Placed KOTs (History) */}
             {(activeOrder?.kots || []).map((kot) => (
               <div key={kot._id || kot.id}>
                  <div className="bg-[#616161] text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between items-center">
-                    <span>KOT - {(kot._id || kot.id)} Time - {kot.time}</span>
+                    <span>KOT - {(kot.kotNumber || kot._id || kot.id)} Time - {kot.time}</span>
+                    <button
+                      onClick={() => {
+                        playClickSound();
+                        setPendingAction({ type: 'reprintKOT', kot });
+                        setIsPinModalOpen(true);
+                      }}
+                      className="p-1 hover:bg-white/10 rounded text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center animate-none"
+                      title="Reprint KOT"
+                    >
+                      <Printer size={12} />
+                    </button>
                  </div>
                   {kot.items.filter(item => item.status !== 'cancelled').map(item => (
                     <CartItem
                       key={`${(kot._id || kot.id)}-${(item._id || item.id)}`}
                       item={item}
                       isPlaced={true}
-                      onCancel={async () => {
-                        if (window.confirm(`Are you sure you want to cancel ${item.name} from this KOT?`)) {
-                          try {
-                            await cancelKOTItem(tableId, (kot._id || kot.id), (item._id || item.id), { isCarOrder: isCarServiceMode, isPickupOrder: isPickupMode });
-                          } catch (error) {
-                            setOrderNotice({ type: 'error', text: error.response?.data?.message || 'Unable to cancel this KOT item.' });
-                          }
-                        }
+                      onCancel={() => {
+                        playClickSound();
+                        setPendingAction({
+                          type: 'cancelItem',
+                          kotId: kot._id || kot.id,
+                          itemId: item._id || item.id,
+                          itemName: item.name
+                        });
+                        setIsPinModalOpen(true);
                       }}
                     />
                   ))}
@@ -993,29 +1075,48 @@ export default function PosOrderPage() {
             </div>
 
             {!isPickupMode && (
-              <div className="grid grid-cols-3 gap-2 p-2 border-t border-white/5">
-                <ActionButton 
-                  onClick={() => handleKOT(true)} 
-                  label={isSubmittingKOT ? "Placing..." : "KOT"} 
-                  color="bg-white" 
-                  textColor="text-gray-800" 
-                  disabled={!canPlaceKot || isSubmittingKOT} 
-                />
-                <ActionButton 
-                  onClick={() => setIsDiscountModalOpen(true)} 
-                  label="DISCOUNT" 
-                  color="bg-[#FFD600]" 
-                  textColor="text-gray-900" 
-                  disabled={isSubmittingKOT}
-                />
-                <ActionButton 
-                  onClick={handleSave} 
-                  label="HOLD" 
-                  color="bg-[#00BCD4]" 
-                  textColor="text-white" 
-                  disabled={!canHoldDraft || isSubmittingKOT} 
-                />
-              </div>
+              <>
+                <div className="grid grid-cols-3 gap-2 p-2 border-t border-white/5">
+                  <ActionButton 
+                    onClick={() => handleKOT(true)} 
+                    label={isSubmittingKOT ? "Placing..." : "KOT"} 
+                    color="bg-white" 
+                    textColor="text-gray-800" 
+                    disabled={!canPlaceKot || isSubmittingKOT} 
+                  />
+                  <ActionButton 
+                    onClick={() => setIsDiscountModalOpen(true)} 
+                    label="DISCOUNT" 
+                    color="bg-[#FFD600]" 
+                    textColor="text-gray-900" 
+                    disabled={isSubmittingKOT}
+                  />
+                  <ActionButton 
+                    onClick={handleSave} 
+                    label="HOLD" 
+                    color="bg-[#00BCD4]" 
+                    textColor="text-white" 
+                    disabled={!canHoldDraft || isSubmittingKOT} 
+                  />
+                </div>
+                {/* Manager Authorized Actions */}
+                <div className="grid grid-cols-2 gap-2 px-2 pb-2">
+                  <ActionButton 
+                    onClick={handleClearTable} 
+                    label="VOID ORDER" 
+                    color="bg-[#E1261C]" 
+                    textColor="text-white" 
+                    disabled={isSubmittingKOT || !activeOrder?.kots?.length} 
+                  />
+                  <ActionButton 
+                    onClick={handleReprint} 
+                    label="REPRINT BILL" 
+                    color="bg-[#555555]" 
+                    textColor="text-white" 
+                    disabled={!canReprint || isSubmittingKOT} 
+                  />
+                </div>
+              </>
             )}
             {/* Download Bill + KOT - only shown in pickup mode */}
             {isPickupMode && (
@@ -1352,6 +1453,12 @@ export default function PosOrderPage() {
             </div>
          )}
       </AnimatePresence>
+
+       <ManagerPinModal
+         isOpen={isPinModalOpen}
+         onClose={() => setIsPinModalOpen(false)}
+         onSuccess={handleManagerAuthSuccess}
+       />
     </div>
 
   );
@@ -1370,7 +1477,13 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
             <Plus size={12} className="rotate-45" strokeWidth={4} />
           </button>
         ) : (
-          <div className="w-5 h-5" />
+          <button
+            onClick={onCancel}
+            className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all shadow-sm cursor-pointer"
+            title="Cancel Item"
+          >
+            <Plus size={12} className="rotate-45" strokeWidth={4} />
+          </button>
         )}
       </div>
 

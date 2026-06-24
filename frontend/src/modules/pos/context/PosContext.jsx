@@ -823,7 +823,10 @@ export function PosProvider({ children }) {
       const orderId = order.id || order._id;
       const { data } = await api.patch(
         `/orders/${orderId}/kot/${kotId}/items/${itemId}/cancel`,
-        { reason: details.reason || 'Cancelled by manager' }
+        {
+          reason: details.reason || 'Cancelled by manager',
+          managerPin: details.managerPin
+        }
       );
 
       // Optimistic update: mark the cancelled item in the order's KOTs

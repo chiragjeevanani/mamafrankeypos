@@ -95,7 +95,8 @@ export default function ManagerControlPanel({ isOpen, onClose, managerInfo }) {
       await cancelKOTItem(identifier, kotId, itemId, {
         isCarOrder,
         isPickupOrder,
-        reason: reason.trim() || 'Cancelled by Manager'
+        reason: reason.trim() || 'Cancelled by Manager',
+        managerPin: managerInfo?.pin
       });
       setVoidNotice({ type: 'success', text: `Voided item "${itemName}" successfully.` });
       refreshOrders();

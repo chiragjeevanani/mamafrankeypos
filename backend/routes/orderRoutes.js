@@ -96,7 +96,7 @@ router.route('/:id/kot/:kotId/print')
   .patch(protect, markKOTPrinted);
 
 router.route('/:id/kot/:kotId/items/:itemId/cancel')
-  .patch(protect, cancelKOTItem);
+  .patch(protect, verifyManagerPinForVoid, cancelKOTItem);
 
 router.route('/:id/bill')
   .post(protect, billOrder);

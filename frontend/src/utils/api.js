@@ -36,10 +36,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Check if it's a login request to prevent redirect loops on authentication failure
-      const isLoginRequest = error.config && error.config.url && (error.config.url.endsWith('/login') || error.config.url.includes('/login'));
+      // Check if it's a login or PIN check/cancellation request to prevent logging out
+      const isLoginOrPinRequest = error.config && error.config.url && (
+        error.config.url.endsWith('/login') ||
+        error.config.url.includes('/login') ||
+        error.config.url.includes('/verify-manager') ||
+        error.config.url.includes('/cancel')
+      );
 
-      if (!isLoginRequest) {
+      if (!isLoginOrPinRequest) {
         console.error('Unauthorized access - potential token expiration');
         localStorage.removeItem('admin_access');
         localStorage.removeItem('pos_access');

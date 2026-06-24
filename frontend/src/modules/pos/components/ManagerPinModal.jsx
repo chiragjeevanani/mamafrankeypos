@@ -20,15 +20,13 @@ export default function ManagerPinModal({ isOpen, onClose, onSuccess }) {
   const handleNumberClick = (num) => {
     playClickSound();
     if (pin.length < 4) {
-      setPin((prev) => {
-        const next = prev + num;
-        if (next.length === 4) {
-          // Auto-submit when 4 digits are entered
-          handleSubmit(next);
-        }
-        return next;
-      });
+      const next = pin + num;
+      setPin(next);
       setError('');
+      if (next.length === 4) {
+        // Auto-submit when 4 digits are entered
+        handleSubmit(next);
+      }
     }
   };
 

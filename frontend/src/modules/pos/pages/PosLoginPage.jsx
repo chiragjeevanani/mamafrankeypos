@@ -54,18 +54,39 @@ export default function PosLoginPage() {
     }
   };
 
-  // Keyboard support
-  const handleKeyDown = (e) => {
-    if (/[0-9]/.test(e.key)) handleNumberClick(e.key);
-    if (e.key === 'Backspace') handleDelete();
-    if (e.key === 'Enter') handleLogin();
-  };
+  // Global keyboard support
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Ignore if user is focusing an input or textarea
+      if (
+        document.activeElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA')
+      ) {
+        return;
+      }
+
+      if (/[0-9]/.test(e.key)) {
+        e.preventDefault();
+        handleNumberClick(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        handleDelete();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleLogin();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [pin, isLoading]);
 
   return (
     <div 
       className="h-screen bg-[#0A0A0B] text-white flex items-center justify-center p-4 lg:p-8 selection:bg-brand-500 font-sans overflow-hidden"
-      onKeyDown={handleKeyDown}
-      tabIndex={0}
     >
       {/* Background Decorative Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/5 blur-[120px] rounded-full pointer-events-none" />

@@ -17,8 +17,6 @@ export default function ManagerPinModal({ isOpen, onClose, onSuccess }) {
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const handleNumberClick = (num) => {
     playClickSound();
     if (pin.length < 4) {
@@ -73,6 +71,40 @@ export default function ManagerPinModal({ isOpen, onClose, onSuccess }) {
       setIsLoading(false);
     }
   };
+
+  // Global keyboard support when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalKeyDown = (e) => {
+      // Ignore if user is focusing an input or textarea
+      if (
+        document.activeElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA')
+      ) {
+        return;
+      }
+
+      if (/[0-9]/.test(e.key)) {
+        e.preventDefault();
+        handleNumberClick(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        handleDelete();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [isOpen, pin, isLoading, onClose]);
+
+  if (!isOpen) return null;
 
   return (
     <AnimatePresence>

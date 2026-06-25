@@ -4,8 +4,9 @@ import { jsPDF } from 'jspdf';
  * Directly downloads the KOT as a PDF file using jsPDF.
  */
 export const printKOTReceipt = (orderData, tableInfo, isReprint = false) => {
-  // Extract items from orderData (direct items or latest KOT items)
-  const items = orderData.items || (orderData.kots?.[orderData.kots.length - 1]?.items) || [];
+  // Extract items from orderData (direct items or latest KOT items) and filter out cancelled items
+  const rawItems = orderData.items || (orderData.kots?.[orderData.kots.length - 1]?.items) || [];
+  const items = rawItems.filter(item => item.status !== 'cancelled');
   
   if (items.length === 0) return;
 

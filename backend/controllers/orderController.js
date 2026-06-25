@@ -640,7 +640,11 @@ const cancelKOTItem = asyncHandler(async (req, res) => {
         "kots.$[k].items.$[i].status": 'cancelled',
         "kots.$[k].items.$[i].cancellationReason": reason || 'No reason provided'
       },
-      $inc: { subtotal: -reduction, totalAmount: -reduction }
+      $inc: { 
+        subtotal: -reduction, 
+        totalAmount: -reduction,
+        "kots.$[k].total": -reduction
+      }
     },
     {
       arrayFilters: [{ "k._id": kotId }, { "i._id": itemId }],

@@ -62,6 +62,19 @@ const getSectionTablePrefix = (section) => {
     .toUpperCase();
 };
 
+const calculateOrderKotsTotal = (order) => {
+  if (!order || !order.kots) return 0;
+  return order.kots.reduce((sum, kot) => {
+    const kotActiveTotal = (kot.items || []).reduce((iSum, item) => {
+      if (item.status === 'cancelled') return iSum;
+      const itemPrice = item.price * item.quantity;
+      const discountAmt = item.discount?.amount || 0;
+      return iSum + (itemPrice - discountAmt);
+    }, 0);
+    return sum + kotActiveTotal;
+  }, 0);
+};
+
 export default function TableView() {
   const navigate = useNavigate();
   const { 
@@ -180,7 +193,7 @@ export default function TableView() {
       return;
     }
 
-    const subTotal = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+    const subTotal = calculateOrderKotsTotal(order);
     const taxesArr = calculateTaxes(subTotal);
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     const orderDiscount = order.discount?.amount || 0;
@@ -217,11 +230,7 @@ export default function TableView() {
     const isCarOrder = !!options.isCarOrder;
     const isPickupOrder = !!options.isPickupOrder;
     const order = isPickupOrder ? pickupOrders[table.id] : (isCarOrder ? carOrders[table.id] : orders[table.id]);
-    const subTotal = order?.kots?.reduce((sum, kot) => {
-      // Robust calculation: use kot.total or sum items
-      if (kot.total) return sum + kot.total;
-      return sum + (kot.items?.reduce((iSum, item) => iSum + (item.price * item.quantity), 0) || 0);
-    }, 0) || 0;
+    const subTotal = calculateOrderKotsTotal(order);
     
     const taxesArr = calculateTaxes ? calculateTaxes(subTotal) : [];
     const tax = taxesArr.reduce((sum, t) => sum + t.amount, 0);
@@ -419,9 +428,9 @@ export default function TableView() {
                 const showSettlement = order?.billPrinted;
                 
                 // Calculate cumulative total for the table
-                const tableTotal = isRunningKOT 
-                   ? order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0
-                   : 0;
+                 const tableTotal = isRunningKOT 
+                    ? calculateOrderKotsTotal(order)
+                    : 0;
 
                 return (
                   <motion.div
@@ -556,7 +565,7 @@ export default function TableView() {
               const statusConfig = getTableColor(carLifecycle);
               const statusLabel = getTableStatusText(carLifecycle);
               const isActive = !!(order?.kotPrinted || order?.billPrinted);
-              const carTotal = isActive ? order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0 : 0;
+              const carTotal = isActive ? calculateOrderKotsTotal(order) : 0;
               const showSettlement = order?.billPrinted;
 
               return (
@@ -644,7 +653,7 @@ export default function TableView() {
                 .map((car) => {
                   const statusConfig = getTableColor(car);
                   const statusLabel = getTableStatusText(car);
-                  const carTotal = car.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+                  const carTotal = calculateOrderKotsTotal(car);
                   const showSettlement = car.billPrinted;
                   const isActive = !!(car.kotPrinted || car.billPrinted);
 
@@ -771,7 +780,7 @@ export default function TableView() {
                 const puId = order.id || order._id;
                 const statusConfig = getTableColor(order);
                 const statusLabel = getTableStatusText(order);
-                const totalAmount = order.kots?.reduce((sum, kot) => sum + (kot.total || 0), 0) || 0;
+                const totalAmount = calculateOrderKotsTotal(order);
                 const showSettlement = order.billPrinted;
                 const isActive = !!(order.kotPrinted || order.billPrinted);
 

@@ -6,7 +6,7 @@ import { jsPDF } from 'jspdf';
 export const printBillReceipt = (orderData, tableInfo, billingDetails, isReprint = false) => {
   const { kots, waiter, customer, cart } = orderData;
   const allItems = (kots && kots.length > 0)
-    ? kots.flatMap(kot => kot.items || [])
+    ? kots.flatMap(kot => (kot.items || []).filter(item => item.status !== 'cancelled'))
     : (cart || []);
   
   if (allItems.length === 0) return;

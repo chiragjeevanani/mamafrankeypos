@@ -489,7 +489,14 @@ export default function PosOrderPage() {
     if (!orderData) return;
 
     // Calculate totals for existing KOTs (excluding current cart)
-    const sTotal = orderData.kots.reduce((sum, kot) => sum + (kot.total || 0), 0);
+    const sTotal = orderData.kots.reduce((sum, kot) => {
+      return sum + (kot.items || []).reduce((iSum, item) => {
+        if (item.status === 'cancelled') return iSum;
+        const itemPrice = item.price * item.quantity;
+        const discountAmt = item.discount?.amount || 0;
+        return iSum + (itemPrice - discountAmt);
+      }, 0);
+    }, 0);
     const taxesArr = calculateTaxes(sTotal);
     const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
     const fTotal = Math.round(sTotal - effectiveDiscount);

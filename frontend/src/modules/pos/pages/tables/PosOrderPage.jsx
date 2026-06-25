@@ -492,7 +492,7 @@ export default function PosOrderPage() {
     const sTotal = orderData.kots.reduce((sum, kot) => sum + (kot.total || 0), 0);
     const taxesArr = calculateTaxes(sTotal);
     const taxVal = taxesArr.reduce((sum, t) => sum + t.amount, 0);
-    const fTotal = Math.round(sTotal + taxVal);
+    const fTotal = Math.round(sTotal - effectiveDiscount);
 
     printBillReceipt(
       orderData,
@@ -504,7 +504,8 @@ export default function PosOrderPage() {
         discount: effectiveDiscount,
         orderType,
         billerName: user?.name,
-        appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal })), storeInfo: storeSettings
+        appliedTaxes: taxesArr.map(t => ({ ...t, base: sTotal - taxVal })),
+        storeInfo: storeSettings
       },
       true // isReprint = true
     );

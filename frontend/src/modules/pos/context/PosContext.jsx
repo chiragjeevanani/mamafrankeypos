@@ -1051,24 +1051,6 @@ export function PosProvider({ children }) {
     }
   };
 
-  const addPosTable = async (sectionId, tableName) => {
-    try {
-      const section = sections.find(s => s.id === sectionId)?._id;
-      if (!section) return;
-      const { data } = await api.post('/tables', { name: tableName, section, capacity: 4 });
-      // Optimistic update: add the new table to local state immediately
-      setTables(prev => [...prev, {
-        id: data.name, name: data.name,
-        sectionId: data.section?.name || sectionId,
-        status: data.status || 'blank',
-        capacity: data.capacity || 4, _id: data._id
-      }]);
-    } catch (error) {
-      console.error("Error adding POS table:", error);
-    }
-  };
-
-
   const [storeSettings, setStoreSettings] = useState(null);
 
   const fetchStoreSettings = useCallback(async () => {
@@ -1151,7 +1133,7 @@ export function PosProvider({ children }) {
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       pickupOrders,
       sections, addSection, updateSection, deleteSection,
-      tables, addTable, updateTable, deleteTable, addPosTable,
+      tables, addTable, updateTable, deleteTable,
       categories, addCategory, updateCategory, deleteCategory,
       menuItems, addMenuItem, updateMenuItem, deleteMenuItem, bulkUpdateMenuItems, bulkUploadMenu,
       replacements, addReplacement, updateReplacement, deleteReplacement,

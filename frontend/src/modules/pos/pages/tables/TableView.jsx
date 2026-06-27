@@ -79,7 +79,7 @@ export default function TableView() {
   const navigate = useNavigate();
   const { 
     orders, saveOrder, settleOrder, holdOrder, carOrders, pickupOrders,
-    sections, tables, setTableWaiter, addPosTable, user, calculateTaxes, staff, storeSettings,
+    sections, tables, setTableWaiter, user, calculateTaxes, staff, storeSettings,
     refreshTables, refreshOrders
   } = usePos();
 
@@ -93,10 +93,6 @@ export default function TableView() {
   const [showWaiterModal, setShowWaiterModal] = useState(false);
   const [selectedTableForWaiter, setSelectedTableForWaiter] = useState(null);
 
-  // --- Add Table Modal state ---
-  const [showAddTable, setShowAddTable] = useState(false);
-  const [selectedSectionId, setSelectedSectionId] = useState('');
-  const [newTableNumber, setNewTableNumber] = useState('');
   const [showSettlementModal, setShowSettlementModal] = useState(false);
   const [settlementTarget, setSettlementTarget] = useState(null);
   const [showUpiQR, setShowUpiQR] = useState(false);
@@ -347,15 +343,6 @@ export default function TableView() {
           >
             Pick Up
           </button>
-          <button 
-            onClick={() => {
-              if (sections.length > 0) setSelectedSectionId(sections[0].id);
-              setShowAddTable(true);
-            }}
-            className="bg-[#E1261C] text-white px-3 py-1.5 rounded-md text-[11px] font-bold hover:bg-[#4E342E] transition-colors flex items-center gap-1 uppercase shadow-sm active:scale-95"
-          >
-            <Plus size={14} /> Add Table
-          </button>
         </div>
       </div>
 
@@ -371,20 +358,10 @@ export default function TableView() {
 
       {/* Filter / Legend Bar */}
       <div className="bg-white px-4 py-2 border-b border-gray-100 flex flex-wrap items-center gap-4">
-        <button className="bg-stone-50 text-[#E1261C] border border-stone-100 px-2.5 py-1.2 rounded-md text-[10px] font-black hover:bg-stone-100 transition-colors flex items-center gap-1.5 uppercase tracking-wider shadow-sm">
-          <Plus size={12} strokeWidth={3} /> Contactless
-        </button>
-
-        <button className="border border-gray-200 text-gray-500 px-2.5 py-1.2 rounded-md text-[10px] font-bold hover:bg-gray-50 transition-colors flex items-center gap-1.5 uppercase tracking-wider">
-          <Info size={12} className="text-[#E1261C]" /> 
-          Reconnect Bridge
-        </button>
+        {/*  */}
 
         <div className="flex items-center gap-3 ml-auto">
-          <div className="flex items-center gap-1.5 bg-gray-50 py-1 px-3 rounded-full border border-gray-100">
-             <div className="w-2.5 h-2.5 rounded-full bg-white border border-gray-200 shadow-sm" />
-             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Move KOT</span>
-          </div>
+          {/* */}
 
           <div className="flex items-center gap-3 ml-2 border-l border-gray-100 pl-4">
             {[
@@ -1186,137 +1163,6 @@ export default function TableView() {
               </div>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Table Modal */}
-      <AnimatePresence>
-        {showAddTable && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowAddTable(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[2rem] shadow-2xl p-8 w-full max-w-md border border-gray-100"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-[#E1261C] rounded-xl flex items-center justify-center">
-                    <Plus size={16} className="text-white" />
-                  </div>
-                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-tight">Add New Table</h3>
-                </div>
-                <button onClick={() => setShowAddTable(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                  <X size={16} className="text-gray-500" />
-                </button>
-              </div>
-
-              <div className="space-y-5">
-                {/* Section Select */}
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">1. Select Section</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {sections.filter(s => getSectionKind(s) === 'standard').map(section => (
-                      <button
-                        key={section.id}
-                        onClick={() => {
-                          setSelectedSectionId(section.id);
-                          setNewTableNumber('');
-                        }}
-                        className={`px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all border ${
-                          selectedSectionId === section.id 
-                            ? 'bg-[#E1261C] border-[#E1261C] text-white shadow-md shadow-[#E1261C]/20 scale-[1.02]' 
-                            : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-gray-100'
-                        }`}
-                      >
-                        {section.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Table Number Selection Grid */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">2. Select Table Number</label>
-                    {newTableNumber && (
-                      <span className="text-[10px] font-black text-[#E1261C] uppercase bg-[#E1261C]/10 px-2 py-0.5 rounded-md">
-                        Selected: {(() => {
-                           const section = sections.find(s => s.id === selectedSectionId);
-                           const prefix = getSectionTablePrefix(section);
-                           return `${prefix}${newTableNumber}`;
-                        })()}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3">
-                    <div className="grid grid-cols-5 gap-2 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
-                      {Array.from({ length: 100 }, (_, i) => i + 1).map(num => {
-                        const section = sections.find(s => s.id === selectedSectionId);
-                        const prefix = getSectionTablePrefix(section);
-                        
-                        const tableName = `${prefix}${num}`;
-                        const exists = tables.some(t => t.sectionId === selectedSectionId && t.name === tableName);
-                        
-                        if (exists) return null;
-
-                        return (
-                          <button
-                            key={num}
-                            onClick={() => setNewTableNumber(num.toString())}
-                            className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-black transition-all border ${
-                              newTableNumber === num.toString()
-                                ? 'bg-gray-800 border-gray-800 text-white scale-110 shadow-lg z-10'
-                                : 'bg-white border-gray-200 text-gray-600 hover:border-[#E1261C] hover:text-[#E1261C]'
-                            }`}
-                          >
-                            {num}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-8">
-                <button
-                  onClick={() => setShowAddTable(false)}
-                  className="flex-1 py-3 border border-gray-100 rounded-xl text-[10px] font-black text-gray-400 hover:bg-gray-50 transition-colors uppercase tracking-[0.1em]"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (!selectedSectionId || !newTableNumber) return;
-                    
-                    const section = sections.find(s => s.id === selectedSectionId);
-                    const prefix = getSectionTablePrefix(section);
-                    const tableName = `${prefix}${newTableNumber}`;
-                    addPosTable(selectedSectionId, tableName);
-                    setNewTableNumber('');
-                    setShowAddTable(false);
-                  }}
-                  disabled={!selectedSectionId || !newTableNumber}
-                  className={`flex-1 py-3 text-white rounded-xl text-[10px] font-black transition-all uppercase tracking-[0.1em] shadow-lg active:scale-95 ${
-                    (!selectedSectionId || !newTableNumber) 
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
-                      : 'bg-[#E1261C] hover:bg-[#4E342E]'
-                  }`}
-                >
-                  Add Table
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
         )}
       </AnimatePresence>
     </div>

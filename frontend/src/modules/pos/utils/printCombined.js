@@ -61,18 +61,22 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
   doc.text(`${timeStr}`, 5, 53);
   doc.text(`Cashier: ${cashierName}`, 5, 57);
 
-  let headerShift = 0;
+  let headerShift = 4;
+  const isCarService = orderType?.toLowerCase() === 'car-service';
+  const tableLabel = isCarService ? `Car No : ${tableInfo?.name || ''}` : `Table  : ${tableInfo?.name || ''}`;
+  doc.text(tableLabel, 5, 61);
+
   if (waiterName) {
-    doc.text(`Waiter : ${waiterName}`, 5, 61);
+    doc.text(`Waiter : ${waiterName}`, 5, 61 + headerShift);
     doc.setFont('courier', 'bold');
-    doc.text(`Bill No.: ${billNo}`, 5, 65);
-    doc.text(`Token No.: ${tokenNo}`, 45, 65);
-    headerShift = 8;
+    doc.text(`Bill No.: ${billNo}`, 5, 65 + headerShift);
+    doc.text(`Token No.: ${tokenNo}`, 45, 65 + headerShift);
+    headerShift += 8;
   } else {
     doc.setFont('courier', 'bold');
-    doc.text(`Bill No.: ${billNo}`, 5, 61);
-    doc.text(`Token No.: ${tokenNo}`, 45, 61);
-    headerShift = 4;
+    doc.text(`Bill No.: ${billNo}`, 5, 61 + headerShift);
+    doc.text(`Token No.: ${tokenNo}`, 45, 61 + headerShift);
+    headerShift += 4;
   }
 
   doc.setFontSize(8);
@@ -195,11 +199,18 @@ export const downloadBillAndKOT = (orderData, tableInfo, billingDetails) => {
     doc.text(`CASHIER: ${cashierName}`, 5, 47);
     drawDashedLine(50);
     kotHeaderShift = 12;
-  } else {
-    doc.text(`WAITER: ${kotWaiterName || 'Staff'}`, 5, 35);
+  } else if (kotOrderType.toLowerCase() === 'pickup') {
+    const displayOrderNo = orderData.orderNumber || 'New Pickup';
+    doc.text(`ORDER NO: ${displayOrderNo}`, 5, 35);
     doc.text(`CASHIER: ${cashierName}`, 5, 41);
     drawDashedLine(44);
     kotHeaderShift = 6;
+  } else {
+    doc.text(`TABLE NO: ${tableNo || ''}`, 5, 35);
+    doc.text(`WAITER: ${kotWaiterName || 'Staff'}`, 5, 41);
+    doc.text(`CASHIER: ${cashierName}`, 5, 47);
+    drawDashedLine(50);
+    kotHeaderShift = 12;
   }
 
   doc.setFontSize(10);

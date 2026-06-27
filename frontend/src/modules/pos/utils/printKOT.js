@@ -70,11 +70,18 @@ export const printKOTReceipt = (orderData, tableInfo, isReprint = false) => {
     doc.text(`CASHIER: ${billerName}`, 5, 47);
     drawDashedLine(50);
     headerShift = 12;
-  } else {
-    doc.text(`WAITER: ${waiterName || 'Staff'}`, 5, 35);
+  } else if (orderType.toLowerCase() === 'pickup') {
+    const displayOrderNo = orderData.orderNumber || 'New Pickup';
+    doc.text(`ORDER NO: ${displayOrderNo}`, 5, 35);
     doc.text(`CASHIER: ${billerName}`, 5, 41);
     drawDashedLine(44);
     headerShift = 6;
+  } else {
+    doc.text(`TABLE NO: ${tableNo || ''}`, 5, 35);
+    doc.text(`WAITER: ${waiterName || 'Staff'}`, 5, 41);
+    doc.text(`CASHIER: ${billerName}`, 5, 47);
+    drawDashedLine(50);
+    headerShift = 12;
   }
 
   // Column Headers

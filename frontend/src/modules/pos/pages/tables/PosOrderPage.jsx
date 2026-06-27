@@ -879,7 +879,9 @@ export default function PosOrderPage() {
             <div onClick={playClickSound} className="flex-1 flex items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-colors">
               <div className="flex flex-col items-center">
                 <Soup size={18} className="text-gray-400" />
-                <span className="text-[10px] font-bold text-[#E1261C] uppercase tracking-tighter">{tableInfo.name}</span>
+                <span className="text-[10px] font-bold text-[#E1261C] uppercase tracking-tighter">
+                  {isPickupMode ? (activeOrder?.orderNumber || 'New Pickup') : tableInfo.name}
+                </span>
               </div>
             </div>
             <div onClick={() => { playClickSound(); toggleCustomerSection(); }} className="flex-1 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors group">
@@ -1185,7 +1187,7 @@ export default function PosOrderPage() {
               <div className="grid grid-cols-1 gap-1 p-2 border-t border-white/5">
                 <ActionButton
                   onClick={handleDownloadBillAndKOT}
-                  label={isSubmittingKOT ? "Placing..." : "Download Bill + KOT"}
+                  label={isSubmittingKOT ? "Placing..." : "Download Bill"}
                   color="bg-[#00BCD4]"
                   disabled={!canDownloadPickup || isSubmittingKOT}
                 />

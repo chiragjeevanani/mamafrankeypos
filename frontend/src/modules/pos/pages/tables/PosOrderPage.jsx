@@ -409,11 +409,13 @@ export default function PosOrderPage() {
     setCart(prev => prev.filter(i => i.id !== itemId));
   };
 
-  const updateQuantity = (itemId, delta) => {
+  const updateQuantity = (itemId, delta, isAbsolute = false) => {
     playClickSound();
     setCart(prev => prev.map(item => {
       if (item.id === itemId) {
-        const newQty = Math.max(1, item.quantity + delta);
+        const newQty = isAbsolute 
+          ? (delta === '' ? '' : Math.max(1, parseInt(delta, 10) || 1))
+          : Math.max(1, item.quantity + delta);
         return { ...item, quantity: newQty };
       }
       return item;
@@ -1065,7 +1067,7 @@ export default function PosOrderPage() {
                      item={item}
                      isPlaced={false}
                      onRemove={() => removeFromCart(item.id)}
-                     onUpdateQty={(delta) => updateQuantity(item.id, delta)}
+                     onUpdateQty={(delta, isAbsolute) => updateQuantity(item.id, delta, isAbsolute)}
                    />
                  ))}
               </div>
@@ -1576,9 +1578,28 @@ function CartItem({ item, isPlaced, onRemove, onUpdateQty, onCancel }) {
             <Minus size={12} strokeWidth={4} />
           </button>
         )}
-        <div className={`h-6 flex items-center justify-center rounded px-3 ${isPlaced ? 'bg-transparent text-gray-400' : 'bg-white border border-gray-300 shadow-inner'}`}>
-          <span className="text-[11px] font-bold">{item.quantity}</span>
-        </div>
+        {!isPlaced ? (
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={item.quantity}
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^0-9]/g, '');
+              onUpdateQty(val, true);
+            }}
+            onBlur={() => {
+              if (item.quantity === '' || item.quantity < 1) {
+                onUpdateQty(1, true);
+              }
+            }}
+            className="w-12 h-6 text-center text-[11px] font-bold bg-white border border-gray-300 rounded shadow-inner focus:outline-none focus:ring-1 focus:ring-[#E1261C]/50"
+          />
+        ) : (
+          <div className="h-6 flex items-center justify-center px-3 text-gray-400">
+            <span className="text-[11px] font-bold">{item.quantity}</span>
+          </div>
+        )}
         {!isPlaced && (
           <button
             onClick={() => onUpdateQty(1)}

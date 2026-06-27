@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Plus, Wifi, ArrowRightLeft, Info, Clock, Eye, Printer, Car, Search, X, Trash2 as TrashIcon, User, Users, Check, Wallet, Smartphone, CreditCard, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -100,6 +100,15 @@ export default function TableView() {
   const [cashTendered, setCashTendered] = useState('');
   const [tableNotice, setTableNotice] = useState(null);
   const [settlementNotice, setSettlementNotice] = useState('');
+
+  useEffect(() => {
+    if (tableNotice) {
+      const timer = setTimeout(() => {
+        setTableNotice(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [tableNotice]);
 
   const carSections = sections.filter((section) => getSectionKind(section) === 'car');
   const hasCarSection = carSections.length > 0;

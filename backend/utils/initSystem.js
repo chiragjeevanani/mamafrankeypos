@@ -1,4 +1,6 @@
 const Section = require('../models/Section');
+const Order = require('../models/Order');
+const Table = require('../models/Table');
 
 const initSystem = async () => {
   try {
@@ -23,6 +25,30 @@ const initSystem = async () => {
         await carService.save();
         console.log('System Initialization: Car Service section updated to system protection.');
       }
+    }
+
+    // Clean up stuck running/billed orders with 0 active items
+    const activeOrders = await Order.find({ orderStatus: { $in: ['RUNNING', 'BILLED'] } });
+    let cleanCount = 0;
+    for (const order of activeOrders) {
+      const activeItems = (order.kots || []).flatMap(k => k.items || []).filter(i => i.status !== 'cancelled');
+      if (activeItems.length === 0) {
+        order.orderStatus = 'CANCELLED';
+        order.cancellationReason = 'Automatically cancelled: All items voided';
+        order.cancelledAt = new Date();
+        await order.save();
+
+        if (order.table) {
+          await Table.findByIdAndUpdate(order.table, {
+            status: 'blank',
+            currentOrder: null
+          });
+        }
+        cleanCount++;
+      }
+    }
+    if (cleanCount > 0) {
+      console.log(`System Initialization: Cleaned up ${cleanCount} stuck empty orders.`);
     }
   } catch (error) {
     console.error('System Initialization Error:', error.message);

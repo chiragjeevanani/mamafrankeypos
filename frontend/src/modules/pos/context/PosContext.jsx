@@ -813,6 +813,42 @@ export function PosProvider({ children }) {
     }
   };
 
+  const clearEmptyTable = async (identifier, details = {}) => {
+    try {
+      const order = resolveOrderFromIdentifier(identifier, details);
+      if (!order) return;
+
+      const orderId = order.id || order._id;
+      const { data } = await api.post(`/orders/${orderId}/auto-clear-empty`);
+
+      // Optimistic update: remove the cancelled order from the correct state map
+      const removeOrderFromMap = (prev) => {
+        const updatedMap = { ...prev };
+        Object.keys(updatedMap).forEach(key => {
+          const o = updatedMap[key];
+          if (o?.id === orderId || o?._id === orderId) delete updatedMap[key];
+        });
+        return updatedMap;
+      };
+      if (details.isPickupOrder) setPickupOrders(removeOrderFromMap);
+      else if (details.isCarOrder) setCarOrders(removeOrderFromMap);
+      else setOrders(removeOrderFromMap);
+
+      // Optimistic update: update table status to 'blank' in tables list
+      const tableObj = data.order?.table || order.table;
+      if (!details.isPickupOrder && !details.isCarOrder && tableObj) {
+        const tableIdObj = tableObj._id || tableObj;
+        setTables(prev => prev.map(t => 
+          (t._id === tableIdObj || t.name === tableObj.name) ? { ...t, status: 'blank' } : t
+        ));
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error auto-clearing empty table:", error);
+    }
+  };
+
   const cancelKOTItem = async (identifier, kotId, itemId, details = {}) => {
     try {
       const order = resolveOrderFromIdentifier(identifier, details);
@@ -1129,7 +1165,7 @@ export function PosProvider({ children }) {
     <PosContext.Provider value={{
       isSidebarOpen, toggleSidebar, closeSidebar,
       isCustomerSectionOpen, toggleCustomerSection,
-      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, applyOrderDiscount, setTableWaiter,
+      placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, clearEmptyTable, cancelKOTItem, applyOrderDiscount, setTableWaiter,
       carOrders, addCarOrder, updateCarOrderStatus, clearCarOrder,
       pickupOrders,
       sections, addSection, updateSection, deleteSection,

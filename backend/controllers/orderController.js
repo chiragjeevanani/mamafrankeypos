@@ -655,6 +655,30 @@ const cancelKOTItem = asyncHandler(async (req, res) => {
   res.json(updatedOrder);
 });
 
+const cleanStuckOrdersInternal = async () => {
+  try {
+    const activeOrders = await Order.find({ orderStatus: { $in: ['RUNNING', 'BILLED'] } });
+    for (const order of activeOrders) {
+      const activeItems = (order.kots || []).flatMap(k => k.items || []).filter(i => i.status !== 'cancelled');
+      if (activeItems.length === 0) {
+        order.orderStatus = 'CANCELLED';
+        order.cancellationReason = 'Automatically cancelled: All items voided';
+        order.cancelledAt = new Date();
+        await order.save();
+
+        if (order.table) {
+          await Table.findByIdAndUpdate(order.table, {
+            status: 'blank',
+            currentOrder: null
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error("cleanStuckOrdersInternal error:", err);
+  }
+};
+
 // @desc    Get order history
 // @route   GET /api/orders
 // @access  Private/Admin
@@ -676,6 +700,7 @@ const getOrders = asyncHandler(async (req, res) => {
   }
 
   if (req.query.active === 'true') {
+    await cleanStuckOrdersInternal();
     query.orderStatus = { $in: ['RUNNING', 'BILLED'] };
   }
 
@@ -1070,6 +1095,45 @@ const applyItemDiscount = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
+// @desc    Auto Clear Empty Order
+// @route   POST /api/orders/:id/auto-clear-empty
+// @access  Private
+const autoClearEmptyOrder = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error('Invalid Order ID format');
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error('Order not found');
+  }
+
+  // Count active items
+  const activeItemsCount = (order.kots || []).flatMap(k => k.items || []).filter(i => i.status !== 'cancelled').length;
+
+  if (activeItemsCount > 0) {
+    res.status(400);
+    throw new Error('Cannot auto-clear order: Order has active items. Manager PIN is required.');
+  }
+
+  // Update order status to CANCELLED and free the table
+  order.orderStatus = 'CANCELLED';
+  order.cancellationReason = 'Automatically cancelled: All items voided';
+  order.cancelledAt = new Date();
+  await order.save();
+
+  if (order.table) {
+    await Table.findByIdAndUpdate(order.table, {
+      status: 'blank',
+      currentOrder: null
+    });
+  }
+
+  res.json({ message: 'Empty order cleared successfully', order });
+});
+
 module.exports = {
   processOrder,
   updateOrder,
@@ -1084,5 +1148,6 @@ module.exports = {
   getSalesSummary,
   getAdjustmentAudit,
   applyDiscount,
-  applyItemDiscount
+  applyItemDiscount,
+  autoClearEmptyOrder
 };

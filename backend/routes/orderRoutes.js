@@ -15,7 +15,8 @@ const {
   getAdjustmentAudit,
   cancelOrder,
   applyDiscount,
-  applyItemDiscount
+  applyItemDiscount,
+  autoClearEmptyOrder
 } = require('../controllers/orderController');
 const { protect, admin, verifyManagerPinForVoid } = require('../middleware/authMiddleware');
 
@@ -107,5 +108,6 @@ router.route('/:id/settle')
 router.post('/:id/discount', protect, applyDiscount);
 router.patch('/:id/kot/:kotId/item/:itemId/discount', protect, applyItemDiscount);
 router.post('/:id/cancel', protect, verifyManagerPinForVoid, cancelOrder);
+router.post('/:id/auto-clear-empty', protect, autoClearEmptyOrder);
 
 module.exports = router;

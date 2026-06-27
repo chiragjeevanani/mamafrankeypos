@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Search, Plus, Minus, Trash2, Receipt, ArrowLeft,
@@ -15,12 +15,30 @@ import { downloadBillAndKOT } from '../../utils/printCombined';
 import { playClickSound } from '../../utils/sounds';
 import ManagerPinModal from '../../components/ManagerPinModal';
 
+const formatKOTTime = (timeString) => {
+  if (!timeString) return '';
+  try {
+    const date = new Date(timeString);
+    if (isNaN(date.getTime())) return timeString;
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // hour '0' should be '12'
+    return `${day} ${month} ${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+  } catch (e) {
+    return timeString;
+  }
+};
+
 export default function PosOrderPage() {
   const { tableId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const {
-    placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, cancelKOTItem, applyOrderDiscount,
+    placeKOT, markKOTPrinted, saveOrder, holdOrder, settleOrder, clearTable, clearEmptyTable, cancelKOTItem, applyOrderDiscount,
     orders, carOrders, pickupOrders, isCustomerSectionOpen, toggleCustomerSection, user, calculateTaxes, storeSettings,
     categories, menuItems, combos, replacements, tables, sections, staff
   } = usePos();
@@ -84,6 +102,42 @@ export default function PosOrderPage() {
   const [isOtherPaymentModalOpen, setIsOtherPaymentModalOpen] = useState(false);
   const [otherPaymentDetails, setOtherPaymentDetails] = useState({ type: 'UPI', note: '' });
   const [orderNotice, setOrderNotice] = useState(null);
+
+  useEffect(() => {
+    if (orderNotice) {
+      const timer = setTimeout(() => {
+        setOrderNotice(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [orderNotice]);
+
+  const activeOrderRef = useRef(activeOrder);
+  const cartRef = useRef(cart);
+
+  useEffect(() => {
+    activeOrderRef.current = activeOrder;
+  }, [activeOrder]);
+
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+
+  useEffect(() => {
+    return () => {
+      const order = activeOrderRef.current;
+      const currentCart = cartRef.current;
+      if (order) {
+        const activeItems = (order.kots || []).flatMap(k => k.items || []).filter(i => i.status !== 'cancelled');
+        if (activeItems.length === 0 && currentCart.length === 0) {
+          clearEmptyTable(tableId, {
+            isCarOrder: isCarServiceMode,
+            isPickupOrder: isPickupMode
+          });
+        }
+      }
+    };
+  }, [tableId, isCarServiceMode, isPickupMode, clearEmptyTable]);
 
   // Dish Variant Selection State
   const [variantModalItem, setVariantModalItem] = useState(null);
@@ -964,7 +1018,7 @@ export default function PosOrderPage() {
             {(activeOrder?.kots || []).map((kot) => (
               <div key={kot._id || kot.id}>
                  <div className="bg-[#616161] text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider flex justify-between items-center">
-                    <span>KOT - {(kot.kotNumber || kot._id || kot.id)} Time - {kot.time}</span>
+                    <span>KOT - {(kot.kotNumber || kot._id || kot.id)} Time - {formatKOTTime(kot.time)}</span>
                     <button
                       onClick={() => {
                         playClickSound();

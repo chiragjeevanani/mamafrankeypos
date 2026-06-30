@@ -6,8 +6,10 @@ import AdminModal from '../../components/ui/AdminModal';
 import api from '../../../../utils/api';
 import { exportToCSV } from '../../../../utils/csvExport';
 import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
+import { useBranchContext } from '../../../../context/BranchContext';
 
 export default function AllOrders() {
+  const { activeBranch } = useBranchContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState(null);
@@ -65,7 +67,7 @@ export default function AllOrders() {
         params.append('status', filterStatus);
       }
       
-      const { data } = await api.get(`/orders?${params.toString()}`);
+      const { data } = await api.get(`/orders?${params.toString()}&branch=${activeBranch}`);
       if (data && data.data) {
         setOrders(data.data);
         setTotalPages(data.totalPages || 1);
@@ -132,7 +134,7 @@ export default function AllOrders() {
       fetchOrders();
     }, 300);
     return () => clearTimeout(delayDebounce);
-  }, [searchQuery, page, filterType, filterStatus]);
+  }, [searchQuery, page, filterType, filterStatus, activeBranch]);
 
   const [formData, setFormData] = useState({
     status: 'RUNNING'

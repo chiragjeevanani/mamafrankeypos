@@ -72,6 +72,7 @@ const auditRoutes = require('./routes/auditRoutes');
 const roleRoutes = require('./routes/roleRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const branchRoutes = require('./routes/branchRoutes');
 
 // Mount routers
 app.use('/api/auth', authRoutes);
@@ -87,6 +88,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/branches', branchRoutes);
 
 // Error handling
 app.use(notFound);

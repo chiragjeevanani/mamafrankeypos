@@ -29,6 +29,11 @@ const sectionSchema = mongoose.Schema(
       enum: ['Active', 'Inactive'],
       default: 'Active',
     },
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null, // null for system/global sections
+    },
   },
   {
     timestamps: true,
@@ -37,6 +42,8 @@ const sectionSchema = mongoose.Schema(
 
 // Indexes
 sectionSchema.index({ rank: 1 });
+sectionSchema.index({ branch: 1 });
+sectionSchema.index({ name: 1, branch: 1 }, { unique: true, sparse: true });
 
 const Section = mongoose.model('Section', sectionSchema);
 

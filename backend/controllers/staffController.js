@@ -20,6 +20,10 @@ const validateRoleExists = async (roleName) => {
 // @access  Private/Admin
 const getStaff = asyncHandler(async (req, res) => {
   const query = { isDeleted: { $ne: true } };
+  // Branch filter: branch staff see only their branch, Admin with specific branch sees that branch, Admin 'all' sees everyone
+  if (req.activeBranchId) {
+    query.branch = req.activeBranchId;
+  }
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
@@ -28,6 +32,7 @@ const getStaff = asyncHandler(async (req, res) => {
     const total = await Staff.countDocuments(query);
     const data = await Staff.find(query)
       .select('-password -pin')
+      .populate('branch', 'name slug')
       .skip(skip)
       .limit(limit);
     res.json({
@@ -38,7 +43,7 @@ const getStaff = asyncHandler(async (req, res) => {
       totalPages: Math.ceil(total / limit)
     });
   } else {
-    const staff = await Staff.find(query).select('-password -pin');
+    const staff = await Staff.find(query).select('-password -pin').populate('branch', 'name slug');
     res.json(staff);
   }
 });
@@ -102,6 +107,11 @@ const registerStaff = asyncHandler(async (req, res) => {
     throw new Error('Staff already exists with this email');
   }
 
+  // Determine which branch to assign
+  // Admin can pass a branchId in req.body to assign to a specific branch
+  // Non-admin staff are auto-assigned to their own branch
+  const assignedBranch = req.body.branchId || req.activeBranchId || null;
+
   const staff = await Staff.create({
     name,
     email,
@@ -109,6 +119,7 @@ const registerStaff = asyncHandler(async (req, res) => {
     password,
     pin,
     role,
+    branch: assignedBranch,
   });
 
   if (staff) {

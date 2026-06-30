@@ -13,6 +13,7 @@ const {
   updateTableStatus,
 } = require('../controllers/tableController');
 const { protect, admin, checkPermission } = require('../middleware/authMiddleware');
+const { resolveBranch } = require('../middleware/branchMiddleware');
 
 // Validation error handler middleware
 const validateRequest = (req, res, next) => {
@@ -99,22 +100,22 @@ const updateTableValidation = [
 ];
 
 router.route('/sections')
-  .get(getSections)
-  .post(protect, checkPermission('canManageTables'), sectionValidation, createSection);
+  .get(resolveBranch, getSections)
+  .post(protect, resolveBranch, checkPermission('canManageTables'), sectionValidation, createSection);
 
 router.route('/sections/:id')
-  .put(protect, checkPermission('canManageTables'), updateSectionValidation, updateSection)
-  .delete(protect, checkPermission('canManageTables'), deleteSection);
+  .put(protect, resolveBranch, checkPermission('canManageTables'), updateSectionValidation, updateSection)
+  .delete(protect, resolveBranch, checkPermission('canManageTables'), deleteSection);
 
 router.route('/')
-  .get(getTables)
-  .post(protect, checkPermission('canManageTables'), tableValidation, createTable);
+  .get(resolveBranch, getTables)
+  .post(protect, resolveBranch, checkPermission('canManageTables'), tableValidation, createTable);
 
 router.route('/:id')
-  .put(protect, checkPermission('canManageTables'), updateTableValidation, updateTable)
-  .delete(protect, checkPermission('canManageTables'), deleteTable);
+  .put(protect, resolveBranch, checkPermission('canManageTables'), updateTableValidation, updateTable)
+  .delete(protect, resolveBranch, checkPermission('canManageTables'), deleteTable);
 
 router.route('/:id/status')
-  .patch(protect, updateTableStatus);
+  .patch(protect, resolveBranch, updateTableStatus);
 
 module.exports = router;

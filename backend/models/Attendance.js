@@ -30,7 +30,12 @@ const attendanceSchema = mongoose.Schema(
     terminal: {
       type: String,
       default: 'POS-01',
-    }
+    },
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+    },
   },
   {
     timestamps: true,

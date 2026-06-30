@@ -13,8 +13,10 @@ import {
 import api from '../../../../utils/api';
 import { exportToCSV } from '../../../../utils/csvExport';
 import { maskCurrency, getReplacedName, maskQuantity } from '../../utils/dataMask';
+import { useBranchContext } from '../../../../context/BranchContext';
 
 export default function SalesReports() {
+  const { activeBranch } = useBranchContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
@@ -56,9 +58,9 @@ export default function SalesReports() {
     setLoading(true);
     try {
       const [reportRes, staffRes, tableRes] = await Promise.all([
-        api.get('/reports/sales', { params: { ...filters, reportType: activeReport } }),
-        api.get('/staff'),
-        api.get('/tables')
+        api.get('/reports/sales', { params: { ...filters, reportType: activeReport, branch: activeBranch } }),
+        api.get(`/staff?branch=${activeBranch}`),
+        api.get(`/tables?branch=${activeBranch}`)
       ]);
 
       setData(reportRes.data);
@@ -79,7 +81,7 @@ export default function SalesReports() {
 
   useEffect(() => {
     fetchData();
-  }, [filters, activeReport]);
+  }, [filters, activeReport, activeBranch]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;

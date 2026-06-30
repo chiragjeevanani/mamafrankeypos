@@ -13,6 +13,7 @@ import { usePos } from '../../pos/context/PosContext';
 import api from '../../../utils/api';
 import { exportToCSV } from '../../../utils/csvExport';
 import { maskCurrency, getReplacedName, maskQuantity } from '../utils/dataMask';
+import { useBranchContext } from '../../../context/BranchContext';
 
 
 // ─────────────────────────────────────────────────
@@ -269,6 +270,7 @@ function DangerZone() {
 export default function SystemSettings() {
   const { section = 'general' } = useParams();
   const navigate = useNavigate();
+  const { activeBranch } = useBranchContext();
   const { 
     sections, addSection, updateSection, deleteSection,
     tables, addTable, updateTable, deleteTable,
@@ -518,19 +520,19 @@ export default function SystemSettings() {
   React.useEffect(() => {
     const fetchStoreSettings = async () => {
       try {
-        const { data } = await api.get('/settings/store');
+        const { data } = await api.get(`/settings/store?branch=${activeBranch}`);
         setConfig(data);
       } catch (error) {
         console.error("Error fetching store settings:", error);
       }
     };
     fetchStoreSettings();
-  }, []);
+  }, [activeBranch]);
 
   React.useEffect(() => {
     const fetchCounters = async () => {
       try {
-        const { data } = await api.get('/settings/counters');
+        const { data } = await api.get(`/settings/counters?branch=${activeBranch}`);
         setCounters(data.map(c => ({
           id: c._id,
           name: c.name,
@@ -543,7 +545,7 @@ export default function SystemSettings() {
       }
     };
     fetchCounters();
-  }, []);
+  }, [activeBranch]);
 
   const updateCounter = (id, field, value) =>
     setCounters(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));

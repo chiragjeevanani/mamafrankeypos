@@ -16,7 +16,8 @@ const slugifySectionName = (value) =>
 // @route   GET /api/tables/sections
 // @access  Public
 const getSections = asyncHandler(async (req, res) => {
-  const sections = await Section.find({}).sort({ rank: 1 });
+  const branchFilter = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  const sections = await Section.find(branchFilter).sort({ rank: 1 });
   res.json(sections);
 });
 
@@ -57,6 +58,7 @@ const createSection = asyncHandler(async (req, res) => {
     label,
     rank,
     status: req.body.status || 'Active',
+    branch: req.branchId || null,
   });
 
   res.status(201).json(section);
@@ -68,7 +70,8 @@ const createSection = asyncHandler(async (req, res) => {
 // @route   GET /api/tables
 // @access  Public
 const getTables = asyncHandler(async (req, res) => {
-  const tables = await Table.find({}).populate('section');
+  const branchFilter = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  const tables = await Table.find(branchFilter).populate('section');
   res.json(tables);
 });
 
@@ -126,6 +129,7 @@ const createTable = asyncHandler(async (req, res) => {
     name,
     section,
     capacity,
+    branch: req.branchId || null,
   });
 
   const createdTable = await Table.findById(table._id).populate('section');

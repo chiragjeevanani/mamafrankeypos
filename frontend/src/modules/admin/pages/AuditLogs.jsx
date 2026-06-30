@@ -9,8 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
 import { exportToCSV } from '../../../utils/csvExport';
+import { useBranchContext } from '../../../context/BranchContext';
 
 export default function AuditLogs() {
+  const { activeBranch } = useBranchContext();
   const today = new Date().toISOString().split('T')[0];
   const [searchQuery, setSearchQuery] = useState('');
   const [logs, setLogs] = useState([]);
@@ -34,9 +36,10 @@ export default function AuditLogs() {
         params.append('moduleName', filters.moduleName);
       }
 
+      params.append('branch', activeBranch);
       const [logsRes, summaryRes] = await Promise.all([
         api.get(`/audit?${params.toString()}`),
-        api.get('/audit/summary')
+        api.get(`/audit/summary?branch=${activeBranch}`)
       ]);
       
       setLogs(logsRes.data);
@@ -50,7 +53,7 @@ export default function AuditLogs() {
 
   React.useEffect(() => {
     fetchLogs();
-  }, [filters]);
+  }, [filters, activeBranch]);
 
   const filteredLogs = logs.filter(log => 
     log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||

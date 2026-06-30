@@ -9,6 +9,7 @@ const {
   loginStaff,
 } = require('../controllers/staffController');
 const { protect, admin, checkPermission } = require('../middleware/authMiddleware');
+const { resolveBranch } = require('../middleware/branchMiddleware');
 
 const {
   getAttendance,
@@ -141,16 +142,16 @@ const deleteStaffValidation = [
 ];
 
 router.route('/')
-  .get(protect, getStaff)
-  .post(protect, checkPermission('canManageStaff'), registerStaffValidation, registerStaff);
+  .get(protect, resolveBranch, getStaff)
+  .post(protect, resolveBranch, checkPermission('canManageStaff'), registerStaffValidation, registerStaff);
 
-router.get('/attendance', protect, checkPermission('canManageStaff'), getAttendance);
-router.put('/attendance/:id', protect, checkPermission('canManageStaff'), updateAttendanceValidation, updateAttendance);
+router.get('/attendance', protect, resolveBranch, checkPermission('canManageStaff'), getAttendance);
+router.put('/attendance/:id', protect, resolveBranch, checkPermission('canManageStaff'), updateAttendanceValidation, updateAttendance);
 
 router.post('/login', loginStaffValidation, loginStaff);
 
 router.route('/:id')
-  .put(protect, checkPermission('canManageStaff'), updateStaffValidation, updateStaff)
-  .delete(protect, checkPermission('canManageStaff'), deleteStaffValidation, deleteStaff);
+  .put(protect, resolveBranch, checkPermission('canManageStaff'), updateStaffValidation, updateStaff)
+  .delete(protect, resolveBranch, checkPermission('canManageStaff'), deleteStaffValidation, deleteStaff);
 
 module.exports = router;

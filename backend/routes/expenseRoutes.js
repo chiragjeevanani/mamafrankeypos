@@ -8,6 +8,7 @@ const {
   getExpenseSummary,
 } = require('../controllers/expenseController');
 const { protect, admin } = require('../middleware/authMiddleware');
+const { resolveBranch } = require('../middleware/branchMiddleware');
 
 // Validation error handler middleware
 const validateRequest = (req, res, next) => {
@@ -55,13 +56,13 @@ const deleteExpenseValidation = [
 ];
 
 router.route('/')
-  .get(protect, admin, getExpenses)
-  .post(protect, admin, createExpenseValidation, createExpense);
+  .get(protect, resolveBranch, admin, getExpenses)
+  .post(protect, resolveBranch, admin, createExpenseValidation, createExpense);
 
 router.route('/summary')
-  .get(protect, admin, getExpenseSummary);
+  .get(protect, resolveBranch, admin, getExpenseSummary);
 
 router.route('/:id')
-  .delete(protect, admin, deleteExpenseValidation, deleteExpense);
+  .delete(protect, resolveBranch, admin, deleteExpenseValidation, deleteExpense);
 
 module.exports = router;

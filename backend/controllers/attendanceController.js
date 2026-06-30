@@ -64,6 +64,11 @@ const getAttendance = asyncHandler(async (req, res) => {
     query.date = searchDate;
   }
 
+  // Apply branch filter for admin views
+  if (req.activeBranchId) {
+    query.branch = req.activeBranchId;
+  }
+
   const attendance = await Attendance.find(query).sort({ checkIn: -1 });
   res.json(attendance);
 });

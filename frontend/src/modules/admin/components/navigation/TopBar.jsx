@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Search, Bell, UserCircle, RefreshCw, X, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../../pos/utils/sounds';
+import BranchSelector from './BranchSelector';
 
 export default function TopBar() {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -21,20 +22,10 @@ export default function TopBar() {
 
   return (
     <header className="h-14 bg-[#2C2C2C] border-b border-white/8 flex items-center justify-between px-6 shrink-0 relative z-40 shadow-md">
-      <div className="flex-1 flex items-center">
+      <div className="flex-1 flex items-center gap-4">
+        {/* Branch Selector — shows on every admin page */}
+        <BranchSelector />
         {/* TODO: Implement global intelligence search in a future release */}
-        {/* 
-        <div className="max-w-xs w-full relative">
-          <div className="flex items-center gap-2.5 px-3 py-2 bg-white/8 border border-white/15 rounded focus-within:bg-white/12 focus-within:border-white/30 transition-all">
-            <Search size={14} className="text-white/60" />
-            <input 
-              type="text" 
-              placeholder="System search... (⌘K)" 
-              className="bg-transparent border-none outline-none text-[11px] font-bold uppercase tracking-wider text-white placeholder:text-white/40 w-full"
-            />
-          </div>
-        </div>
-        */}
       </div>
 
       <div className="flex items-center gap-5">

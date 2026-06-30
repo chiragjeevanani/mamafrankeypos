@@ -44,6 +44,16 @@ export default function PosLoginPage() {
     try {
       const { data } = await api.post('/auth/pos/login', { pin });
       localStorage.setItem('pos_access', data.token);
+      // Store branch info for this POS session
+      if (data.branchId) {
+        localStorage.setItem('pos_branch_id', data.branchId);
+        localStorage.setItem('pos_branch_name', data.branchName || '');
+        localStorage.setItem('pos_branch_slug', data.branchSlug || '');
+      } else {
+        localStorage.removeItem('pos_branch_id');
+        localStorage.removeItem('pos_branch_name');
+        localStorage.removeItem('pos_branch_slug');
+      }
       login(data);
       setIsLoading(false);
       navigate('/pos/tables');
@@ -53,6 +63,7 @@ export default function PosLoginPage() {
       setPin(''); // Clear PIN on error
     }
   };
+
 
   // Global keyboard support
   useEffect(() => {

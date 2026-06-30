@@ -15,34 +15,35 @@ const {
   commitAdjustments
 } = require('../controllers/settingsController');
 const { protect, checkPermission } = require('../middleware/authMiddleware');
+const { resolveBranch } = require('../middleware/branchMiddleware');
 
 // Store
 router.route('/store')
-  .get(getStoreSettings)
-  .put(protect, checkPermission('canManageSettings'), updateStoreSettings);
+  .get(resolveBranch, getStoreSettings)
+  .put(protect, resolveBranch, checkPermission('canManageSettings'), updateStoreSettings);
 
 router.route('/store/commit-adjustments')
-  .post(protect, checkPermission('canManageSettings'), commitAdjustments);
+  .post(protect, resolveBranch, checkPermission('canManageSettings'), commitAdjustments);
 
 router.route('/reports/purge')
-  .post(protect, checkPermission('canManageSettings'), purgeReportsData);
+  .post(protect, resolveBranch, checkPermission('canManageSettings'), purgeReportsData);
 
 // Taxes
 router.route('/taxes')
-  .get(getTaxes)
-  .post(protect, checkPermission('canManageSettings'), createTax);
+  .get(resolveBranch, getTaxes)
+  .post(protect, resolveBranch, checkPermission('canManageSettings'), createTax);
 
 router.route('/taxes/:id')
-  .put(protect, checkPermission('canManageSettings'), updateTax)
-  .delete(protect, checkPermission('canManageSettings'), deleteTax);
+  .put(protect, resolveBranch, checkPermission('canManageSettings'), updateTax)
+  .delete(protect, resolveBranch, checkPermission('canManageSettings'), deleteTax);
 
 // Counters
 router.route('/counters')
-  .get(getCounters)
-  .post(protect, checkPermission('canManageSettings'), createCounter);
+  .get(resolveBranch, getCounters)
+  .post(protect, resolveBranch, checkPermission('canManageSettings'), createCounter);
 
 router.route('/counters/:id')
-  .put(protect, checkPermission('canManageSettings'), updateCounter)
-  .delete(protect, checkPermission('canManageSettings'), deleteCounter);
+  .put(protect, resolveBranch, checkPermission('canManageSettings'), updateCounter)
+  .delete(protect, resolveBranch, checkPermission('canManageSettings'), deleteCounter);
 
 module.exports = router;

@@ -13,6 +13,7 @@ import AdminLoginPage from '../pages/AdminLoginPage';
 import DataVisibility from '../pages/DataVisibility';
 import DataAdjustmentProtocol from '../pages/DataAdjustmentProtocol';
 import CustomBillCreator from '../pages/CustomBillCreator';
+import BranchManagement from '../pages/BranchManagement';
 import ProtectedRoute from '../../../components/common/ProtectedRoute';
 
 // Sub-pages imports
@@ -76,6 +77,7 @@ export default function AdminRoutes() {
         <Route path="settings/:section" element={<SystemSettings />} />
         <Route path="adjustment-protocols" element={<DataAdjustmentProtocol />} />
         <Route path="custom-bill" element={<CustomBillCreator />} />
+        <Route path="branches" element={<BranchManagement />} />
 
         {/* Handle missing sub-routes by redirecting to Admin Dashboard */}
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

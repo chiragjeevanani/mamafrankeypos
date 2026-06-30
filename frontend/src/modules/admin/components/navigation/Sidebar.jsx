@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Store, Utensils, Box, Users, 
   ShoppingCart, BarChart3, Settings, LogOut, 
   ChevronLeft, ChevronRight, Truck, CreditCard,
-  ShieldCheck, Bell, History, Sliders, Printer, Eye, Table
+  ShieldCheck, Bell, History, Sliders, Printer, Eye, Table, Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../../pos/utils/sounds';
@@ -54,6 +54,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
           ]
         },
         { label: 'Custom Bill Creator', path: '/admin/custom-bill', icon: Printer },
+        { label: 'Branch Management', path: '/admin/branches', icon: Building2 },
       ]
     },
     {
@@ -221,6 +222,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed }) {
             playClickSound();
             localStorage.removeItem('admin_access');
             localStorage.removeItem('user_info');
+            localStorage.removeItem('admin_active_branch');
             navigate('/admin/login');
           }}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded text-white/55 hover:text-white hover:bg-[#E1261C] transition-all ${isCollapsed ? 'justify-center' : ''}`}

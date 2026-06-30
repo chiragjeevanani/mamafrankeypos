@@ -28,6 +28,11 @@ const counterSchema = mongoose.Schema(
     lastResetDate: {
       type: String,
     },
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+    },
   },
   {
     timestamps: true,

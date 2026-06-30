@@ -146,9 +146,10 @@ const orderSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Counter',
     },
-    outlet: {
-      type: String,
-      default: 'Main Outlet (Sadar)'
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
     },
   },
   {
@@ -164,6 +165,8 @@ orderSchema.index({ table: 1 });
 orderSchema.index({ orderStatus: 1, createdAt: -1 });
 orderSchema.index({ counter: 1 });
 orderSchema.index({ orderStatus: 1, completedAt: -1 });
+orderSchema.index({ branch: 1 });
+orderSchema.index({ branch: 1, orderStatus: 1, completedAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 

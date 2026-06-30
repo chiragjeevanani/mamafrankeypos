@@ -9,8 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { maskCurrency, calculateMaskedOrderTotal } from '../utils/dataMask';
 import api from '../../../utils/api';
 import { exportToCSV } from '../../../utils/csvExport';
+import { useBranchContext } from '../../../context/BranchContext';
 
 export default function FinancialManagement() {
+  const { activeBranch } = useBranchContext();
   const [expenses, setExpenses] = useState([]);
   const [salesSummary, setSalesSummary] = useState({ today: { total: 0 }, mtd: { total: 0 } });
   const [loading, setLoading] = useState(true);
@@ -28,8 +30,8 @@ export default function FinancialManagement() {
     const fetchData = async () => {
       try {
         const [expRes, salesRes] = await Promise.all([
-          api.get('/expenses'),
-          api.get('/orders/summary')
+          api.get(`/expenses?branch=${activeBranch}`),
+          api.get(`/orders/summary?branch=${activeBranch}`)
         ]);
         setExpenses(expRes.data);
         setSalesSummary(salesRes.data);
@@ -40,7 +42,7 @@ export default function FinancialManagement() {
       }
     };
     fetchData();
-  }, []);
+  }, [activeBranch]);
 
   const handleOpenModal = () => {
     setFormError('');

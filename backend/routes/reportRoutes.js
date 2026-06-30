@@ -4,6 +4,7 @@ const { query, validationResult } = require('express-validator');
 const { getSalesReport } = require('../controllers/reportController');
 
 const { protect, admin, checkPermission } = require('../middleware/authMiddleware');
+const { resolveBranch } = require('../middleware/branchMiddleware');
 
 // Validation error handler middleware
 const validateRequest = (req, res, next) => {
@@ -48,6 +49,6 @@ const getSalesReportValidation = [
   validateRequest
 ];
 
-router.get('/sales', protect, checkPermission('canViewReports'), getSalesReportValidation, getSalesReport);
+router.get('/sales', protect, resolveBranch, checkPermission('canViewReports'), getSalesReportValidation, getSalesReport);
 
 module.exports = router;

@@ -19,6 +19,7 @@ const {
   autoClearEmptyOrder
 } = require('../controllers/orderController');
 const { protect, admin, verifyManagerPinForVoid } = require('../middleware/authMiddleware');
+const { resolveBranch } = require('../middleware/branchMiddleware');
 
 // Validation error handler middleware
 const validateRequest = (req, res, next) => {
@@ -77,37 +78,37 @@ const processOrderValidation = [
 ];
 
 router.route('/')
-  .get(protect, getOrders)
-  .post(protect, processOrderValidation, processOrder);
+  .get(protect, resolveBranch, getOrders)
+  .post(protect, resolveBranch, processOrderValidation, processOrder);
 
 router.route('/adjustment-audit')
-  .get(protect, admin, getAdjustmentAudit);
+  .get(protect, resolveBranch, admin, getAdjustmentAudit);
 
 router.route('/summary')
-  .get(protect, admin, getSalesSummary);
+  .get(protect, resolveBranch, admin, getSalesSummary);
 
 router.route('/active/:identifier')
-  .get(protect, getActiveOrder);
+  .get(protect, resolveBranch, getActiveOrder);
 
 router.route('/:id')
-  .get(protect, getOrderById)
-  .put(protect, updateOrder);
+  .get(protect, resolveBranch, getOrderById)
+  .put(protect, resolveBranch, updateOrder);
 
 router.route('/:id/kot/:kotId/print')
-  .patch(protect, markKOTPrinted);
+  .patch(protect, resolveBranch, markKOTPrinted);
 
 router.route('/:id/kot/:kotId/items/:itemId/cancel')
-  .patch(protect, verifyManagerPinForVoid, cancelKOTItem);
+  .patch(protect, resolveBranch, verifyManagerPinForVoid, cancelKOTItem);
 
 router.route('/:id/bill')
-  .post(protect, billOrder);
+  .post(protect, resolveBranch, billOrder);
 
 router.route('/:id/settle')
-  .post(protect, settleOrder);
+  .post(protect, resolveBranch, settleOrder);
 
-router.post('/:id/discount', protect, applyDiscount);
-router.patch('/:id/kot/:kotId/item/:itemId/discount', protect, applyItemDiscount);
-router.post('/:id/cancel', protect, verifyManagerPinForVoid, cancelOrder);
-router.post('/:id/auto-clear-empty', protect, autoClearEmptyOrder);
+router.post('/:id/discount', protect, resolveBranch, applyDiscount);
+router.patch('/:id/kot/:kotId/item/:itemId/discount', protect, resolveBranch, applyItemDiscount);
+router.post('/:id/cancel', protect, resolveBranch, verifyManagerPinForVoid, cancelOrder);
+router.post('/:id/auto-clear-empty', protect, resolveBranch, autoClearEmptyOrder);
 
 module.exports = router;

@@ -9,6 +9,7 @@ const { getMaskingRules, maskCurrencyValue } = require('../utils/dataMask');
 // @access  Private/Admin
 const getExpenses = asyncHandler(async (req, res) => {
   const query = {};
+  if (req.activeBranchId) query.branch = req.activeBranchId;
   const page = req.query.page ? parseInt(req.query.page, 10) : null;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
@@ -100,6 +101,7 @@ const createExpense = asyncHandler(async (req, res) => {
     date: parsedDate,
     notes: String(notes || '').trim(),
     staff: req.user._id,
+    branch: req.activeBranchId || null,
   });
 
   res.status(201).json(expense);
@@ -128,14 +130,17 @@ const deleteExpense = asyncHandler(async (req, res) => {
 // @route   GET /api/expenses/summary
 // @access  Private/Admin
 const getExpenseSummary = asyncHandler(async (req, res) => {
-  const summary = await Expense.aggregate([
+  const matchStage = req.activeBranchId ? { $match: { branch: new (require('mongoose').Types.ObjectId)(req.activeBranchId) } } : null;
+  const pipeline = [
+    ...(matchStage ? [matchStage] : []),
     {
       $group: {
         _id: '$category',
         total: { $sum: '$amount' },
       },
     },
-  ]);
+  ];
+  const summary = await Expense.aggregate(pipeline);
   
   const isAdminRequest = req.headers['x-module'] === 'admin';
   if (isAdminRequest) {

@@ -256,7 +256,8 @@ const processOrder = asyncHandler(async (req, res) => {
         subtotal: kotTotal,
         totalAmount: kotTotal,
         counter: counterId,
-        orderStatus: 'RUNNING'
+        orderStatus: 'RUNNING',
+        branch: req.branchId || null,
       }], sessionOpts);
       
       order = createdOrders[0];
@@ -685,6 +686,11 @@ const cleanStuckOrdersInternal = async () => {
 const getOrders = asyncHandler(async (req, res) => {
   const query = {};
 
+  // Apply branch filter
+  if (req.activeBranchId) {
+    query.branch = req.activeBranchId;
+  }
+
   if (req.query.type) {
     const mappedType = ORDER_TYPE_QUERY_MAP[String(req.query.type).trim().toUpperCase()];
     if (mappedType) {
@@ -761,13 +767,15 @@ const getSalesSummary = asyncHandler(async (req, res) => {
   const today = getLocalMidnight(new Date(), timezone);
   const firstDayOfMonth = getStartOfMonth(new Date(), timezone);
 
+  const branchMatch = req.activeBranchId ? { branch: new mongoose.Types.ObjectId(req.activeBranchId) } : {};
+
   const [todaySales, mtdSales] = await Promise.all([
     Order.aggregate([
-      { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
+      { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
       { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
     ]),
     Order.aggregate([
-      { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } } },
+      { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } } },
       { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
     ])
   ]);

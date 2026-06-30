@@ -10,10 +10,12 @@ const logAudit = require('../utils/auditLogger');
 const asyncHandler = require('../utils/asyncHandler');
 const { maskOrder } = require('../utils/dataMask');
 
-const getOrCreateStoreSettings = async () => {
-  let settings = await StoreSettings.findOne();
+const getOrCreateStoreSettings = async (branchId = null) => {
+  // Try branch-specific settings first
+  const query = branchId ? { branch: branchId } : {};
+  let settings = await StoreSettings.findOne(query);
   if (!settings) {
-    settings = await StoreSettings.create({});
+    settings = await StoreSettings.create({ branch: branchId });
   }
   return settings;
 };
@@ -30,7 +32,7 @@ const normalizeTax = (tax = {}) => ({
 // @route   GET /api/settings/taxes
 // @access  Public
 const getTaxes = asyncHandler(async (req, res) => {
-  const settings = await getOrCreateStoreSettings();
+  const settings = await getOrCreateStoreSettings(req.activeBranchId);
   res.json(settings.taxes || []);
 });
 
@@ -260,7 +262,7 @@ const deleteCounter = asyncHandler(async (req, res) => {
 // @route   GET /api/settings/store
 // @access  Public
 const getStoreSettings = asyncHandler(async (req, res) => {
-  const settings = await getOrCreateStoreSettings();
+  const settings = await getOrCreateStoreSettings(req.activeBranchId);
   res.json(settings);
 });
 
@@ -268,9 +270,10 @@ const getStoreSettings = asyncHandler(async (req, res) => {
 // @route   PUT /api/settings/store
 // @access  Private/Admin
 const updateStoreSettings = asyncHandler(async (req, res) => {
-  let settings = await StoreSettings.findOne();
+  const branchQuery = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  let settings = await StoreSettings.findOne(branchQuery);
   if (!settings) {
-    settings = await StoreSettings.create(req.body);
+    settings = await StoreSettings.create({ ...req.body, branch: req.activeBranchId });
   } else {
     settings.storeName = req.body.storeName || settings.storeName;
     settings.address = req.body.address || settings.address;
@@ -392,7 +395,8 @@ const purgeReportsData = asyncHandler(async (req, res) => {
 // @route   POST /api/settings/store/commit-adjustments
 // @access  Private/Admin
 const commitAdjustments = asyncHandler(async (req, res) => {
-  const settings = await StoreSettings.findOne();
+  const branchQuery = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  const settings = await StoreSettings.findOne(branchQuery);
   if (!settings) {
     res.status(404);
     throw new Error('Store settings not found');

@@ -16,6 +16,8 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
       req.user = await Staff.findOne({ _id: decoded.id, isDeleted: { $ne: true } }).select('-password -pin');
+      // Attach branchId from token (null for Super Admin)
+      req.branchId = decoded.branchId || null;
 
       next();
     } catch (error) {
@@ -30,6 +32,7 @@ const protect = async (req, res, next) => {
     throw new Error('Not authorized, no token');
   }
 };
+
 
 const admin = (req, res, next) => {
   if (req.user && req.user.role === 'Admin') {

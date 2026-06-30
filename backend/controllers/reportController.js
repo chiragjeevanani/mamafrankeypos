@@ -77,7 +77,10 @@ const getSalesReport = asyncHandler(async (req, res) => {
     matchStage.table = new mongoose.Types.ObjectId(table);
   }
 
-  if (outlet) matchStage.outlet = outlet;
+  // Branch filter: use req.activeBranchId if set (replaces old outlet string filter)
+  if (req.activeBranchId) {
+    matchStage.branch = new mongoose.Types.ObjectId(req.activeBranchId);
+  }
 
   if (biller) {
     if (!mongoose.Types.ObjectId.isValid(biller)) {

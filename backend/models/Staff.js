@@ -39,6 +39,11 @@ const staffSchema = mongoose.Schema(
       required: true,
       default: false,
     },
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null, // null = Super Admin (global access), all other roles must have a branch
+    },
   },
   {
     timestamps: true,
@@ -54,7 +59,7 @@ staffSchema.index(
   }
 );
 staffSchema.index(
-  { pinHash: 1 },
+  { pinHash: 1, branch: 1 },
   {
     unique: true,
     partialFilterExpression: { isDeleted: false, pinHash: { $type: "string" } }
@@ -63,6 +68,7 @@ staffSchema.index(
 staffSchema.index({ role: 1 });
 staffSchema.index({ status: 1 });
 staffSchema.index({ isDeleted: 1 });
+staffSchema.index({ branch: 1 });
 
 staffSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);

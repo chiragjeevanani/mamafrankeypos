@@ -3,6 +3,7 @@ import { Clock, Search, Monitor, Edit2, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../../../utils/api';
 import { playClickSound } from '../../../pos/utils/sounds';
+import { useBranchContext } from '../../../../context/BranchContext';
 
 const toLocalDatetimeString = (dateInput) => {
   if (!dateInput) return '';
@@ -12,6 +13,7 @@ const toLocalDatetimeString = (dateInput) => {
 };
 
 export default function Attendance() {
+  const { activeBranch } = useBranchContext();
   const todayStr = new Date().toISOString().split('T')[0];
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,12 +34,12 @@ export default function Attendance() {
 
   useEffect(() => {
     fetchAttendance(selectedDate);
-  }, [selectedDate]);
+  }, [selectedDate, activeBranch]);
 
   const fetchAttendance = async (dateVal = selectedDate) => {
     try {
       setLoading(true);
-      const { data } = await api.get(`/staff/attendance?date=${dateVal}`);
+      const { data } = await api.get(`/staff/attendance?date=${dateVal}&branch=${activeBranch}`);
       setRecords(data);
       setLoading(false);
     } catch (err) {

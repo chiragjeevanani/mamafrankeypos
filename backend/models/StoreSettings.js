@@ -77,7 +77,12 @@ const storeSettingsSchema = mongoose.Schema(
     adjustedOrderIds: {
       type: [String],
       default: []
-    }
+    },
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null, // null = global/legacy, otherwise per-branch settings
+    },
   },
   {
     timestamps: true,

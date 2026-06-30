@@ -12,10 +12,12 @@ import { maskCurrency, maskQuantity, calculateMaskedOrderTotal } from '../utils/
 import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
 import { exportToCSV } from '../../../utils/csvExport';
+import { useBranchContext } from '../../../context/BranchContext';
 
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { activeBranch } = useBranchContext();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const now = new Date();
@@ -23,7 +25,7 @@ export default function AdminDashboard() {
   React.useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const { data } = await api.get('/dashboard/stats');
+        const { data } = await api.get(`/dashboard/stats?branch=${activeBranch}`);
         setDashboardData(data);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -32,21 +34,21 @@ export default function AdminDashboard() {
       }
     };
     fetchDashboardData();
-  }, []);
+  }, [activeBranch]);
 
   const [recentOrders, setRecentOrders] = useState([]);
   
   React.useEffect(() => {
     const fetchRecentOrders = async () => {
       try {
-        const { data } = await api.get('/orders');
+        const { data } = await api.get(`/orders?branch=${activeBranch}`);
         setRecentOrders(data.slice(0, 5));
       } catch (error) {
         console.error("Error fetching recent orders:", error);
       }
     };
     fetchRecentOrders();
-  }, []);
+  }, [activeBranch]);
 
   const handleExportReport = () => {
     playClickSound();

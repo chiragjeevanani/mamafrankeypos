@@ -5,10 +5,12 @@ import {
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { exportToCSV } from '../../../utils/csvExport';
+import { useBranchContext } from '../../../context/BranchContext';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
 export default function AnalyticsDashboard() {
+  const { activeBranch } = useBranchContext();
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,8 +21,8 @@ export default function AnalyticsDashboard() {
       setLoading(true);
       setError('');
       const [statsRes, ordersRes] = await Promise.all([
-        api.get('/dashboard/stats'),
-        api.get('/orders')
+        api.get(`/dashboard/stats?branch=${activeBranch}`),
+        api.get(`/orders?branch=${activeBranch}`)
       ]);
       setStats(statsRes.data);
       setOrders(ordersRes.data || []);
@@ -33,7 +35,7 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [activeBranch]);
 
   const derived = useMemo(() => {
     const completed = orders.filter((order) => order.orderStatus === 'COMPLETED');

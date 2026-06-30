@@ -9,9 +9,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { playClickSound } from '../../pos/utils/sounds';
 import api from '../../../utils/api';
 import { useNavigate } from 'react-router-dom';
+import { useBranchContext } from '../../../context/BranchContext';
 
 export default function StaffManagement() {
   const navigate = useNavigate();
+  const { activeBranch } = useBranchContext();
   const [staff, setStaff] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,11 +62,11 @@ export default function StaffManagement() {
   useEffect(() => {
     fetchStaff();
     fetchRoles();
-  }, []);
+  }, [activeBranch]);
 
   const fetchRoles = async () => {
     try {
-      const { data } = await api.get('/roles');
+      const { data } = await api.get(`/roles?branch=${activeBranch}`);
       setRoles(data);
     } catch (err) {
       console.error('Failed to fetch roles');
@@ -75,7 +77,7 @@ export default function StaffManagement() {
   const fetchStaff = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/staff');
+      const { data } = await api.get(`/staff?branch=${activeBranch}`);
       setStaff(data);
       setLoading(false);
     } catch (err) {

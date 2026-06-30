@@ -30,7 +30,8 @@ const adminLogin = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id),
+      branchId: null, // Admin has global access (no branch restriction)
+      token: generateToken(user._id, null),
     });
   } else {
     // Log failed login attempt
@@ -131,19 +132,30 @@ const posLogin = asyncHandler(async (req, res) => {
         date: today,
         checkIn: new Date(),
         status: 'In',
-        terminal: req.body.terminal || 'POS-Terminal'
+        terminal: req.body.terminal || 'POS-Terminal',
+        branch: authorizedStaff.branch || null,
       });
       await logAudit(authorizedStaff._id, 'ATTENDANCE', 'CHECK-IN', 'Automated check-in on login', req.ip);
     }
 
     await logAudit(authorizedStaff._id, 'LOGIN', 'AUTH', `POS login successful (${authorizedStaff.role})`, req.ip);
     
+    // Populate branch info for the token & response
+    const Branch = require('../models/Branch');
+    let branchInfo = null;
+    if (authorizedStaff.branch) {
+      branchInfo = await Branch.findById(authorizedStaff.branch).select('name slug');
+    }
+
     res.json({
       _id: authorizedStaff._id,
       name: authorizedStaff.name,
       role: authorizedStaff.role,
       permissions: roleData ? roleData.permissions : {},
-      token: generateToken(authorizedStaff._id),
+      branchId: authorizedStaff.branch || null,
+      branchName: branchInfo ? branchInfo.name : null,
+      branchSlug: branchInfo ? branchInfo.slug : null,
+      token: generateToken(authorizedStaff._id, authorizedStaff.branch || null),
     });
   } else {
     // Log failed PIN attempt

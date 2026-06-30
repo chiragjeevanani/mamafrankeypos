@@ -56,28 +56,31 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   const firstDayOfWeek = getStartOfWeek(new Date(), timezone);
   const firstDayOfMonth = getStartOfMonth(new Date(), timezone);
 
+  // Build branch filter for aggregation
+  const branchMatch = req.activeBranchId ? { branch: new (require('mongoose').Types.ObjectId)(req.activeBranchId) } : {};
+
   const [todayStats, weekStats, monthStats, totalCustomers, totalExpenses] = await Promise.all([
     Order.aggregate([
-      { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
+      { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
       { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
     ]),
     Order.aggregate([
-      { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfWeek } } },
+      { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfWeek } } },
       { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
     ]),
     Order.aggregate([
-      { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } } },
+      { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } } },
       { $group: { _id: null, total: { $sum: '$totalAmount' }, count: { $sum: 1 } } }
     ]),
     Customer.countDocuments({}),
     Expense.aggregate([
-      { $match: { date: { $gte: firstDayOfMonth } } },
+      { $match: { ...branchMatch, date: { $gte: firstDayOfMonth } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ])
   ]);
 
   const topItems = await Order.aggregate([
-    { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } } },
+    { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: firstDayOfMonth } } },
     { $unwind: '$kots' },
     { $unwind: '$kots.items' },
     { $match: { 'kots.items.status': { $ne: 'cancelled' } } },
@@ -87,7 +90,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
   ]);
 
   const hourlySales = await Order.aggregate([
-    { $match: { orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
+    { $match: { ...branchMatch, orderStatus: 'COMPLETED', completedAt: { $gte: today } } },
     { 
       $group: { 
         _id: { $hour: { date: '$completedAt', timezone: timezone } }, 

@@ -3,10 +3,12 @@ import { Eye, Globe, MapPin, RefreshCw, Search, Truck } from 'lucide-react';
 import api from '../../../../utils/api';
 import AdminModal from '../../components/ui/AdminModal';
 import { maskQuantity, maskCurrency, calculateMaskedOrderTotal, getReplacedName } from '../../utils/dataMask';
+import { useBranchContext } from '../../../../context/BranchContext';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
 export default function OnlineOrders() {
+  const { activeBranch } = useBranchContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,8 +26,8 @@ export default function OnlineOrders() {
       setLoading(true);
       setError('');
       const [runningRes, billedRes] = await Promise.all([
-        api.get('/orders?type=PICKUP&status=running-kot'),
-        api.get('/orders?type=PICKUP&status=printed')
+        api.get(`/orders?type=PICKUP&status=running-kot&branch=${activeBranch}`),
+        api.get(`/orders?type=PICKUP&status=printed&branch=${activeBranch}`)
       ]);
       const runningData = Array.isArray(runningRes.data) ? runningRes.data : [];
       const billedData = Array.isArray(billedRes.data) ? billedRes.data : [];
@@ -39,7 +41,8 @@ export default function OnlineOrders() {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranch]);
 
   const filteredOrders = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

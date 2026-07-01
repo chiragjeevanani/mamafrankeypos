@@ -5,10 +5,12 @@ import { exportToCSV } from '../../../../utils/csvExport';
 import AdminModal from '../../components/ui/AdminModal';
 import { maskQuantity, maskCurrency, calculateMaskedOrderTotal, getReplacedName } from '../../utils/dataMask';
 import OnscreenInvoice from '../../../../components/shared/OnscreenInvoice';
+import { useBranchContext } from '../../../../context/BranchContext';
 
 const formatMoney = (value = 0) => `Rs ${Number(value || 0).toLocaleString()}`;
 
 export default function CancelledOrders() {
+  const { activeBranch } = useBranchContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ export default function CancelledOrders() {
     try {
       setLoading(true);
       setError('');
-      const { data } = await api.get('/orders?status=cancelled');
+      const { data } = await api.get(`/orders?status=cancelled&branch=${activeBranch}`);
       setOrders(data || []);
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load cancelled orders');
@@ -36,7 +38,8 @@ export default function CancelledOrders() {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranch]);
 
   const filteredOrders = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

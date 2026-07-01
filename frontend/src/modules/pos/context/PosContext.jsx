@@ -227,9 +227,15 @@ export function PosProvider({ children }) {
   const fetchTables = useCallback(async () => {
     if (!localStorage.getItem('admin_access') && !localStorage.getItem('pos_access')) return;
     try {
+      // For admin: pass the currently selected branch so correct tables are returned
+      // For POS: backend enforces branch via JWT — query param is ignored for non-admins
+      const isAdmin = !!localStorage.getItem('admin_access');
+      const activeBranch = isAdmin ? localStorage.getItem('admin_active_branch') : null;
+      const branchParam = activeBranch && activeBranch !== 'all' ? `?branch=${activeBranch}` : '';
+
       const [secRes, tabRes] = await Promise.all([
-        api.get('/tables/sections'),
-        api.get('/tables')
+        api.get(`/tables/sections${branchParam}`),
+        api.get(`/tables${branchParam}`)
       ]);
 
       const formattedSections = secRes.data.map(sec => ({

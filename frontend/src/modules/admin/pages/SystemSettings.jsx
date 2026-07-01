@@ -274,8 +274,16 @@ export default function SystemSettings() {
   const { 
     sections, addSection, updateSection, deleteSection,
     tables, addTable, updateTable, deleteTable,
-    appliedTaxes, addTax, updateTax, deleteTax
+    appliedTaxes, addTax, updateTax, deleteTax,
+    refreshTables
   } = usePos();
+
+  // Re-fetch tables & sections whenever admin switches branch
+  React.useEffect(() => {
+    refreshTables();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranch]);
+
   const [newTax, setNewTax] = useState({ name: '', rate: '' });
   const [taxError, setTaxError] = useState('');
   const [editingTaxId, setEditingTaxId] = useState(null);

@@ -14,6 +14,7 @@ export default function PosTopNavbar() {
   const navigate = useNavigate();
   const { logout, storeSettings, currentCounter } = usePos();
   const [searchBillNo, setSearchBillNo] = useState('');
+  const branchName = localStorage.getItem('pos_branch_name') || '';
 
   // Dropdown & Modal states
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
@@ -44,7 +45,14 @@ export default function PosTopNavbar() {
             <div className="h-7 flex items-center justify-center overflow-hidden">
               <img src={logo} alt="Logo" className="h-full w-auto object-contain" />
             </div>
-            <span className="text-white font-bold text-xs uppercase tracking-tight border-l border-white/10 pl-3">Time to eat</span>
+            <div className="flex flex-col border-l border-white/10 pl-3">
+              <span className="text-white font-bold text-[11px] uppercase tracking-tight leading-tight">Time to eat</span>
+              {branchName && (
+                <span className="text-[#FFD600] font-black text-[8px] uppercase tracking-widest mt-0.5 opacity-90">
+                  {branchName}
+                </span>
+              )}
+            </div>
           </div>
           <button 
             onClick={() => { playClickSound(); navigate('/pos/tables'); }} 

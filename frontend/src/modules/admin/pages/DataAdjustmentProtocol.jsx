@@ -11,6 +11,7 @@ import api from '../../../utils/api';
 import { playClickSound } from '../../pos/utils/sounds';
 import { printBillReceipt } from '../../pos/utils/printBill';
 import { exportToCSV } from '../../../utils/csvExport';
+import { useBranchContext } from '../../../context/BranchContext';
 
 function SearchableSelect({ label, value, onChange, options, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,6 +80,7 @@ function SearchableSelect({ label, value, onChange, options, placeholder }) {
 
 export default function DataAdjustmentProtocol() {
   const { menuItems, sections = [] } = usePos();
+  const { activeBranch } = useBranchContext();
   const today = new Date().toISOString().split('T')[0];
 
   const isStandardDineInSection = (sec) => {
@@ -184,7 +186,8 @@ export default function DataAdjustmentProtocol() {
   useEffect(() => {
     fetchBills();
     fetchProtocols();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranch]);
 
   useEffect(() => {
     const handleCommit = () => {
@@ -213,7 +216,7 @@ export default function DataAdjustmentProtocol() {
 
   const fetchProtocols = async () => {
     try {
-      const { data } = await api.get('/settings/store');
+      const { data } = await api.get(`/settings/store?branch=${activeBranch}`);
       setStoreInfo(data);
       setDecreasePct(data.visibilityDecrement?.toString() || '0');
       setPriceRange(data.protocolPriceRange || 'Price Range: Standard');
@@ -241,6 +244,8 @@ export default function DataAdjustmentProtocol() {
       if (filters.itemName !== '--Filter by item--') params.append('itemName', filters.itemName);
       
       params.append('priceRange', priceRange);
+      // Pass the active branch so backend filters orders to the correct branch
+      if (activeBranch && activeBranch !== 'all') params.append('branch', activeBranch);
 
       const { data } = await api.get(`/orders/adjustment-audit?${params.toString()}`);
       setRecords(data);

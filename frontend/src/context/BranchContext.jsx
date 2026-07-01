@@ -29,7 +29,7 @@ export const BranchProvider = ({ children }) => {
   const fetchBranches = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/api/branches');
+      const { data } = await api.get('/branches');
       setBranches(data || []);
     } catch (err) {
       console.error('Failed to fetch branches:', err);

@@ -38,7 +38,7 @@ export default function BranchManagement() {
   const loadAll = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/api/branches/all');
+      const { data } = await api.get('/branches/all');
       setAllBranches(data);
     } catch (err) {
       setError('Failed to load branches');
@@ -96,10 +96,10 @@ export default function BranchManagement() {
     setError('');
     try {
       if (editing) {
-        await api.put(`/api/branches/${editing._id}`, form);
+        await api.put(`/branches/${editing._id}`, form);
         setSuccess('Branch updated successfully');
       } else {
-        await api.post('/api/branches', form);
+        await api.post('/branches', form);
         setSuccess('Branch created successfully');
       }
       await loadAll();
@@ -115,7 +115,7 @@ export default function BranchManagement() {
 
   const handleToggleActive = async (branch) => {
     try {
-      await api.put(`/api/branches/${branch._id}`, { isActive: !branch.isActive });
+      await api.put(`/branches/${branch._id}`, { isActive: !branch.isActive });
       await loadAll();
       await fetchBranches();
       setSuccess(`Branch "${branch.name}" ${!branch.isActive ? 'activated' : 'deactivated'}`);

@@ -814,7 +814,14 @@ const getAdjustmentAudit = asyncHandler(async (req, res) => {
   
   let query = { orderStatus: 'COMPLETED' };
 
-  const settings = await StoreSettings.findOne() || {};
+  // Apply branch filter — only return orders from the selected branch
+  if (req.activeBranchId) {
+    query.branch = req.activeBranchId;
+  }
+
+  // Fetch settings from the correct branch for timezone
+  const settingsQuery = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  const settings = await StoreSettings.findOne(settingsQuery) || {};
   const timezone = settings.timezone || 'Asia/Kolkata';
 
   // 1. Date Range Filter

@@ -40,7 +40,7 @@ const getTaxes = asyncHandler(async (req, res) => {
 // @route   POST /api/settings/taxes
 // @access  Private/Admin
 const createTax = asyncHandler(async (req, res) => {
-  const settings = await getOrCreateStoreSettings();
+  const settings = await getOrCreateStoreSettings(req.activeBranchId);
   const tax = normalizeTax(req.body);
 
   if (!tax.name) {
@@ -72,7 +72,7 @@ const updateTax = asyncHandler(async (req, res) => {
     throw new Error('Invalid Tax ID format');
   }
 
-  const settings = await getOrCreateStoreSettings();
+  const settings = await getOrCreateStoreSettings(req.activeBranchId);
   const tax = settings.taxes.id(req.params.id);
 
   if (!tax) {
@@ -115,7 +115,7 @@ const deleteTax = asyncHandler(async (req, res) => {
     throw new Error('Invalid Tax ID format');
   }
 
-  const settings = await getOrCreateStoreSettings();
+  const settings = await getOrCreateStoreSettings(req.activeBranchId);
   const tax = settings.taxes.id(req.params.id);
 
   if (!tax) {
@@ -134,7 +134,10 @@ const deleteTax = asyncHandler(async (req, res) => {
 // @route   GET /api/settings/counters
 // @access  Public
 const getCounters = asyncHandler(async (req, res) => {
+  // Apply branch filter so each branch only sees its own counters
+  const branchFilter = req.activeBranchId ? { branch: req.activeBranchId } : {};
   const counters = await Counter.find({
+    ...branchFilter,
     name: { $nin: ['DAILY_KOT_COUNTER', 'DAILY_TOKEN_COUNTER'] }
   });
   res.json(counters);
@@ -163,13 +166,16 @@ const createCounter = asyncHandler(async (req, res) => {
     throw new Error('Start number must be a valid non-negative integer');
   }
 
-  const prefixExists = await Counter.findOne({ prefix: { $regex: new RegExp(`^${prefix}$`, 'i') } });
+  // Check prefix uniqueness within the same branch only
+  const branchFilter = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  const prefixExists = await Counter.findOne({ ...branchFilter, prefix: { $regex: new RegExp(`^${prefix}$`, 'i') } });
   if (prefixExists) {
     res.status(400);
     throw new Error(`Counter prefix "${prefix}" is already in use`);
   }
 
-  const counter = await Counter.create({ name, prefix, startNum, currentNum: startNum });
+  // Assign branch when creating so the counter belongs to the active branch
+  const counter = await Counter.create({ name, prefix, startNum, currentNum: startNum, branch: req.activeBranchId || null });
   res.status(201).json(counter);
 });
 
@@ -246,7 +252,9 @@ const deleteCounter = asyncHandler(async (req, res) => {
     throw new Error('Counter not found');
   }
 
-  const count = await Counter.countDocuments({});
+  // Count only within the active branch so we don't prevent deletion based on other branches' counters
+  const branchFilter = req.activeBranchId ? { branch: req.activeBranchId } : {};
+  const count = await Counter.countDocuments(branchFilter);
   if (count <= 1) {
     res.status(400);
     throw new Error('Cannot delete the only counter. At least one billing counter is required.');
@@ -367,16 +375,19 @@ const updateStoreSettings = asyncHandler(async (req, res) => {
 // @route   POST /api/settings/reports/purge
 // @access  Private/Admin
 const purgeReportsData = asyncHandler(async (req, res) => {
-  // Delete all orders
-  await Order.deleteMany({});
+  // Scope all deletes to the active branch — prevents wiping another branch's data
+  const branchFilter = req.activeBranchId ? { branch: req.activeBranchId } : {};
+
+  // Delete orders scoped to branch
+  await Order.deleteMany(branchFilter);
   
-  // Delete all attendance logs
-  await Attendance.deleteMany({});
+  // Delete attendance logs scoped to branch
+  await Attendance.deleteMany(branchFilter);
   
-  // Delete all expenses ledger logs
-  await Expense.deleteMany({});
+  // Delete expenses scoped to branch
+  await Expense.deleteMany(branchFilter);
   
-  // Delete all audit logs
+  // Audit logs are global (not branch-scoped) — keep deleting all
   await AuditLog.deleteMany({});
   
   // Log the purge activity itself as a fresh audit log

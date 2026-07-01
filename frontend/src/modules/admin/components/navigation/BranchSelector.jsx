@@ -61,7 +61,7 @@ export default function BranchSelector() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.97 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 mt-2 w-52 bg-[#1E1E1E] border border-white/12 rounded-lg shadow-2xl z-50 overflow-hidden"
+            className="absolute top-full left-0 mt-2 w-52 bg-[#1E1E1E] border border-white/12 rounded-lg shadow-2xl z-50 overflow-hidden"
           >
             <div className="p-2 border-b border-white/8">
               <p className="text-[9px] font-black uppercase tracking-widest text-white/40 px-2">Select Branch</p>
